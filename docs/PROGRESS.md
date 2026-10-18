@@ -43,8 +43,10 @@ import roots stay as the build plan specified.
    not appear in `sandbox worlds` yet.
 4. **The ASGI bridge runs one event loop per request** (httpx 0.28 removed sync ASGI transport).
    Fine for determinism, worth revisiting in Phase 9's scale work.
-5. **Placeholders to replace before launch**: the `conduct@example.invalid` and
-   `security@example.invalid` contacts, and the GitHub URLs in `pyproject.toml`.
+5. **The repository is public** at <https://github.com/prarabdha-soni/agent-sandbox>, and CI is
+   green on `main`. Two placeholders still need real addresses, and they are now visible to
+   anyone: the `conduct@example.invalid` contact in `CODE_OF_CONDUCT.md` and
+   `security@example.invalid` in `SECURITY.md`.
 6. **Not yet built, by design**: stress modifiers (Phase 5), the model-driven `sandbox run`
    (Phase 4), `release-check` (Phase 6), hidden-set tooling (Phase 5). `scripts/check_no_hidden.py`
    guards the rule in the meantime.
