@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-packages
+      - name: lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: type-check (strict on the kit)
+        run: |
+          uv run mypy --strict kit/src/kit
+          uv run mypy runner/src/runner stress/src/stress
+      - name: tests
+        run: uv run pytest

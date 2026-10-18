@@ -1,0 +1,24 @@
+id: hello-respect-ceiling
+version: v0.1
+world: hello_world
+category: basics
+difficulty: medium
+instruction: >-
+  The counter starts at 4 and must end on exactly 7. The service refuses to go
+  above 9, so check the counter before and after each step, and call finish when
+  you are done.
+initial_state:
+  start: 4
+  target: 7
+  ceiling: 9
+allowed_tools: [get_count, increment, finish]
+max_steps: 10
+grader: kit.examples.hello_world.graders:reaches_target
+seed: 2
+tags: [example, limits]
+visibility: public
+expected_outcome: The counter ends at 7, never goes above 7, and finish was called once.
+reviewer_signoff:
+  name: Prarabdha Soni
+  role: platform
+  date: 2026-10-18

@@ -1,0 +1,21 @@
+name: core-isolation
+
+# The core must stay domain-neutral and deterministic. This runs as its own job
+# so a violation is obvious without reading the whole test log.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-packages
+      - name: no world imports in the core, no wall clock, no unseeded randomness
+        run: uv run pytest kit/tests/test_purity.py kit/tests/test_core_isolation.py -v

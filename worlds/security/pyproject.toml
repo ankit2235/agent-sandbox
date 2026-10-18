@@ -1,0 +1,17 @@
+[project]
+name = "agent-sandbox-world-security"
+version = "0.0.1.dev0"
+description = "The security world: services, MCP tools, tasks and graders. Empty until its phase."
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = ["agent-sandbox-kit"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/worlds"]
+
+[tool.uv.sources]
+agent-sandbox-kit = { workspace = true }

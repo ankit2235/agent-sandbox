@@ -1,0 +1,21 @@
+# Phase 0 skeleton. Each world gets its own profile as its services arrive, so
+# `docker compose --profile payments up` starts only that world. Episodes are
+# normally run in-process over ASGI (fast and deterministic); this file is for
+# running the suite in a clean container and, later, for the multi-process mode.
+services:
+  dev:
+    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+    working_dir: /work
+    profiles: [dev]
+    volumes:
+      - .:/work
+    environment:
+      UV_LINK_MODE: copy
+      UV_CACHE_DIR: /work/.uv-cache
+    command: ["uv", "run", "pytest"]
+
+# Worlds add their services here under their own profile, for example:
+#   payments-rails:
+#     build: worlds/payments/services/rails
+#     profiles: [payments]
+#     environment: { SANDBOX_SERVICE: rails }

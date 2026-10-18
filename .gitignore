@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+# Run outputs (never committed)
+runs/
+# Hidden task set never lives here, but guard against an accidental clone
+hidden/
+*-hidden/
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

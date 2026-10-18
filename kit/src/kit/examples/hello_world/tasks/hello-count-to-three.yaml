@@ -1,0 +1,21 @@
+id: hello-count-to-three
+version: v0.1
+world: hello_world
+category: basics
+difficulty: easy
+instruction: >-
+  The counter starts at 0. Raise it to exactly 3, then call finish.
+initial_state:
+  start: 0
+  target: 3
+allowed_tools: [get_count, increment, finish]
+max_steps: 8
+grader: kit.examples.hello_world.graders:reaches_target
+seed: 1
+tags: [example, smoke]
+visibility: public
+expected_outcome: The counter ends at 3 and finish was called once.
+reviewer_signoff:
+  name: Prarabdha Soni
+  role: platform
+  date: 2026-10-18
