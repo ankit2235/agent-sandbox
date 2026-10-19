@@ -492,7 +492,7 @@ Goal: one command runs any model over any task set, records full traces, and pro
    - Per task: pass rate over runs. Per model: overall score, safe-payment rate (runs with zero money mistakes), task success rate, counts by FailureType, avg steps, avg cost.
    - 95% confidence intervals via bootstrap over tasks. Report by category.
    - Separate public vs hidden scores (hidden only aggregated, never per-task output in public files).
-5. Export: results.json, tasks.json (public tasks only) and traces/<run_id>.json, in exactly this schema: [PASTE THE DATA FORMAT SECTION FROM THE LOVABLE PROMPT]. Add a JSON Schema and validate on export.
+5. Export: results.json, tasks.json (public tasks only) and traces/<run_id>.json, in exactly this schema: [PASTE THE "DATA FILES" SECTION FROM THE LEADERBOARD UI PROMPT IN THIS DOC] — one folder per world plus worlds.json. Add a JSON Schema and validate on export.
 6. Reproducibility check command: `sandbox verify --run <dir>` replays the recorded agent actions against a fresh world and confirms the same grades.
 7. Budget mode for development: `--model` free/cheap models and `--sample 10` tasks.
 
@@ -572,6 +572,111 @@ Plan first: list everything that's missing for the gate to pass.
 - [ ] `sandbox release-check payments-v0.1` passes
 - [ ] Someone outside the team installs it from PyPI and reproduces one model's score
 - [ ] The leaderboard site goes live with real results, and placeholder data is removed
+
+## Leaderboard UI prompt (Lovable, multi-world)
+
+Paste this into Lovable to build the leaderboard site. It's driven entirely by data: each world describes its own metrics, categories and failure types in `worlds.json`, so adding a world later means adding files, not changing code. Phase 4's export must write exactly this format.
+
+```text
+Build the leaderboard website for [PROJECT NAME], an open-source sandbox that tests how well AI agents do real work inside simulated "worlds". Current worlds: Payments (agents paying, refunding, disputing under limits and mandates), Security operations (agents triaging alerts and containing incidents — defensive), and Drug safety (agents processing adverse-event reports). More worlds may be added later, so NOTHING about a specific world may be hard-coded: every label, metric, category and failure type comes from data files. Researchers and AI labs use this site to compare models. It must feel like a serious research benchmark, not a marketing page.
+
+TECH
+- React + TypeScript + Vite + Tailwind + shadcn/ui. Recharts for charts.
+- NO backend, NO database, NO login, NO Supabase. Everything is read at runtime from static JSON in /public/data/.
+- Static build deployable on GitHub Pages (HashRouter or configurable base path).
+- Light + dark mode, dark by default. Fully responsive; tables scroll horizontally on mobile.
+
+DESIGN
+- Clean, dense, data-first. JetBrains Mono for numbers/IDs/code, Inter for text.
+- Near-black background in dark mode, one accent colour (electric teal); red/amber/green only for pass/fail/warning. Each world gets a small neutral icon + name, not its own colour theme.
+- No stock photos, no gradient-heavy hero, no emoji. "Terminal meets research paper."
+
+DATA FILES (all under /public/data/)
+1. worlds.json — the registry that drives the whole UI:
+[
+  {
+    "id": "payments", "name": "Payments", "version": "payments-v0.1",
+    "status": "live",                       // live | preview | coming_soon
+    "tagline": "How often do AI agents make payment mistakes?",
+    "description": "...",
+    "disclaimer": null,                      // string shown as a banner if set
+    "categories": [ { "key": "rails", "label": "Rails" }, ... ],
+    "metrics": [
+      { "key": "overall", "label": "Overall", "unit": "%", "higher_is_better": true, "primary": true, "has_ci": true },
+      { "key": "safe_action_rate", "label": "Safe-payment rate", "unit": "%", "higher_is_better": true },
+      { "key": "avg_cost_usd", "label": "Cost / task", "unit": "$", "higher_is_better": false },
+      { "key": "avg_steps", "label": "Avg steps", "unit": "steps", "higher_is_better": false }
+    ],
+    "failure_types": [ { "key": "overspend", "label": "Overspend" }, ... ],
+    "tools": [ "pay", "refund", ... ]
+  }
+]
+Examples to put in sample data:
+- payments (live): categories rails/commerce/disputes/stress; failures overspend, wrong_merchant, ignored_limit, fake_discount, failed_refund, duplicate_payment.
+- security (preview, disclaimer "Defensive scenarios only. All incidents are synthetic."): categories triage/investigation/containment/reporting; metrics include overall, safe_action_rate labelled "No-disruption rate", scope_recall; failures missed_compromise, false_containment, evidence_destroyed, late_escalation.
+- drug-safety (coming_soon, disclaimer "Research benchmark. Not medical advice. Not validated for real pharmacovigilance."): categories validity/coding/assessment/deadlines; failures missed_case, duplicate_case, wrong_seriousness, late_submission, hallucinated_data. No results file yet.
+
+2. <worldId>/results.json:
+{
+  "world": "payments", "version": "payments-v0.1", "updated": "2026-12-01",
+  "models": [
+    {
+      "id": "model-a", "name": "Model A", "provider": "Provider X", "open_weight": false, "runs": 3,
+      "metrics": {
+        "public":     { "overall": { "value": 47.2, "ci": 3.1 }, "safe_action_rate": { "value": 81.0 }, "avg_cost_usd": { "value": 0.42 }, "avg_steps": { "value": 14.3 } },
+        "hidden":     { "overall": { "value": 44.8, "ci": 3.6 } },
+        "with_guard": { "overall": { "value": 71.4, "ci": 2.8 }, "false_block_rate": { "value": 4.0 } }
+      },
+      "by_category": { "rails": 55.0, "commerce": 48.0, "disputes": 41.0, "stress": 30.0 },
+      "failures": { "overspend": 6, "wrong_merchant": 4 },
+      "task_results": [ { "task_id": "rails-001", "passed": true, "run_id": "run-a-rails-001" } ]
+    }
+  ]
+}
+3. <worldId>/tasks.json: [ { id, title, category, difficulty, instruction, initial_state, grader_checks[], pass_rate } ] (public tasks only).
+4. <worldId>/traces/<run_id>.json: { run_id, world, model_id, task_id, passed, fail_reason, failure_type, steps: [ { n, sim_time, agent_message, tool, args, response, state_diff, guard_decision? } ] }
+5. trust/conformance.json (may be absent): { "version": "trust-spec-v1", "implementations": [ { id, name, version, by_world: { payments: { correct_allow, correct_block, false_block, missed_mistake, receipt_validity }, ... } } ] }
+
+PAGES
+1. Home (/)
+- Header: project name, GitHub link, docs link, last updated.
+- One-line explainer: "How reliably do AI agents do real work when mistakes are costly?"
+- World cards from worlds.json: name, tagline, status badge (Live / Preview / Coming soon), version, models tested, best primary score. Coming-soon worlds show the card greyed with "No results yet".
+- Cross-world matrix: rows = models, columns = live/preview worlds, cells = primary metric with colour scale; click a cell -> that world's model page. Hide worlds without results.
+
+2. World leaderboard (/w/:worldId)
+- World header: name, version selector (from available versions), tagline, disclaimer banner if set.
+- Stat cards: models tested, tasks, best primary score.
+- Sortable table: rank, model, provider, then ONE COLUMN PER METRIC from worlds.json (formatted by unit; ci shown as ± and a tiny error bar when present; arrows respect higher_is_better), runs.
+- Toggles: Public vs Hidden tasks; Without guard vs With guard (with delta badges and false-block rate). Toggles hide themselves if the data isn't present.
+- Filters: provider, open-weight vs closed, category.
+- Charts: score by category (grouped bars, categories from worlds.json); cost vs primary score scatter (only if a cost metric exists); most common failure types (labels from worlds.json).
+
+3. Model page (/w/:worldId/model/:modelId): summary, category radar, failure breakdown, with/without guard comparison, per-task pass/fail table linking to traces. Plus a strip showing this model's primary score in every other world.
+
+4. Task explorer (/w/:worldId/tasks): search/filter by category and difficulty; task detail shows instruction, initial state as formatted JSON, grader checks, per-model pass/fail grid.
+
+5. Trace viewer (/w/:worldId/run/:runId): generic timeline of steps — sim time, agent message, tool call with args (JSON), response, state diff (before/after), and guard decision chip (allow / block / ask_user + reasons) when present. Highlight the failing step with the grader's reason and failure type label. Collapsible steps, copy JSON.
+
+6. Trust layer (/trust): shown only if trust/conformance.json exists. Table of implementations x worlds with the conformance metrics; explain each metric in a tooltip; link to the spec.
+
+7. Methodology (/about): what the sandbox tests; how worlds work; scoring and confidence intervals; public vs hidden tasks; determinism and reproducibility; per-world limitations (rendered from each world's description + disclaimer); how to run it yourself (code block); how to submit results; citation BibTeX with copy button.
+
+8. Submit (/submit): static instructions — run locally, open a GitHub PR with your results file; show the JSON format.
+
+SAMPLE DATA
+Create obviously fake placeholder data: models "Model A" to "Model H" from "Provider X/Y/Z". Payments: 8 models, 60 tasks, 3 traces. Security: 6 models, 40 tasks, 2 traces. Drug safety: coming soon, no results. A small trust/conformance.json with 2 fake implementations ("Reference guard", "Example guard").
+
+CODE STRUCTURE
+- src/lib/data.ts: all loading + TypeScript types for every file above; a useWorlds() hook and useWorldResults(worldId).
+- Generic components: MetricCell (formats by unit, ci, direction), LeaderboardTable (columns from metric defs), CategoryChart, FailureChart, TraceTimeline, StatusBadge, DisclaimerBanner.
+- Adding a world must require ONLY new JSON files — add a README section explaining this.
+
+QUALITY
+- Fast: skeleton loaders, no heavy animation.
+- Missing fields show "—"; missing optional files hide their sections instead of erroring.
+- Accessible: contrast, keyboard-navigable tables, aria labels on charts.
+```
 
 ## Phase 7 — RL training experiment
 
