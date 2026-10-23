@@ -72,3 +72,99 @@ here, add a new entry rather than editing an old one.
 - Whether to namespace imports under `agent_sandbox.*` (decision 6).
 - Reward shaping beyond the grader's score: currently the adapter reports `score` and nothing else.
 - Whether `Trace` should carry per-step token usage for scheduled events (it currently does not).
+
+## Phase 1 — simulated payment rails (2026-10-23)
+
+Where public sources disagree or say nothing, the rule is a task setting with a sourced default.
+Most UPI figures below come from payment-company docs and press reports of NPCI circulars, not the
+circulars themselves; the payments reviewer should confirm them.
+
+### Structure
+
+17. **The rails live at `worlds/payments/src/worlds/payments/services/rails/`**, the system
+    design's `services/rails/` in the `src` layout Phase 0 set up, not the phase prompt's shorter
+    `worlds/payments/rails`.
+18. **The rules are plain Python over SQLite (`core.py`); the FastAPI app (`app.py`) only
+    translates HTTP.** That keeps the 1,000-case property tests fast. Every route is `async def`,
+    because FastAPI runs plain `def` routes in a worker thread and the episode's in-memory SQLite
+    connection belongs to the thread that created it.
+19. **A service schedules its own events.** A `POST` response may carry `scheduled_events`;
+    `RailsService` puts them on the episode's `SimClock`, and the episode hands due ones back
+    through `RailsService.apply_event` (wired into `_on_event` in Phase 2). Events are
+    `rails.settle`, `rails.limit_change` and `rails.reserve_expiry`.
+20. **The snapshot is self-contained.** The task's rails config is stored in the database, and
+    payment and refund ids come from `SeededRNG.child(f"payment/{n}")` keyed by row count, so ids
+    depend only on the seed and the database, not on how many numbers were drawn before.
+
+### Money and the ledger
+
+21. **Money is integer paise, in one currency (INR).** UPI is domestic and rupee-only. Amounts are
+    pydantic `StrictInt` and the SQLite tables are `STRICT`, so `10.5`, `10.0` and `"10"` are
+    refused. If a future world needs other currencies, the pattern is the one Stripe and Razorpay
+    use: amounts in the currency's smallest unit plus a `currency` field — a rename of `*_paise`
+    plus exchange rules, not a patch.
+22. **Double-entry with three system accounts.** `sys_issuance` goes negative by the opening
+    balances, so all balances always sum to zero; `sys_clearing` holds in-flight money (pending
+    payments); `sys_holds` holds Reserve Pay blocks. Every movement is two ledger entries. This is
+    TigerBeetle's pending/posted idea with one balance per account instead of separate pending
+    counters, so the invariant is a single sum.
+23. **State diffs** cover created payments and refunds and changed balances, mandates and limits.
+    Ledger rows are left out: they are implied by the balance diffs and would be noise.
+
+### Payments
+
+24. **Declines are recorded; rejections are not** (Stripe's rule). A payment that breaks a rule is
+    saved as `failed` with a `failure_code` and a `failure_detail`; a malformed request
+    (`invalid_request`, `invalid_amount`, `same_account`, `payer_not_found`,
+    `idempotency_conflict`) is refused with nothing saved, so it can be retried.
+25. **Idempotency.** Same key and same details returns the stored payment — including a stored
+    failure — and writes nothing; same key with different details is `idempotency_conflict`
+    (409). Keys never expire inside an episode, which removes Stripe's 24-hour pruning edge case.
+26. **`payee_not_found` is a recorded failure**, so graders can see an attempt to pay a wrong
+    address. `GET /handles/{handle}` checks an address first, as PayU and PhonePe's validate APIs
+    do.
+27. **Timeouts.** A timed-out payment is saved as `pending` with its money in clearing, and
+    settles after `faults.settle_after_seconds` (default 90, NPCI's first status-check timer) to
+    `faults.timeout_outcome` (`success` by default, or `reversed`). The internal API answers with
+    `timed_out: true` and the true pending payment; the Phase 2 tool turns that into a timeout the
+    agent sees. A retry with the same key, or `GET /payments?idempotency_key=`, is how the agent
+    finds out what happened.
+28. **Which attempts time out:** `faults.timeout_on_attempts` (scripted, for golden runs) and
+    `faults.timeout_rate` (seeded, drawn from a child stream keyed by the attempt number).
+29. **Status lag.** `faults.status_lag_seconds` (default 0) makes status lookups report `pending`
+    until the payment settled plus the lag. The reply to the payment itself and the admin view
+    always show the truth.
+30. **Limits apply to every payment, mandate debits included**, and count successful and pending
+    payments. "Daily" is a rolling 24 hours by default (strictly the last 24 hours) or
+    `settings.daily_window: calendar_day` (midnight to midnight IST): Razorpay and HDFC describe a
+    rolling window, other sources midnight. "Monthly" is the IST calendar month — an assumption,
+    no public source found. The per-merchant cap is per payer, per payee, per daily window. A limit
+    decline says the cap, what is used, what is left and `resets_at`, which real apps rarely do.
+
+### Mandates and refunds
+
+31. **`expired` is worked out from `end_at` when read, never stored**, so no write has to happen
+    at the right moment. Stored statuses are `active`, `paused` and `revoked`.
+32. **Mandate rules.** Recurring: each debit at most `max_amount_paise`, one debit per IST
+    calendar period (day, ISO week, month), and an optional overall `remaining_limit_paise`.
+    One-time: a single debit. `remaining_limit_paise` goes down with each debit and is restored if
+    the debit is reversed.
+33. **Reserve mandates hold the money**, as UPI Reserve Pay (single block, multiple debits) does.
+    The block moves to `sys_holds` at load; debits are paid from it; revoking returns the rest at
+    once; expiry returns it through a scheduled event. Default caps are ₹10,000 and 90 days
+    (`settings.reserve_max_block_paise`, `settings.reserve_max_validity_seconds`).
+34. **Payers can pause, resume and revoke** a mandate, as NPCI says UPI apps must allow. Creating
+    or changing a mandate waits for Phase 2's tool design; Phase 1 mandates come from the task.
+35. **Refunds need their own idempotency key.** The cap of total refunds ≤ the payment does not
+    stop the same partial refund being sent twice after a timeout. Refunds succeed at once or fail
+    (`refund_not_allowed`, `refund_exceeds_payment`, or `insufficient_funds` when the merchant
+    cannot cover it).
+36. **Admin views are read-only**: `/admin/state` plus `/admin/{accounts,mandates,limits,payments,
+    refunds,ledger}`, with whitelisted filters, matching the kit's `query(resource)`. A test checks
+    the snapshot is byte-identical after admin reads.
+
+### Left out on purpose (candidates for the reviewer or later phases)
+
+- The 20-transactions-per-day count cap, NPCI's "at most three status checks in two hours",
+  merchant-category caps, 24-hour pre-debit notifications for recurring mandates, and retries of
+  failed Reserve Pay debits. None is in the phase prompt.

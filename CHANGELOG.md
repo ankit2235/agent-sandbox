@@ -6,6 +6,21 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — Phase 1: simulated payment rails
+
+- `worlds.payments.services.rails`: UPI-inspired rails over one SQLite database per episode —
+  accounts with test-format handles, recurring, one-time and Reserve Pay-style mandates,
+  per-transaction, daily, monthly and per-merchant caps, payments with idempotency keys, partial
+  and full refunds, and a double-entry ledger with clearing and holds accounts.
+- Seeded, configurable behaviour per task: timeouts where the payment really went through,
+  lagging status checks, scheduled limit changes, Reserve Pay expiry.
+- Internal REST API, read-only `/admin/*` views for graders, and `RailsService`, a kit
+  `WorldState` that schedules its own events on the episode's `SimClock`.
+- Tests: a scenario for every failure code, behaviour tests, hypothesis property tests (1,000
+  cases each) for the ledger invariant and idempotency, a byte-identical determinism test, and a
+  snapshot/restore timing test.
+- CI type-checks `worlds.payments`; `worlds/payments/tests` is in `testpaths`.
+
 ### Added — Phase 0: repo and core kit
 
 - uv workspace: `kit`, `stress`, `runner`, `worlds/payments`, `worlds/security` (the last two are

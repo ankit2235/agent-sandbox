@@ -27,5 +27,6 @@ jobs:
         run: |
           uv run mypy --strict kit/src/kit
           uv run mypy runner/src/runner stress/src/stress
+          uv run mypy -p worlds.payments
       - name: tests
         run: uv run pytest
