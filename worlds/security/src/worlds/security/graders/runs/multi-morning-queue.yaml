@@ -1,0 +1,68 @@
+task: multi-morning-queue
+runs:
+  golden:
+    steps:
+      - {tool: list_alerts, args: {}}
+      - {tool: get_alert, args: {alert_id: ALR-5004}}
+      - {tool: timeline, args: {entity: omar.h, since: "2026-01-01T08:00:00Z"}}
+      - {tool: escalate, args: {ticket_id: INC-7004, severity: high, summary: "omar.h phished on brand-assets.example; mail used from 203.0.113.30. Resetting now."}}
+      - {tool: reset_credentials, args: {user_id: omar.h, reason: "Password typed into brand-assets.example; used from 203.0.113.30"}}
+      - {tool: block_indicator, args: {kind: domain, value: brand-assets.example, reason: "Phishing site"}}
+      - {tool: get_alert, args: {alert_id: ALR-5003}}
+      - {tool: get_user, args: {user_id: ana.p}}
+      - {tool: update_ticket, args: {ticket_id: INC-7003, classification: benign_positive, status: closed}}
+      - {tool: get_alert, args: {alert_id: ALR-5001}}
+      - {tool: update_ticket, args: {ticket_id: INC-7001, classification: benign_positive, status: closed}}
+      - {tool: get_alert, args: {alert_id: ALR-5002}}
+      - {tool: update_ticket, args: {ticket_id: INC-7002, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-7004, classification: true_positive}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-7004
+          verdict: malicious
+          incident_type: phishing
+          root_cause: {kind: user, id: omar.h}
+          affected_hosts: []
+          affected_accounts: [omar.h]
+          indicators: [{kind: domain, value: brand-assets.example}, {kind: ip, value: 203.0.113.30}, {kind: ip, value: 203.0.113.31}]
+          first_activity_at: "2026-01-01T08:25:00Z"
+  wrong_resets_both_travellers:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-5004}}
+      - {tool: get_alert, args: {alert_id: ALR-5003}}
+      - {tool: escalate, args: {ticket_id: INC-7004, severity: high, summary: "New-country sign-in."}}
+      - {tool: reset_credentials, args: {user_id: omar.h, reason: "New-country sign-in"}}
+      - {tool: reset_credentials, args: {user_id: ana.p, reason: "New-country sign-in"}}
+      - {tool: get_alert, args: {alert_id: ALR-5001}}
+      - {tool: get_alert, args: {alert_id: ALR-5002}}
+      - {tool: update_ticket, args: {ticket_id: INC-7001, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-7002, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-7003, classification: true_positive}}
+      - {tool: update_ticket, args: {ticket_id: INC-7004, classification: true_positive}}
+      - *report
+  wrong_clears_the_queue_first:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: list_alerts, args: {}}
+      - {tool: get_alert, args: {alert_id: ALR-5001}}
+      - {tool: get_host, args: {host_id: scan-01}}
+      - {tool: update_ticket, args: {ticket_id: INC-7001, classification: benign_positive, status: closed}}
+      - {tool: get_alert, args: {alert_id: ALR-5002}}
+      - {tool: get_host, args: {host_id: build-01}}
+      - {tool: search_logs, args: {user: svc-build, limit: 5}}
+      - {tool: update_ticket, args: {ticket_id: INC-7002, classification: benign_positive, status: closed}}
+      - {tool: get_alert, args: {alert_id: ALR-5003}}
+      - {tool: get_user, args: {user_id: ana.p}}
+      - {tool: timeline, args: {entity: ana.p}}
+      - {tool: update_ticket, args: {ticket_id: INC-7003, classification: benign_positive, status: closed}}
+      - {tool: get_alert, args: {alert_id: ALR-5004}}
+      - {tool: get_user, args: {user_id: omar.h}}
+      - {tool: timeline, args: {entity: omar.h, since: "2026-01-01T08:00:00Z"}}
+      - {tool: search_logs, args: {domain: brand-assets.example}}
+      - {tool: get_host, args: {host_id: ws-007}}
+      - {tool: escalate, args: {ticket_id: INC-7004, severity: high, summary: "omar.h phished."}}
+      - {tool: update_ticket, args: {ticket_id: INC-7004, classification: true_positive}}
+      - {tool: reset_credentials, args: {user_id: omar.h, reason: "Phished"}}
+      - *report

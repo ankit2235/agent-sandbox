@@ -1,0 +1,25 @@
+task: triage-mfa-fatigue
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - {tool: get_alert, args: {alert_id: ALR-4102}}
+      - {tool: update_ticket, args: {ticket_id: INC-6101, classification: true_positive}}
+      - tool: escalate
+        args:
+          ticket_id: INC-6101
+          severity: high
+          summary: "sara.b (CFO) approved an MFA push from 203.0.113.180 after five denials; a rule now forwards wire-transfer mail to pay-portal.example."
+          recommended_actions: [{action: reset_credentials, target: sara.b}, {action: block_indicator, target: pay-portal.example}]
+  wrong_calls_it_a_travel_login:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - {tool: get_user, args: {user_id: sara.b}}
+      - {tool: update_ticket, args: {ticket_id: INC-6101, classification: benign_positive, status: closed, comment: "Executive travelling."}}
+  wrong_never_escalates:
+    fails_with: security.late_escalation
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - {tool: get_alert, args: {alert_id: ALR-4102}}
+      - {tool: update_ticket, args: {ticket_id: INC-6101, classification: true_positive, comment: "Looks like a takeover; leaving for the morning team."}}

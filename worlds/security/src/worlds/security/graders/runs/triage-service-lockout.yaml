@@ -1,0 +1,21 @@
+task: triage-service-lockout
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3301}}
+      - {tool: get_host, args: {host_id: build-01}, expect: {host: {changes: [{id: CHG-1302}]}}}
+      - {tool: search_logs, args: {user: lena.k, source: cloud, since: "2026-01-01T05:00:00Z"}}
+      - tool: update_ticket
+        args: {ticket_id: INC-5301, classification: benign_positive, status: closed, comment: "Stale credential: build-01's nightly-ci job still uses svc-build's old password after CHG-1302. Owner dev.r to update the job."}
+  wrong_disables_the_build_account:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3301}}
+      - {tool: disable_account, args: {user_id: svc-build, reason: "Brute force against svc-build"}}
+      - {tool: update_ticket, args: {ticket_id: INC-5301, classification: true_positive}}
+  wrong_resets_and_closes:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3301}}
+      - {tool: reset_credentials, args: {user_id: svc-build, reason: "Possible password guessing"}}
+      - {tool: update_ticket, args: {ticket_id: INC-5301, classification: false_positive, status: closed}}

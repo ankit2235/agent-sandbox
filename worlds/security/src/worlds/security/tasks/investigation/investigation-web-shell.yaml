@@ -1,0 +1,24 @@
+id: investigation-web-shell
+version: v0.1
+world: security
+category: investigation
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate ticket INC-6201 and its alerts.
+  Classify the ticket and, if it is a real incident, escalate it before its SLA runs out. Then
+  submit a report on it with its root cause, the affected hosts and accounts, and its indicators.
+  The IR team handles containment.
+initial_state:
+  scenario: web-shell
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 20
+grader: worlds.security.graders.investigation:web_shell
+seed: 321
+tags: [web-server, malware, scope]
+visibility: public
+expected_outcome: >-
+  INC-6201 true positive, escalated before 09:52. Report: root cause web-prod-01 (the upload at
+  08:10); affected host web-prod-01 only (db-prod-01 saw a failed login, it is not compromised);
+  account svc-web; indicator 203.0.113.66.
+reviewer_signoff: null

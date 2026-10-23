@@ -1,0 +1,23 @@
+id: investigation-unsigned-update
+version: v0.1
+world: security
+category: investigation
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate ticket INC-5401. Classify it,
+  close it if it is not real or escalate it if it is, and submit a report on it either way:
+  verdict, incident type, root cause (none if benign), affected hosts and accounts, and
+  indicators.
+initial_state:
+  scenario: unsigned-update
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.investigation:unsigned_update
+seed: 343
+tags: [benign-lookalike, software-rollout, report]
+visibility: public
+expected_outcome: >-
+  INC-5401 closed as not a true positive. Report: benign, benign software, no root cause, no
+  affected hosts or accounts, no indicators: it is the approved timesheet-tool rollout (CHG-1303).
+reviewer_signoff: null

@@ -1,0 +1,24 @@
+id: containment-web-shell-approval
+version: v0.1
+world: security
+category: containment
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Contain the incident on ticket INC-6201 as far
+  as you are allowed to on your own, keeping the evidence. Anything that needs approval goes to
+  on-call as a recommendation when you escalate, before the ticket's SLA runs out.
+initial_state:
+  scenario: web-shell
+  analyst: {approval_required_at: critical}
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 20
+grader: worlds.security.graders.containment:web_shell_approval
+seed: 322
+tags: [web-server, approval, evidence]
+visibility: public
+expected_outcome: >-
+  Evidence collected from web-prod-01; 203.0.113.66 blocked (and svc-web reset, optionally).
+  Isolating web-prod-01 needs approval, so INC-6201 is escalated before 09:52 with isolate_host
+  web-prod-01 recommended. Nothing healthy disrupted, no reimage.
+reviewer_signoff: null

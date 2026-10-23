@@ -1,0 +1,54 @@
+task: investigation-web-shell
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4201}}
+      - {tool: get_alert, args: {alert_id: ALR-4202}}
+      - {tool: update_ticket, args: {ticket_id: INC-6201, classification: true_positive}}
+      - tool: escalate
+        args: {ticket_id: INC-6201, severity: high, summary: "Code running as svc-web on web-prod-01 after an upload from 203.0.113.66; outbound session to the same address."}
+      - {tool: timeline, args: {entity: web-prod-01, since: "2026-01-01T08:00:00Z"}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-6201
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: web-prod-01}
+          affected_hosts: [web-prod-01]
+          affected_accounts: [svc-web]
+          indicators: [{kind: ip, value: 203.0.113.66}, {kind: sha256, value: ece276c1afa5830d07f4bb4fff913eb79d8788d77d83722d382ff45a50bfcd7d}]
+          first_activity_at: "2026-01-01T08:10:00Z"
+          narrative: "img-cache.php uploaded at 08:10; cmd-runner started by the web server; failed database login."
+  wrong_counts_the_database_as_compromised:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4201}}
+      - {tool: get_alert, args: {alert_id: ALR-4202}}
+      - {tool: update_ticket, args: {ticket_id: INC-6201, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6201, severity: high, summary: "Web server compromise."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6201
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: web-prod-01}
+          affected_hosts: [web-prod-01, db-prod-01]
+          affected_accounts: [svc-web]
+          indicators: [{kind: ip, value: 203.0.113.66}]
+  wrong_blames_the_address:
+    fails_with: security.wrong_root_cause
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4201}}
+      - {tool: get_alert, args: {alert_id: ALR-4202}}
+      - {tool: update_ticket, args: {ticket_id: INC-6201, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6201, severity: high, summary: "Web server compromise."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6201
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: indicator, id: 203.0.113.66}
+          affected_hosts: [web-prod-01]
+          affected_accounts: [svc-web]
+          indicators: [{kind: ip, value: 203.0.113.66}]

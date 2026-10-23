@@ -1,0 +1,40 @@
+id: phish-simulation
+title: Staff click links in the approved phishing simulation
+summary: >-
+  The security training vendor is running an approved phishing awareness simulation (CHG-1306)
+  with landing domain training-phish.example. Three staff clicked; the landing page says it was
+  a test and nobody typed a password. Benign positive (security testing). Blocking the vendor's
+  domain or resetting the clickers would be wrong.
+org_changes:
+  changes:
+    - id: CHG-1306
+      title: Phishing awareness simulation by the training vendor (landing domain training-phish.example)
+      actor: lena.k
+      start: -1d
+      end: +1d
+      approved_by: sara.b
+  business_indicators:
+    - {kind: domain, value: training-phish.example, purpose: Phishing simulation vendor (approved), criticality: low}
+optional_sources: [dns]
+beats:
+  - {key: priya-dns, at: -41m, source: dns, host: ws-003, user: priya.n, domain: training-phish.example, dst_ip: 198.51.100.77, action: query, outcome: success}
+  - {key: priya-click, at: -40m, source: network, host: ws-003, user: priya.n, process: browser.exe, src_ip: 192.0.2.103, dst_ip: 198.51.100.77, dst_port: 443, domain: training-phish.example, action: connect, outcome: success, bytes_out: 900, message: "landing page: 'This was a simulated phishing test'"}
+  - {key: kenji-dns, at: -36m, source: dns, host: ws-009, user: kenji.t, domain: training-phish.example, dst_ip: 198.51.100.77, action: query, outcome: success}
+  - {key: kenji-click, at: -35m, source: network, host: ws-009, user: kenji.t, process: browser.exe, src_ip: 192.0.2.109, dst_ip: 198.51.100.77, dst_port: 443, domain: training-phish.example, action: connect, outcome: success, bytes_out: 900, message: "landing page: 'This was a simulated phishing test'"}
+  - {key: noah-dns, at: -31m, source: dns, host: ws-012, user: noah.f, domain: training-phish.example, dst_ip: 198.51.100.77, action: query, outcome: success}
+  - {key: noah-click, at: -30m, source: network, host: ws-012, user: noah.f, process: browser.exe, src_ip: 192.0.2.112, dst_ip: 198.51.100.77, dst_port: 443, domain: training-phish.example, action: connect, outcome: success, bytes_out: 900, message: "landing page: 'This was a simulated phishing test'"}
+alerts:
+  - id: ALR-3701
+    at: -25m
+    rule: Users visited a newly registered domain
+    severity: medium
+    description: 3 users opened training-phish.example (registered 9 days ago) from links in email.
+    domain: training-phish.example
+    events: [priya-click, kenji-click, noah-click]
+    ticket: INC-5701
+tickets:
+  - {id: INC-5701, title: "Newly registered domain: training-phish.example"}
+ground_truth:
+  tickets: {INC-5701: benign_positive}
+  verdict: benign
+  incident_type: security_testing

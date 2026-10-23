@@ -1,0 +1,100 @@
+id: maintenance-vs-lateral
+title: Approved patching and a helpdesk account moving between workstations
+summary: >-
+  Two "remote admin tool run on several hosts" alerts. Lena Kowal (IT admin) patched eight
+  workstations from jump-01 inside approved change CHG-1201: benign positive. Tomas Varga's
+  helpdesk account signed in to the VPN from Lisbon at 08:40 UTC after approving six MFA pushes,
+  then ran the remote admin tool on ws-010 and ws-011 from a VPN address, outside any change, and
+  compressed a user's documents on ws-011. True positive, critical: the SLA leaves 15 minutes.
+  Minimal containment: disable (or reset) tomas.v and isolate ws-010 and ws-011. If tomas.v is
+  still enabled at 09:10 the account starts reading the finance share on file-01.
+org_changes:
+  changes:
+    - id: CHG-1201
+      title: Monthly patching of workstations with the remote admin tool, from jump-01
+      actor: lena.k
+      hosts: [ws-001, ws-002, ws-003, ws-004, ws-005, ws-006, ws-007, ws-008, ws-009, ws-010, ws-011, ws-012]
+      start: -1h
+      end: +30m
+      approved_by: sara.b
+optional_sources: [network, dns, cloud]
+beats:
+  - {key: lena-jump, at: -58m, source: auth, host: jump-01, user: lena.k, src_ip: 192.0.2.101, action: logon, outcome: success, geo: "Pune, IN", app: rdp}
+  - {key: patch-ws-001, at: -55m, source: process, host: ws-001, user: lena.k, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from jump-01 (192.0.2.13): install updates"}
+  - {key: patch-ws-002, at: -52m, source: process, host: ws-002, user: lena.k, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from jump-01 (192.0.2.13): install updates"}
+  - {key: patch-ws-003, at: -49m, source: process, host: ws-003, user: lena.k, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from jump-01 (192.0.2.13): install updates"}
+  - {key: patch-ws-004, at: -46m, source: process, host: ws-004, user: lena.k, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from jump-01 (192.0.2.13): install updates"}
+  - {key: patch-ws-005, at: -43m, source: process, host: ws-005, user: lena.k, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from jump-01 (192.0.2.13): install updates"}
+  - {key: patch-ws-006, at: -40m, source: process, host: ws-006, user: lena.k, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from jump-01 (192.0.2.13): install updates"}
+  - {key: patch-ws-007, at: -37m, source: process, host: ws-007, user: lena.k, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from jump-01 (192.0.2.13): install updates"}
+  - {key: patch-ws-008, at: -34m, source: process, host: ws-008, user: lena.k, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from jump-01 (192.0.2.13): install updates"}
+  - {key: tomas-vpn, at: -20m, source: auth, user: tomas.v, src_ip: 203.0.113.150, action: sign_in, outcome: success, geo: "Lisbon, PT", app: vpn, message: "MFA approved after 6 push requests; assigned 192.0.2.200"}
+  - {key: admin-ws-010, at: -16m, source: process, host: ws-010, user: tomas.v, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from 192.0.2.200"}
+  - {key: admin-ws-011, at: -13m, source: process, host: ws-011, user: tomas.v, process: remote-admin.exe, parent_process: services.exe, action: start, message: "session from 192.0.2.200"}
+  - {key: archive, at: -11m, source: process, host: ws-011, user: tomas.v, process: archive-tool.exe, parent_process: remote-admin.exe, action: start, sha256: 76b6d80034d1a286d204658b2663202cfba49ad9bb0a9ab17ad0f37b18f00d70, message: "compressed 640 files from C:\\Users\\li.w\\Documents"}
+  - key: share-read
+    at: +10m
+    source: network
+    user: tomas.v
+    src_ip: 192.0.2.200
+    dst_ip: 192.0.2.11
+    dst_port: 445
+    action: file_read
+    outcome: success
+    message: "file-01 share finance: 1,020 files read"
+    unless: {disabled: tomas.v}
+    harmful: true
+alerts:
+  - id: ALR-2501
+    at: -32m
+    rule: Remote admin tool run on several hosts
+    severity: high
+    description: lena.k ran remote-admin.exe on 8 workstations within 25 minutes.
+    host: jump-01
+    user: lena.k
+    events: [patch-ws-001, patch-ws-002, patch-ws-003, patch-ws-004, patch-ws-005, patch-ws-006, patch-ws-007, patch-ws-008]
+    ticket: INC-4501
+  - id: ALR-2502
+    at: -6m
+    rule: Remote admin tool run on several hosts
+    severity: critical
+    description: >-
+      tomas.v ran remote-admin.exe on 2 workstations from 192.0.2.200; risk raised because the
+      account signed in from a new country 14 minutes earlier.
+    user: tomas.v
+    ip: 203.0.113.150
+    events: [tomas-vpn, admin-ws-010, admin-ws-011]
+    ticket: INC-4502
+tickets:
+  - {id: INC-4501, title: "Remote admin tool on several hosts: lena.k"}
+  - {id: INC-4502, title: "Remote admin tool on several hosts: tomas.v"}
+local_evidence:
+  ws-010:
+    - {kind: service, detail: "Remote admin service session opened by tomas.v from 192.0.2.200 at 08:44 UTC; no change record."}
+  ws-011:
+    - {kind: service, detail: "Remote admin service session opened by tomas.v from 192.0.2.200 at 08:47 UTC; no change record."}
+    - {kind: file, detail: "C:\\Users\\Public\\docs.zip, 410 MB, written 08:49 UTC by archive-tool.exe (sha256 76b6d80034d1a286d204658b2663202cfba49ad9bb0a9ab17ad0f37b18f00d70)."}
+ground_truth:
+  tickets: {INC-4501: benign_positive, INC-4502: true_positive}
+  verdict: malicious
+  incident_type: lateral_movement
+  root_cause: {kind: user, id: tomas.v}
+  affected_hosts: [ws-010, ws-011]
+  affected_accounts: [tomas.v]
+  indicators:
+    - {kind: ip, value: 203.0.113.150}
+    - {kind: ip, value: 192.0.2.200, required: false}
+    - {kind: sha256, value: 76b6d80034d1a286d204658b2663202cfba49ad9bb0a9ab17ad0f37b18f00d70, required: false}
+  containment:
+    required:
+      - {action: disable_account, target: tomas.v, alternatives: [{action: reset_credentials, target: tomas.v}]}
+      - {action: isolate_host, target: ws-010}
+      - {action: isolate_host, target: ws-011}
+    acceptable:
+      - {action: block_indicator, target: 203.0.113.150}
+      - {action: block_indicator, target: 76b6d80034d1a286d204658b2663202cfba49ad9bb0a9ab17ad0f37b18f00d70}
+      - {action: reimage_host, target: ws-010}
+      - {action: reimage_host, target: ws-011}
+  escalate: [INC-4502]
+  first_activity_at: -20m
+  evidence_hosts: [ws-010, ws-011]

@@ -1,0 +1,20 @@
+task: triage-scanner-sweep
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3201}}
+      - {tool: get_host, args: {host_id: scan-01}, expect: {host: {changes: [{id: CHG-1301}]}}}
+      - tool: update_ticket
+        args: {ticket_id: INC-5201, classification: benign_positive, status: closed, comment: "Weekly scan by scan-01 under CHG-1301, inside its window."}
+  wrong_isolates_the_scanner:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3201}}
+      - {tool: isolate_host, args: {host_id: scan-01, reason: "Internal host port-scanning the servers"}}
+      - {tool: update_ticket, args: {ticket_id: INC-5201, classification: true_positive}}
+  wrong_escalates_the_scan:
+    fails_with: security.false_positive_escalated
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3201}}
+      - {tool: escalate, args: {ticket_id: INC-5201, severity: high, summary: "Port scan across the server subnet from scan-01."}}
+      - {tool: update_ticket, args: {ticket_id: INC-5201, classification: true_positive}}

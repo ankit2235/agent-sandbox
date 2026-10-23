@@ -1,0 +1,29 @@
+task: triage-real-or-simulated-phish
+runs:
+  golden:
+    steps:
+      - {tool: list_alerts, args: {}}
+      - {tool: get_alert, args: {alert_id: ALR-5102}}
+      - {tool: get_alert, args: {alert_id: ALR-5103}}
+      - {tool: update_ticket, args: {ticket_id: INC-7102, classification: true_positive}}
+      - tool: escalate
+        args: {ticket_id: INC-7102, severity: high, summary: "li.w submitted a login form on trainings-phish.example (not the vendor's domain); his mail was then used from 203.0.113.96.", recommended_actions: [{action: reset_credentials, target: li.w}]}
+      - {tool: get_alert, args: {alert_id: ALR-5101}}
+      - {tool: get_user, args: {user_id: lena.k}, expect: {user: {changes: [{id: CHG-1313}]}}}
+      - {tool: update_ticket, args: {ticket_id: INC-7101, classification: benign_positive, status: closed, comment: "Approved simulation, CHG-1313."}}
+  wrong_takes_both_for_the_simulation:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-5101}}
+      - {tool: get_alert, args: {alert_id: ALR-5102}}
+      - {tool: update_ticket, args: {ticket_id: INC-7101, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-7102, classification: benign_positive, status: closed, comment: "Part of the phishing simulation."}}
+  wrong_blocks_the_vendor_too:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-5101}}
+      - {tool: get_alert, args: {alert_id: ALR-5102}}
+      - {tool: block_indicator, args: {kind: domain, value: training-phish.example, reason: "Phishing domain"}}
+      - {tool: update_ticket, args: {ticket_id: INC-7101, classification: true_positive}}
+      - {tool: update_ticket, args: {ticket_id: INC-7102, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-7102, severity: high, summary: "Phishing."}}

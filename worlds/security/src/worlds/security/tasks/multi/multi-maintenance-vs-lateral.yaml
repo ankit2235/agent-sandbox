@@ -1,0 +1,25 @@
+id: multi-maintenance-vs-lateral
+version: v0.1
+world: security
+category: multi
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Two alerts about the remote admin tool are in
+  the queue. Triage both and close anything that is not real. For a real incident: escalate it
+  before its SLA runs out, contain it without disrupting healthy accounts or hosts, and submit
+  the report on its ticket.
+initial_state:
+  scenario: maintenance-vs-lateral
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 25
+grader: worlds.security.graders.multi:maintenance_vs_lateral
+seed: 305
+tags: [benign-lookalike, change-window, lateral-movement, sla]
+visibility: public
+expected_outcome: >-
+  INC-4501 (lena.k patching inside CHG-1201) benign and closed. INC-4502 true positive, escalated
+  by 09:09 (critical, 15-minute SLA); tomas.v disabled (or reset) before 09:10 and ws-010 and
+  ws-011 isolated; lena.k and jump-01 untouched. Report: lateral movement, root cause tomas.v,
+  hosts ws-010 and ws-011, indicator 203.0.113.150, first activity 08:40 UTC.
+reviewer_signoff: null

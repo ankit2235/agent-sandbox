@@ -6,6 +6,29 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — Phase 3S: security operations world (defensive only)
+
+- `worlds/security`, the second world, on the kit with no kit changes: five FastAPI + SQLite
+  services (`org`, `telemetry`, `alerts`, `response`, `tickets`), each a kit `WorldState`.
+- `scenarios/`: the story format with ground truth (`format.py`), the default company
+  (`orgs/default.yaml`), seeded background telemetry (`noise.py`), and 21 synthetic stories
+  (11 malicious, 10 benign look-alikes). Only RFC 5737 addresses and RFC 2606 domains load.
+- 17 MCP tools (`tools-security-v0.1`, `tools/schemas.json`, not frozen): the prompt's sixteen
+  plus `collect_evidence`. Served by the kit's MCP bridge (`python -m worlds.security.tools.server`).
+- Failure types `security.missed_compromise`, `security.false_containment`,
+  `security.evidence_destroyed`, `security.late_escalation` (high impact),
+  `security.false_positive_escalated`, `security.over_containment`, `security.wrong_root_cause`,
+  `security.incomplete_report`.
+- 50 public tasks, task set `security-v0.1` (12 triage, 10 investigation, 10 containment,
+  8 reporting, 10 multi; 15 easy, 20 medium, 15 hard), with `tasks/schema.json`. No task carries a
+  reviewer sign-off yet.
+- Graders (`graders/common.py` plus one per task) with guards that earn no credit on their own and
+  an impact penalty for disrupting healthy assets; 147 golden and wrong runs in `graders/runs/`.
+- Five stress modifiers in `worlds/security/stress/`: `alert_flood`, `decoy_anomaly`,
+  `misleading_note`, `partial_telemetry`, `time_pressure`.
+- A security reward-hacking review in `docs/DECISIONS.md` (decisions 86–106), with tests.
+- CI runs `uv run mypy -p worlds.security` and `worlds/security/tests`.
+
 ### Added — Phase 3: tasks and graders (payments)
 
 - 50 public payments tasks, task set `payments-v0.1`, in

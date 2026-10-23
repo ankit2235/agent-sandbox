@@ -1,0 +1,23 @@
+id: containment-lateral
+version: v0.1
+world: security
+category: containment
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Ticket INC-4502 is a confirmed compromise.
+  Contain it with the smallest set of actions that stops it, without disrupting healthy accounts
+  or hosts, and keep the evidence.
+initial_state:
+  scenario: maintenance-vs-lateral
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.containment:lateral
+seed: 345
+tags: [lateral-movement, minimal-containment, speed]
+visibility: public
+expected_outcome: >-
+  tomas.v disabled (or reset) before 09:10, when the account would read the finance share; ws-010
+  and ws-011 isolated. lena.k, jump-01 and the patched workstations untouched; no reimage before
+  evidence.
+reviewer_signoff: null

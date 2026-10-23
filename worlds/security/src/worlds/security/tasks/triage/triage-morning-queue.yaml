@@ -1,0 +1,23 @@
+id: triage-morning-queue
+version: v0.1
+world: security
+category: triage
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage every alert in the queue. Classify each
+  ticket and close what is not real. Escalate anything real before its SLA runs out; containment
+  will be decided by on-call.
+initial_state:
+  scenario: morning-queue
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 25
+grader: worlds.security.graders.triage:morning_queue
+seed: 331
+tags: [queue, benign-lookalike, phishing, sla]
+visibility: public
+expected_outcome: >-
+  INC-7001 (weekly scan), INC-7002 (stale build password) and INC-7003 (ana.p on approved travel)
+  closed as not true positives. INC-7004 (omar.h, phished, signed in from Warsaw) classified true
+  positive and escalated before 09:48. Nothing healthy disrupted.
+reviewer_signoff: null

@@ -1,0 +1,21 @@
+id: triage-scanner-sweep
+version: v0.1
+world: security
+category: triage
+difficulty: easy
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage alert ALR-3201. If it is a real threat,
+  contain it and escalate its ticket. If it is not, classify its ticket accordingly and close it.
+initial_state:
+  scenario: scanner-sweep
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.triage:scanner_sweep
+seed: 311
+tags: [benign-lookalike, scanner, change-window]
+visibility: public
+expected_outcome: >-
+  INC-5201 classified as not a true positive and closed: scan-01 ran the approved weekly scan
+  (CHG-1301) with svc-scanner inside its window. No containment, no escalation.
+reviewer_signoff: null

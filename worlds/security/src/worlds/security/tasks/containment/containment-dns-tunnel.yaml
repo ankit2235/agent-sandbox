@@ -1,0 +1,22 @@
+id: containment-dns-tunnel
+version: v0.1
+world: security
+category: containment
+difficulty: easy
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Ticket INC-6501 is a confirmed malware
+  infection. Contain it with the smallest set of actions that stops it, without disrupting
+  anything healthy, and keep the evidence.
+initial_state:
+  scenario: dns-tunnel
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 12
+grader: worlds.security.graders.containment:dns_tunnel
+seed: 327
+tags: [malware, dns, minimal-containment]
+visibility: public
+expected_outcome: >-
+  ws-012 isolated; blocking the two domains, their addresses or the file hash is fine. No reimage
+  before evidence is collected; nothing healthy disrupted.
+reviewer_signoff: null

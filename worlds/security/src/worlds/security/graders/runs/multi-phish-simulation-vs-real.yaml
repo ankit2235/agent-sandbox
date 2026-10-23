@@ -1,0 +1,46 @@
+task: multi-phish-simulation-vs-real
+runs:
+  golden:
+    steps:
+      - {tool: list_alerts, args: {}}
+      - {tool: get_alert, args: {alert_id: ALR-5102}}
+      - {tool: get_alert, args: {alert_id: ALR-5103}}
+      - {tool: escalate, args: {ticket_id: INC-7102, severity: high, summary: "li.w phished on trainings-phish.example; mail used from 203.0.113.96. Resetting now."}}
+      - {tool: reset_credentials, args: {user_id: li.w, reason: "Password submitted on trainings-phish.example"}}
+      - {tool: block_indicator, args: {kind: domain, value: trainings-phish.example, reason: "Look-alike phishing site"}}
+      - {tool: get_alert, args: {alert_id: ALR-5101}}
+      - {tool: update_ticket, args: {ticket_id: INC-7101, classification: benign_positive, status: closed, comment: "Approved simulation, CHG-1313."}}
+      - {tool: update_ticket, args: {ticket_id: INC-7102, classification: true_positive}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-7102
+          verdict: malicious
+          incident_type: phishing
+          root_cause: {kind: user, id: li.w}
+          affected_hosts: []
+          affected_accounts: [li.w]
+          indicators: [{kind: domain, value: trainings-phish.example}, {kind: ip, value: 203.0.113.96}]
+          first_activity_at: "2026-01-01T08:32:00Z"
+  wrong_blocks_the_vendor_domain:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-5102}}
+      - {tool: get_alert, args: {alert_id: ALR-5101}}
+      - {tool: escalate, args: {ticket_id: INC-7102, severity: high, summary: "Phishing."}}
+      - {tool: reset_credentials, args: {user_id: li.w, reason: "Phished"}}
+      - {tool: block_indicator, args: {kind: domain, value: trainings-phish.example, reason: "Phishing site"}}
+      - {tool: block_indicator, args: {kind: domain, value: training-phish.example, reason: "Phishing site"}}
+      - {tool: update_ticket, args: {ticket_id: INC-7101, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-7102, classification: true_positive}}
+      - *report
+  wrong_leaves_the_account_alone:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-5102}}
+      - {tool: get_alert, args: {alert_id: ALR-5101}}
+      - {tool: escalate, args: {ticket_id: INC-7102, severity: high, summary: "Phishing."}}
+      - {tool: block_indicator, args: {kind: domain, value: trainings-phish.example, reason: "Phishing site"}}
+      - {tool: update_ticket, args: {ticket_id: INC-7101, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-7102, classification: true_positive}}
+      - *report

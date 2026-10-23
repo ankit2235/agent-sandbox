@@ -1,0 +1,51 @@
+task: investigation-cloud-key
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: get_alert, args: {alert_id: ALR-4302}}
+      - {tool: update_ticket, args: {ticket_id: INC-6301, classification: true_positive}}
+      - tool: escalate
+        args: {ticket_id: INC-6301, severity: high, summary: "svc-build's cloud key, leaked in a public repository, downloaded a customer export from 198.51.100.150."}
+      - {tool: timeline, args: {entity: svc-build}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6301
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: user, id: svc-build}
+          affected_hosts: []
+          affected_accounts: [svc-build]
+          indicators: [{kind: ip, value: 198.51.100.150}]
+          first_activity_at: "2026-01-01T08:25:00Z"
+  wrong_blames_the_build_server:
+    fails_with: security.wrong_root_cause
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: get_alert, args: {alert_id: ALR-4302}}
+      - {tool: update_ticket, args: {ticket_id: INC-6301, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6301, severity: high, summary: "Customer export downloaded."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6301
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: host, id: build-01}
+          affected_hosts: [build-01]
+          affected_accounts: [svc-build]
+          indicators: [{kind: ip, value: 198.51.100.150}]
+  wrong_misses_the_address:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: get_alert, args: {alert_id: ALR-4302}}
+      - {tool: update_ticket, args: {ticket_id: INC-6301, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6301, severity: high, summary: "Customer export downloaded."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6301
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: user, id: svc-build}
+          affected_accounts: [svc-build]
+          indicators: []

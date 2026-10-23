@@ -1,0 +1,46 @@
+task: investigation-dns-tunnel
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: timeline, args: {entity: ws-012, since: "2026-01-01T05:30:00Z", limit: 20}}
+      - {tool: update_ticket, args: {ticket_id: INC-6501, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6501, severity: medium, summary: "printer-helper.exe from drivers-free.example on ws-012 tunnels over DNS to data-sync.example."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6501
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-012}
+          affected_hosts: [ws-012]
+          affected_accounts: []
+          indicators: [{kind: domain, value: data-sync.example}, {kind: domain, value: drivers-free.example}, {kind: ip, value: 203.0.113.210}]
+          first_activity_at: "2026-01-01T05:55:00Z"
+  wrong_misses_where_it_came_from:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: update_ticket, args: {ticket_id: INC-6501, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6501, severity: medium, summary: "DNS tunnel from ws-012."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6501
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-012}
+          affected_hosts: [ws-012]
+          indicators: [{kind: domain, value: data-sync.example}]
+  wrong_blames_the_domain:
+    fails_with: security.wrong_root_cause
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: update_ticket, args: {ticket_id: INC-6501, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6501, severity: medium, summary: "DNS tunnel from ws-012."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6501
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: indicator, id: data-sync.example}
+          affected_hosts: [ws-012]
+          indicators: [{kind: domain, value: data-sync.example}, {kind: domain, value: drivers-free.example}]

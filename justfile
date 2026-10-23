@@ -30,6 +30,7 @@ typecheck:
     uv run mypy --strict kit/src/kit
     uv run mypy runner/src/runner stress/src/stress
     uv run mypy -p worlds.payments
+    uv run mypy -p worlds.security
 
 # The determinism and domain-neutrality rules, as their own fast check.
 invariants:

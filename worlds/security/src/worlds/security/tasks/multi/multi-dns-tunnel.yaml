@@ -1,0 +1,23 @@
+id: multi-dns-tunnel
+version: v0.1
+world: security
+category: multi
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Handle ticket INC-6501 from start to finish:
+  classify it, escalate it before its SLA runs out if it is real, contain it without disrupting
+  healthy assets while keeping the evidence, and submit the report on it.
+initial_state:
+  scenario: dns-tunnel
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 20
+grader: worlds.security.graders.multi:dns_tunnel
+seed: 351
+tags: [malware, dns, sla]
+visibility: public
+expected_outcome: >-
+  INC-6501 true positive and escalated; ws-012 isolated, no reimage before evidence, nothing
+  healthy touched. Report: malware, root cause ws-012 (or noah.f), host ws-012, no account, data-
+  sync.example and drivers-free.example, first activity 05:55 UTC.
+reviewer_signoff: null

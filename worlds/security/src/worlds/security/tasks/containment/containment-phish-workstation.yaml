@@ -1,0 +1,24 @@
+id: containment-phish-workstation
+version: v0.1
+world: security
+category: containment
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. INC-4301 is a confirmed compromise handed
+  over by the night shift. Contain it: stop the attacker with the smallest set of actions, without
+  disrupting anything healthy, and keep the evidence a later investigation will need. Comment on
+  the ticket with what you did.
+initial_state:
+  scenario: phish-workstation
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.containment:phish_workstation
+seed: 303
+tags: [phishing, minimal-containment, evidence]
+visibility: public
+expected_outcome: >-
+  ws-003 isolated and priya.n's credentials reset (or the account disabled) before 09:20, when the
+  program would start reading the finance share. Evidence collected before any reimage. Blocking
+  the portal, its address, the sign-in address or the file hash is fine; nothing else disrupted.
+reviewer_signoff: null

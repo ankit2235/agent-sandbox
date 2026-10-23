@@ -1,0 +1,48 @@
+id: mistaken-isolation
+title: The previous shift isolated the CFO's laptop over an approved add-in
+summary: >-
+  IT is rolling out version 7.2 of the signed Example Finance add-in to finance workstations
+  (CHG-1309). When it loaded on Sara Bianchi's ws-008 the SIEM raised "new Office add-in loaded",
+  and the previous shift isolated ws-008 as a precaution. The add-in is approved and signed;
+  benign positive (benign software). The right move is to restore ws-008 and close the ticket.
+org_changes:
+  changes:
+    - id: CHG-1309
+      title: Roll out the Example Finance add-in 7.2 to finance workstations
+      actor: lena.k
+      hosts: [ws-003, ws-008, ws-009]
+      start: -2h
+      end: +2h
+      approved_by: sara.b
+noise: {quiet: [sara.b]}
+prior_actions:
+  - {action: isolate_host, target: ws-008, at: -58m, reason: "Precaution: unknown Office add-in pending review", actor: "previous shift (R. Okafor)"}
+optional_sources: [network, dns, cloud]
+beats:
+  - {key: logon, at: -3h, source: auth, host: ws-008, user: sara.b, src_ip: 192.0.2.108, action: logon, outcome: success, geo: "Pune, IN", app: windows}
+  - {key: addin-008, at: -1h10m, source: process, host: ws-008, user: sara.b, process: finance-addin.exe, parent_process: office-docs.exe, action: start, message: "signed: Example Finance Software Ltd; version 7.2"}
+  - {key: addin-003, at: -1h8m, source: process, host: ws-003, user: priya.n, process: finance-addin.exe, parent_process: office-docs.exe, action: start, message: "signed: Example Finance Software Ltd; version 7.2"}
+  - {key: addin-009, at: -1h6m, source: process, host: ws-009, user: kenji.t, process: finance-addin.exe, parent_process: office-docs.exe, action: start, message: "signed: Example Finance Software Ltd; version 7.2"}
+alerts:
+  - id: ALR-4001
+    at: -1h5m
+    rule: New Office add-in loaded
+    severity: medium
+    description: office-docs.exe on ws-008 loaded finance-addin.exe, never seen on this host.
+    host: ws-008
+    user: sara.b
+    events: [addin-008]
+    ticket: INC-6001
+tickets:
+  - id: INC-6001
+    title: "New Office add-in: ws-008"
+    comments:
+      - at: -58m
+        author: previous shift (R. Okafor)
+        body: >-
+          Isolated ws-008 as a precaution until someone reviews the add-in. sara.b cannot work;
+          please review first thing.
+ground_truth:
+  tickets: {INC-6001: benign_positive}
+  verdict: benign
+  incident_type: benign_software

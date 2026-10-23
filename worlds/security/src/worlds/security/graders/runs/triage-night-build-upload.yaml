@@ -1,0 +1,15 @@
+task: triage-night-build-upload
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3901}}
+      - {tool: get_host, args: {host_id: build-01}, expect: {host: {changes: [{id: CHG-1308}], jobs: [{id: nightly-publish}]}}}
+      - tool: update_ticket
+        args: {ticket_id: INC-5901, classification: benign_positive, status: closed, comment: "Nightly publish carrying the 5.0 release (CHG-1308)."}
+  wrong_blocks_the_registry:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3901}}
+      - {tool: block_indicator, args: {kind: ip, value: 198.51.100.90, reason: "Large overnight upload"}}
+      - {tool: isolate_host, args: {host_id: build-01, reason: "Large overnight upload"}}
+      - {tool: update_ticket, args: {ticket_id: INC-5901, classification: true_positive}}

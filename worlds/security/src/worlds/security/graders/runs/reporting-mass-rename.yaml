@@ -1,0 +1,44 @@
+task: reporting-mass-rename
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: timeline, args: {entity: ws-009, since: "2026-01-01T08:30:00Z"}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6401
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: user, id: kenji.t}
+          affected_hosts: [ws-009]
+          affected_accounts: [kenji.t]
+          indicators: [{kind: sha256, value: 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59}, {kind: domain, value: keyserver.example}]
+          first_activity_at: "2026-01-01T08:45:00Z"
+  wrong_blames_the_file_server:
+    fails_with: security.wrong_root_cause
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6401
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: file-01}
+          affected_hosts: [ws-009]
+          affected_accounts: [kenji.t]
+          indicators: [{kind: sha256, value: 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59}, {kind: domain, value: keyserver.example}]
+          first_activity_at: "2026-01-01T08:45:00Z"
+  wrong_lists_the_file_server_address:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6401
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-009}
+          affected_hosts: [ws-009]
+          affected_accounts: [kenji.t]
+          indicators: [{kind: sha256, value: 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59}, {kind: domain, value: keyserver.example}, {kind: ip, value: 192.0.2.11}]
+          first_activity_at: "2026-01-01T08:45:00Z"

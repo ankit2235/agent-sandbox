@@ -1,0 +1,41 @@
+task: reporting-cloud-key
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: timeline, args: {entity: svc-build}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6301
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: user, id: svc-build}
+          affected_accounts: [svc-build]
+          indicators: [{kind: ip, value: 198.51.100.150}]
+          first_activity_at: "2026-01-01T08:25:00Z"
+  wrong_dates_it_from_the_leak_notice:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6301
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: user, id: svc-build}
+          affected_accounts: [svc-build]
+          indicators: [{kind: ip, value: 198.51.100.150}]
+          first_activity_at: "2026-01-01T06:00:00Z"
+  wrong_includes_the_office_address:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6301
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: user, id: svc-build}
+          affected_accounts: [svc-build]
+          indicators: [{kind: ip, value: 198.51.100.150}, {kind: ip, value: 198.51.100.10}]
+          first_activity_at: "2026-01-01T08:25:00Z"

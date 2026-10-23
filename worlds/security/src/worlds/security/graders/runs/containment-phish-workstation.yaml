@@ -1,0 +1,34 @@
+task: containment-phish-workstation
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}, expect: {ticket: {classification: true_positive}}}
+      - {tool: get_alert, args: {alert_id: ALR-2302}}
+      - {tool: collect_evidence, args: {host_id: ws-003, reason: "Preserve evidence before containment"}}
+      - {tool: isolate_host, args: {host_id: ws-003, reason: "invoice-viewer.exe beaconing to 203.0.113.24"}}
+      - {tool: reset_credentials, args: {user_id: priya.n, reason: "Password typed into invoice-portal.example; used from Amsterdam"}}
+      - {tool: block_indicator, args: {kind: domain, value: invoice-portal.example, reason: "Phishing portal"}}
+      - tool: update_ticket
+        args: {ticket_id: INC-4301, comment: "Evidence collected from ws-003; ws-003 isolated; priya.n reset; invoice-portal.example blocked."}
+  wrong_isolates_the_finance_floor:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}}
+      - {tool: isolate_host, args: {host_id: ws-003, reason: "Compromised"}}
+      - {tool: isolate_host, args: {host_id: ws-009, reason: "Same finance team, to be safe"}}
+      - {tool: isolate_host, args: {host_id: file-01, reason: "Finance share, to be safe"}}
+      - {tool: reset_credentials, args: {user_id: priya.n, reason: "Phished"}}
+  wrong_reimages_first:
+    fails_with: security.evidence_destroyed
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}}
+      - {tool: isolate_host, args: {host_id: ws-003, reason: "Compromised"}}
+      - {tool: reimage_host, args: {host_id: ws-003, reason: "Remove the malware"}}
+      - {tool: reset_credentials, args: {user_id: priya.n, reason: "Phished"}}
+  wrong_forgets_the_password:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}}
+      - {tool: collect_evidence, args: {host_id: ws-003, reason: "Preserve evidence"}}
+      - {tool: isolate_host, args: {host_id: ws-003, reason: "Beaconing"}}
+      - {tool: block_indicator, args: {kind: domain, value: invoice-portal.example, reason: "Phishing portal"}}

@@ -1,0 +1,19 @@
+task: containment-dns-tunnel
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: collect_evidence, args: {host_id: ws-012, reason: "Preserve evidence"}}
+      - {tool: isolate_host, args: {host_id: ws-012, reason: "printer-helper.exe tunnelling over DNS"}}
+      - {tool: block_indicator, args: {kind: domain, value: data-sync.example, reason: "DNS tunnel endpoint"}}
+  wrong_blocks_only_the_domain:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: block_indicator, args: {kind: domain, value: data-sync.example, reason: "DNS tunnel endpoint"}}
+  wrong_reimages_straight_away:
+    fails_with: security.evidence_destroyed
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: isolate_host, args: {host_id: ws-012, reason: "Malware"}}
+      - {tool: reimage_host, args: {host_id: ws-012, reason: "Remove the malware"}}

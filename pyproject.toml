@@ -97,7 +97,7 @@ module = ["openenv.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["kit/tests", "runner/tests", "worlds/payments/tests"]
+testpaths = ["kit/tests", "runner/tests", "worlds/payments/tests", "worlds/security/tests"]
 addopts = "-q --strict-markers --strict-config"
 markers = [
   "openenv: requires the optional openenv extra to be installed",

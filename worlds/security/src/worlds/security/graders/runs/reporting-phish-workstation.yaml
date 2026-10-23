@@ -1,0 +1,45 @@
+task: reporting-phish-workstation
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}}
+      - {tool: get_alert, args: {alert_id: ALR-2302}}
+      - {tool: timeline, args: {entity: ws-003, since: "2026-01-01T08:00:00Z", limit: 12}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4301
+          verdict: malicious
+          incident_type: phishing
+          root_cause: {kind: user, id: priya.n}
+          affected_hosts: [ws-003]
+          affected_accounts: [priya.n]
+          indicators: [{kind: domain, value: invoice-portal.example}, {kind: ip, value: 203.0.113.24}, {kind: ip, value: 198.51.100.23}, {kind: sha256, value: 48b011b5bf43194a6e4634f831c443fa72738633ed471f0d425420aaf958b382}]
+          first_activity_at: "2026-01-01T08:08:00Z"
+  wrong_calls_it_plain_malware:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4301
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-003}
+          affected_hosts: [ws-003]
+          affected_accounts: [priya.n]
+          indicators: [{kind: domain, value: invoice-portal.example}, {kind: ip, value: 203.0.113.24}, {kind: ip, value: 198.51.100.23}]
+          first_activity_at: "2026-01-01T08:08:00Z"
+  wrong_blames_the_portal:
+    fails_with: security.wrong_root_cause
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4301
+          verdict: malicious
+          incident_type: phishing
+          root_cause: {kind: indicator, id: invoice-portal.example}
+          affected_hosts: [ws-003]
+          affected_accounts: [priya.n]
+          indicators: [{kind: domain, value: invoice-portal.example}, {kind: ip, value: 203.0.113.24}, {kind: ip, value: 198.51.100.23}]
+          first_activity_at: "2026-01-01T08:08:00Z"

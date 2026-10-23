@@ -1,0 +1,21 @@
+id: triage-travel-login
+version: v0.1
+world: security
+category: triage
+difficulty: easy
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage alert ALR-2101. If it is a real threat,
+  contain it and escalate its ticket. If it is not, classify its ticket accordingly and close it.
+initial_state:
+  scenario: travel-login
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.triage:travel_login
+seed: 301
+tags: [benign-lookalike, travel, identity]
+visibility: public
+expected_outcome: >-
+  INC-4101 classified as not a true positive (benign positive) and closed: meera.s is on approved
+  travel in Singapore, on her known laptop, and only read mail. No containment, no escalation.
+reviewer_signoff: null

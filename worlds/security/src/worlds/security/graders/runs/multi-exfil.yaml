@@ -1,0 +1,48 @@
+task: multi-exfil
+runs:
+  golden:
+    steps:
+      - {tool: list_alerts, args: {}}
+      - {tool: get_alert, args: {alert_id: ALR-2202}}
+      - {tool: escalate, args: {ticket_id: INC-4202, severity: high, summary: "ws-004 uploading finance files to files-drop.example; containing."}}
+      - {tool: collect_evidence, args: {host_id: ws-004, reason: "Preserve evidence"}}
+      - {tool: isolate_host, args: {host_id: ws-004, reason: "sync-helper.exe exfiltrating"}}
+      - {tool: reset_credentials, args: {user_id: arjun.m, reason: "Session used to read the finance share"}}
+      - {tool: get_alert, args: {alert_id: ALR-2201}}
+      - {tool: get_host, args: {host_id: backup-01}}
+      - {tool: update_ticket, args: {ticket_id: INC-4201, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-4202, classification: true_positive}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-4202
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: host, id: ws-004}
+          affected_hosts: [ws-004]
+          affected_accounts: [arjun.m]
+          indicators: [{kind: domain, value: files-drop.example}, {kind: ip, value: 203.0.113.77}, {kind: domain, value: share-docs.example}]
+          first_activity_at: "2026-01-01T07:45:00Z"
+  wrong_isolates_the_backup_server:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2202}}
+      - {tool: get_alert, args: {alert_id: ALR-2201}}
+      - {tool: escalate, args: {ticket_id: INC-4202, severity: high, summary: "Exfiltration."}}
+      - {tool: isolate_host, args: {host_id: ws-004, reason: "Exfiltration"}}
+      - {tool: reset_credentials, args: {user_id: arjun.m, reason: "Exfiltration"}}
+      - {tool: isolate_host, args: {host_id: backup-01, reason: "Also a large upload"}}
+      - {tool: update_ticket, args: {ticket_id: INC-4201, classification: true_positive}}
+      - {tool: update_ticket, args: {ticket_id: INC-4202, classification: true_positive}}
+      - *report
+  wrong_forgets_the_account:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2202}}
+      - {tool: escalate, args: {ticket_id: INC-4202, severity: high, summary: "Exfiltration."}}
+      - {tool: collect_evidence, args: {host_id: ws-004, reason: "Preserve evidence"}}
+      - {tool: isolate_host, args: {host_id: ws-004, reason: "Exfiltration"}}
+      - {tool: get_alert, args: {alert_id: ALR-2201}}
+      - {tool: update_ticket, args: {ticket_id: INC-4201, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-4202, classification: true_positive}}
+      - *report

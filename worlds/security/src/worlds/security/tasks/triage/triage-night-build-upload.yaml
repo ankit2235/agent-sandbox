@@ -1,0 +1,22 @@
+id: triage-night-build-upload
+version: v0.1
+world: security
+category: triage
+difficulty: easy
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage alert ALR-3901. If it is a real threat,
+  contain it and escalate its ticket. If it is not, classify its ticket accordingly and close it.
+initial_state:
+  scenario: night-build-upload
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.triage:night_build_upload
+seed: 318
+tags: [benign-lookalike, scheduled-job]
+visibility: public
+expected_outcome: >-
+  INC-5901 classified as not a true positive and closed: the nightly publish to the package
+  registry carried the 5.0 release (CHG-1308). build-01 not isolated, registry not blocked, no
+  escalation.
+reviewer_signoff: null

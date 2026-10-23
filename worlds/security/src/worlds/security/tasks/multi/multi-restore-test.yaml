@@ -1,0 +1,23 @@
+id: multi-restore-test
+version: v0.1
+world: security
+category: multi
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Handle ticket INC-5501 from start to finish:
+  classify it; if it is real, escalate and contain it; if not, close it. Submit a report on it
+  either way: verdict, incident type, root cause (none if benign), affected hosts and accounts,
+  and indicators.
+initial_state:
+  scenario: restore-test
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.multi:restore_test
+seed: 354
+tags: [benign-lookalike, backup, report]
+visibility: public
+expected_outcome: >-
+  INC-5501 closed as not a true positive; nothing escalated or contained. Report: benign admin
+  activity (the approved restore test, CHG-1304), no root cause, nothing affected, no indicators.
+reviewer_signoff: null

@@ -1,0 +1,22 @@
+id: investigation-phish-scope
+version: v0.1
+world: security
+category: investigation
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Ticket INC-4301 was confirmed and escalated by
+  the night shift. Investigate it and submit a report on it with its root cause, the affected
+  hosts and accounts, and its indicators. Containment is handled separately.
+initial_state:
+  scenario: phish-workstation
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.investigation:phish_scope
+seed: 341
+tags: [phishing, scope, indicators]
+visibility: public
+expected_outcome: >-
+  Report on INC-4301: root cause ws-003 (or priya.n); affected host ws-003 and account priya.n
+  only; indicators invoice-portal.example, 203.0.113.24 and 198.51.100.23.
+reviewer_signoff: null

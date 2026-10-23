@@ -1,0 +1,37 @@
+task: multi-dns-tunnel
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: timeline, args: {entity: ws-012, since: "2026-01-01T05:30:00Z", limit: 10}}
+      - {tool: update_ticket, args: {ticket_id: INC-6501, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6501, severity: medium, summary: "printer-helper.exe on ws-012 tunnels over DNS to data-sync.example; isolating."}}
+      - {tool: collect_evidence, args: {host_id: ws-012, reason: "Preserve evidence"}}
+      - {tool: isolate_host, args: {host_id: ws-012, reason: "DNS tunnel"}}
+      - {tool: block_indicator, args: {kind: domain, value: data-sync.example, reason: "Tunnel endpoint"}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-6501
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-012}
+          affected_hosts: [ws-012]
+          indicators: [{kind: domain, value: data-sync.example}, {kind: domain, value: drivers-free.example}]
+          first_activity_at: "2026-01-01T05:55:00Z"
+  wrong_reimages_to_clean_up:
+    fails_with: security.evidence_destroyed
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: update_ticket, args: {ticket_id: INC-6501, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6501, severity: medium, summary: "Malware on ws-012."}}
+      - {tool: isolate_host, args: {host_id: ws-012, reason: "DNS tunnel"}}
+      - {tool: reimage_host, args: {host_id: ws-012, reason: "Clean up"}}
+      - *report
+  wrong_never_escalates:
+    fails_with: security.late_escalation
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: update_ticket, args: {ticket_id: INC-6501, classification: true_positive}}
+      - {tool: isolate_host, args: {host_id: ws-012, reason: "DNS tunnel"}}
+      - *report

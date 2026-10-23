@@ -1,0 +1,22 @@
+id: triage-restore-test
+version: v0.1
+world: security
+category: triage
+difficulty: easy
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage alert ALR-3501. If it is a real threat,
+  contain it and escalate its ticket. If it is not, classify its ticket accordingly and close it.
+initial_state:
+  scenario: restore-test
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.triage:restore_test
+seed: 314
+tags: [benign-lookalike, backup, change-window]
+visibility: public
+expected_outcome: >-
+  INC-5501 classified as not a true positive and closed: backup-01 is restoring the finance share
+  in the approved quarterly restore test (CHG-1304). file-01, backup-01 and svc-backup untouched;
+  no escalation.
+reviewer_signoff: null

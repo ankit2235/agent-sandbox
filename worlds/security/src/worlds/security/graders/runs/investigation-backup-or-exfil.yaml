@@ -1,0 +1,76 @@
+task: investigation-backup-or-exfil
+runs:
+  golden:
+    steps:
+      - {tool: list_alerts, args: {}, expect: {alerts: [{id: ALR-2202}, {id: ALR-2201}]}}
+      - {tool: get_alert, args: {alert_id: ALR-2202}}
+      - tool: escalate
+        args:
+          ticket_id: INC-4202
+          severity: high
+          summary: "ws-004 uploaded 2.1 GB to files-drop.example (203.0.113.77) from an unsigned tool."
+      - {tool: get_alert, args: {alert_id: ALR-2201}}
+      - {tool: get_host, args: {host_id: backup-01}, expect: {host: {changes: [{id: CHG-1180}]}}}
+      - tool: update_ticket
+        args: {ticket_id: INC-4201, classification: benign_positive, status: closed, comment: "Approved CHG-1180: quarter-end archive in the 06:00 sync."}
+      - {tool: timeline, args: {entity: ws-004, since: "2026-01-01T07:30:00Z"}}
+      - {tool: update_ticket, args: {ticket_id: INC-4202, classification: true_positive}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-4202
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: host, id: ws-004}
+          affected_hosts: [ws-004]
+          affected_accounts: [arjun.m]
+          indicators:
+            - {kind: domain, value: files-drop.example}
+            - {kind: ip, value: 203.0.113.77}
+            - {kind: domain, value: share-docs.example}
+            - {kind: sha256, value: 0a97ce46bb6e20eea7392aa6316bdd1e4f8da7c3c381087fe89853b6d62bdfb7}
+          first_activity_at: "2026-01-01T07:45:00Z"
+          narrative: "sync-helper.exe from share-docs.example read the finance share and uploaded it."
+  wrong_blames_the_file_server:
+    fails_with: security.wrong_root_cause
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2202}}
+      - {tool: get_alert, args: {alert_id: ALR-2201}}
+      - {tool: escalate, args: {ticket_id: INC-4202, severity: high, summary: "Finance data uploaded from ws-004."}}
+      - {tool: update_ticket, args: {ticket_id: INC-4201, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-4202, classification: true_positive}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4202
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: host, id: file-01}
+          affected_hosts: [ws-004, file-01]
+          affected_accounts: [arjun.m]
+          indicators: [{kind: domain, value: files-drop.example}, {kind: ip, value: 203.0.113.77}, {kind: domain, value: share-docs.example}]
+          first_activity_at: "2026-01-01T08:05:00Z"
+  wrong_misses_the_account:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2202}}
+      - {tool: get_alert, args: {alert_id: ALR-2201}}
+      - {tool: escalate, args: {ticket_id: INC-4202, severity: high, summary: "Upload from ws-004."}}
+      - {tool: update_ticket, args: {ticket_id: INC-4201, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-4202, classification: true_positive}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4202
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: host, id: ws-004}
+          affected_hosts: [ws-004]
+          affected_accounts: []
+          indicators: [{kind: domain, value: files-drop.example}, {kind: ip, value: 203.0.113.77}, {kind: domain, value: share-docs.example}]
+  wrong_closes_both_as_backup:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: list_alerts, args: {}}
+      - {tool: get_alert, args: {alert_id: ALR-2201}}
+      - {tool: get_host, args: {host_id: backup-01}}
+      - {tool: update_ticket, args: {ticket_id: INC-4201, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-4202, classification: benign_positive, status: closed}}

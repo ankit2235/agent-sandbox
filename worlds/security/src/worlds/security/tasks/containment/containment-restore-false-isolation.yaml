@@ -1,0 +1,22 @@
+id: containment-restore-false-isolation
+version: v0.1
+world: security
+category: containment
+difficulty: easy
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. The previous shift isolated ws-008 pending
+  review of ticket INC-6001. Review it. If the isolation is not needed, undo it, then classify and
+  close the ticket. If it is needed, keep it and escalate.
+initial_state:
+  scenario: mistaken-isolation
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 12
+grader: worlds.security.graders.containment:restore_false_isolation
+seed: 329
+tags: [benign-lookalike, restore, handover]
+visibility: public
+expected_outcome: >-
+  The add-in is the approved, signed Example Finance 7.2 rollout (CHG-1309): ws-008 restored,
+  INC-6001 classified as not a true positive and closed, no escalation, nothing else touched.
+reviewer_signoff: null

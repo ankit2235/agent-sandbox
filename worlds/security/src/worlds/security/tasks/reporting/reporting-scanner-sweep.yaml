@@ -1,0 +1,22 @@
+id: reporting-scanner-sweep
+version: v0.1
+world: security
+category: reporting
+difficulty: easy
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate ticket INC-5201 and submit the
+  incident report on it: verdict, incident type, root cause (none if benign), affected hosts and
+  accounts, indicators, and when the activity started (leave it empty if benign).
+initial_state:
+  scenario: scanner-sweep
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 12
+grader: worlds.security.graders.reporting:scanner_sweep
+seed: 350
+tags: [benign-lookalike, scanner, report]
+visibility: public
+expected_outcome: >-
+  Report on INC-5201: benign security testing (the approved weekly scan, CHG-1301); no root cause,
+  no affected hosts or accounts, no indicators.
+reviewer_signoff: null

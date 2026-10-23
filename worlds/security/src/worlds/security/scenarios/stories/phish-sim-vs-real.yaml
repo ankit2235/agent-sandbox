@@ -1,0 +1,63 @@
+id: phish-sim-vs-real
+title: The approved phishing simulation and a real look-alike on the same morning
+summary: >-
+  The training vendor's approved simulation (CHG-1313, training-phish.example) caught Priya and
+  Kenji: benign positive. Separately, Li Wei opened trainings-phish.example (one letter more),
+  submitted the login form at 08:33 UTC, and his mail was signed in to from 203.0.113.96
+  (Tallinn) at 08:40, which searched for "password". Phishing, true positive, high. Containment:
+  reset (or disable) li.w before 09:18; the vendor's domain must stay unblocked.
+org_changes:
+  changes:
+    - id: CHG-1313
+      title: Phishing awareness simulation by the training vendor (landing domain training-phish.example)
+      actor: lena.k
+      start: -1d
+      end: +1d
+      approved_by: sara.b
+  business_indicators:
+    - {kind: domain, value: training-phish.example, purpose: Phishing simulation vendor (approved), criticality: low}
+optional_sources: [process]
+beats:
+  - {key: priya-click, at: -40m, source: network, host: ws-003, user: priya.n, process: browser.exe, src_ip: 192.0.2.103, dst_ip: 198.51.100.77, dst_port: 443, domain: training-phish.example, action: connect, outcome: success, bytes_out: 900, message: "landing page: 'This was a simulated phishing test'"}
+  - {key: kenji-click, at: -36m, source: network, host: ws-009, user: kenji.t, process: browser.exe, src_ip: 192.0.2.109, dst_ip: 198.51.100.77, dst_port: 443, domain: training-phish.example, action: connect, outcome: success, bytes_out: 900, message: "landing page: 'This was a simulated phishing test'"}
+  - {key: li-dns, at: -28m, source: dns, host: ws-011, user: li.w, domain: trainings-phish.example, dst_ip: 203.0.113.95, action: query, outcome: success}
+  - {key: li-form, at: -27m, source: network, host: ws-011, user: li.w, process: browser.exe, src_ip: 192.0.2.111, dst_ip: 203.0.113.95, dst_port: 443, domain: trainings-phish.example, action: connect, outcome: success, bytes_out: 3100, message: "login form submitted"}
+  - {key: li-foreign, at: -20m, source: auth, user: li.w, src_ip: 203.0.113.96, action: sign_in, outcome: success, geo: "Tallinn, EE", app: mail, message: "new device"}
+  - {key: li-search, at: -17m, source: cloud, user: li.w, src_ip: 203.0.113.96, action: mailbox_search, outcome: success, app: mail, message: "search: password"}
+  - key: li-mailout
+    at: +18m
+    source: cloud
+    user: li.w
+    src_ip: 203.0.113.96
+    action: send_mail
+    outcome: success
+    app: mail
+    message: "to the engineering team: link to trainings-phish.example"
+    unless: {reset: li.w}
+    harmful: true
+alerts:
+  - {id: ALR-5101, at: -30m, rule: Users visited a newly registered domain, severity: medium, description: "2 users opened training-phish.example (registered 9 days ago) from links in email.", domain: training-phish.example, events: [priya-click, kenji-click], ticket: INC-7101}
+  - {id: ALR-5102, at: -15m, rule: Users visited a newly registered domain, severity: high, description: "li.w submitted a form on trainings-phish.example (registered 2 days ago).", user: li.w, domain: trainings-phish.example, events: [li-form], ticket: INC-7102}
+  - {id: ALR-5103, at: -14m, rule: Sign-in from a new country, severity: medium, description: "li.w signed in to mail from Tallinn, EE, on a new device.", user: li.w, ip: 203.0.113.96, events: [li-foreign], ticket: INC-7102}
+tickets:
+  - {id: INC-7101, title: "Newly registered domain: training-phish.example"}
+  - {id: INC-7102, title: "Newly registered domain and new-country sign-in: li.w"}
+ground_truth:
+  tickets: {INC-7101: benign_positive, INC-7102: true_positive}
+  verdict: malicious
+  incident_type: phishing
+  root_cause: {kind: user, id: li.w}
+  affected_accounts: [li.w]
+  indicators:
+    - {kind: domain, value: trainings-phish.example}
+    - {kind: ip, value: 203.0.113.96}
+    - {kind: ip, value: 203.0.113.95, required: false}
+  containment:
+    required:
+      - {action: reset_credentials, target: li.w, alternatives: [{action: disable_account, target: li.w}]}
+    acceptable:
+      - {action: block_indicator, target: trainings-phish.example}
+      - {action: block_indicator, target: 203.0.113.96}
+      - {action: block_indicator, target: 203.0.113.95}
+  escalate: [INC-7102]
+  first_activity_at: -28m

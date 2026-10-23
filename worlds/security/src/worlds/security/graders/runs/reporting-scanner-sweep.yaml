@@ -1,0 +1,22 @@
+task: reporting-scanner-sweep
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3201}}
+      - {tool: get_host, args: {host_id: scan-01}}
+      - tool: submit_report
+        args: {ticket_id: INC-5201, verdict: benign, incident_type: security_testing, narrative: "Approved weekly scan, CHG-1301."}
+  wrong_reports_reconnaissance:
+    fails_with: security.wrong_root_cause
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3201}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-5201
+          verdict: malicious
+          incident_type: lateral_movement
+          root_cause: {kind: host, id: scan-01}
+          affected_hosts: [scan-01]
+          affected_accounts: [svc-scanner]
+          indicators: [{kind: ip, value: 192.0.2.31}]
+          first_activity_at: "2026-01-01T07:10:00Z"

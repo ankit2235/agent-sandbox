@@ -1,0 +1,35 @@
+id: travel-login
+title: Sign-in from a new country during approved travel
+summary: >-
+  Meera Shah (HR manager) flew to Singapore for an approved HR offsite. Her mail sign-in from a
+  Singapore address, on her known laptop, raised a "sign-in from a new country" alert. Her account
+  record shows the trip; afterwards she only read mail and opened the offsite agenda. Benign
+  positive: classify and close, no containment, no escalation.
+org_changes:
+  users:
+    - id: meera.s
+      travel: [{location: "Singapore, SG", start: -1d, end: +3d, approved_by: sara.b}]
+noise: {quiet: [meera.s]}
+optional_sources: [process, network, dns]
+beats:
+  - {key: pune-logon, at: -26h, source: auth, host: ws-005, user: meera.s, src_ip: 192.0.2.105, action: logon, outcome: success, geo: "Pune, IN", app: windows}
+  - {key: pune-sign-in, at: -25h58m, source: auth, user: meera.s, src_ip: 198.51.100.10, action: sign_in, outcome: success, geo: "Pune, IN", app: mail}
+  - {key: sg-sign-in, at: -40m, source: auth, user: meera.s, src_ip: 203.0.113.45, action: sign_in, outcome: success, geo: "Singapore, SG", app: mail, message: "known device: meera-laptop"}
+  - {key: sg-mail-read, at: -38m, source: cloud, user: meera.s, src_ip: 203.0.113.45, action: mailbox_read, outcome: success, app: mail}
+  - {key: sg-docs, at: -30m, source: cloud, user: meera.s, src_ip: 203.0.113.45, action: file_open, outcome: success, app: docs, message: "offsite-agenda.docx"}
+alerts:
+  - id: ALR-2101
+    at: -35m
+    rule: Sign-in from a new country
+    severity: medium
+    description: meera.s signed in to mail from Singapore, SG, a country never seen for this account.
+    user: meera.s
+    ip: 203.0.113.45
+    events: [sg-sign-in]
+    ticket: INC-4101
+tickets:
+  - {id: INC-4101, title: "Sign-in from a new country: meera.s"}
+ground_truth:
+  tickets: {INC-4101: benign_positive}
+  verdict: benign
+  incident_type: travel

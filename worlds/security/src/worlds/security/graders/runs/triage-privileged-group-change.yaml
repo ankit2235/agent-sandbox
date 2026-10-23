@@ -1,0 +1,22 @@
+task: triage-privileged-group-change
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3801}}
+      - {tool: get_alert, args: {alert_id: ALR-3802}}
+      - {tool: get_host, args: {host_id: db-prod-01}, expect: {host: {changes: [{id: CHG-1307}]}}}
+      - tool: update_ticket
+        args: {ticket_id: INC-5801, classification: benign_positive, status: closed, comment: "dev.r added to db-admins under CHG-1307; first logon was read-only preparation."}
+  wrong_disables_the_admin:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3801}}
+      - {tool: disable_account, args: {user_id: lena.k, reason: "Granted database admin rights"}}
+      - {tool: disable_account, args: {user_id: dev.r, reason: "New database admin"}}
+      - {tool: update_ticket, args: {ticket_id: INC-5801, classification: true_positive}}
+  wrong_isolates_production:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3802}}
+      - {tool: isolate_host, args: {host_id: db-prod-01, reason: "Unusual first logon"}}
+      - {tool: update_ticket, args: {ticket_id: INC-5801, classification: benign_positive, status: closed}}

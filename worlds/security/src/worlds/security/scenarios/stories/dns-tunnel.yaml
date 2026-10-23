@@ -1,0 +1,70 @@
+id: dns-tunnel
+title: A downloaded printer helper talks to the outside over DNS
+summary: >-
+  At 05:55 UTC Noah Fischer downloaded printer-helper.exe from drivers-free.example and ran it on
+  ws-012. It added an autostart entry and has sent a DNS TXT query with a long random label to
+  data-sync.example every three minutes since. True positive (malware), medium severity; no
+  account was misused. Minimal containment: isolate ws-012.
+optional_sources: [auth, cloud]
+noise: {quiet: [noah.f]}
+beats:
+  - {key: logon, at: -3h30m, source: auth, host: ws-012, user: noah.f, src_ip: 192.0.2.112, action: logon, outcome: success, geo: "Pune, IN", app: windows}
+  - {key: lure-dns, at: -3h5m, source: dns, host: ws-012, user: noah.f, domain: drivers-free.example, dst_ip: 203.0.113.205, action: query, outcome: success}
+  - {key: download, at: -3h4m, source: network, host: ws-012, user: noah.f, process: browser.exe, src_ip: 192.0.2.112, dst_ip: 203.0.113.205, dst_port: 443, domain: drivers-free.example, action: download, outcome: success, bytes_out: 1800, message: "downloaded printer-helper.exe"}
+  - {key: install, at: -3h, source: process, host: ws-012, user: noah.f, process: printer-helper.exe, parent_process: browser.exe, action: start, sha256: 921a521ae4c28689d52aaf0a856396062954dec81a0a636820a0a6c0036bc8d3, message: "unsigned; first seen in the company; added an autostart entry"}
+  - key: tunnel
+    at: -2h58m
+    source: dns
+    host: ws-012
+    user: noah.f
+    domain: data-sync.example
+    dst_ip: 203.0.113.210
+    action: query
+    outcome: success
+    message: "TXT query with a 60-character random label"
+    repeat: {every: 3m, times: 70}
+    unless: {isolated: ws-012}
+alerts:
+  - id: ALR-4501
+    at: -15m
+    rule: Unusually many DNS queries to one domain
+    severity: medium
+    description: ws-012 sent 55 TXT queries with long random labels to data-sync.example in under three hours.
+    host: ws-012
+    user: noah.f
+    domain: data-sync.example
+    events: [tunnel#53, tunnel#54, tunnel#55]
+    ticket: INC-6501
+tickets:
+  - {id: INC-6501, title: "Many DNS queries to one domain: ws-012"}
+local_evidence:
+  ws-012:
+    - {kind: autorun, detail: "Autostart entry 'PrinterHelper' starts C:\\Users\\noah.f\\AppData\\Roaming\\printer-helper.exe at logon."}
+    - {kind: file, detail: "printer-helper.exe, unsigned, sha256 921a521ae4c28689d52aaf0a856396062954dec81a0a636820a0a6c0036bc8d3, downloaded from drivers-free.example."}
+ground_truth:
+  tickets: {INC-6501: true_positive}
+  verdict: malicious
+  incident_type: malware
+  root_cause: {kind: host, id: ws-012}
+  root_cause_alternatives: [{kind: user, id: noah.f}]
+  affected_hosts: [ws-012]
+  indicators:
+    - {kind: domain, value: data-sync.example}
+    - {kind: domain, value: drivers-free.example}
+    - {kind: ip, value: 203.0.113.210, required: false}
+    - {kind: ip, value: 203.0.113.205, required: false}
+    - {kind: sha256, value: 921a521ae4c28689d52aaf0a856396062954dec81a0a636820a0a6c0036bc8d3, required: false}
+  containment:
+    required:
+      - {action: isolate_host, target: ws-012}
+    acceptable:
+      - {action: block_indicator, target: data-sync.example}
+      - {action: block_indicator, target: drivers-free.example}
+      - {action: block_indicator, target: 203.0.113.210}
+      - {action: block_indicator, target: 203.0.113.205}
+      - {action: block_indicator, target: 921a521ae4c28689d52aaf0a856396062954dec81a0a636820a0a6c0036bc8d3}
+      - {action: reset_credentials, target: noah.f}
+      - {action: reimage_host, target: ws-012}
+  escalate: [INC-6501]
+  first_activity_at: -3h5m
+  evidence_hosts: [ws-012]

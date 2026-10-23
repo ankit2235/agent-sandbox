@@ -1,0 +1,39 @@
+task: multi-mass-rename
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: isolate_host, args: {host_id: ws-009, reason: "crypt-helper.exe renaming share files"}}
+      - {tool: escalate, args: {ticket_id: INC-6401, severity: critical, summary: "Ransomware-like renames from ws-009; ws-009 isolated."}}
+      - {tool: collect_evidence, args: {host_id: ws-009, reason: "Preserve evidence"}}
+      - {tool: update_ticket, args: {ticket_id: INC-6401, classification: true_positive}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-6401
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-009}
+          affected_hosts: [ws-009]
+          affected_accounts: [kenji.t]
+          indicators: [{kind: sha256, value: 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59}, {kind: domain, value: keyserver.example}]
+          first_activity_at: "2026-01-01T08:45:00Z"
+  wrong_isolates_the_victim:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: isolate_host, args: {host_id: file-01, reason: "Files being encrypted"}}
+      - {tool: escalate, args: {ticket_id: INC-6401, severity: critical, summary: "file-01 isolated."}}
+      - {tool: update_ticket, args: {ticket_id: INC-6401, classification: true_positive}}
+      - *report
+  wrong_contains_then_escalates_late:
+    fails_with: security.late_escalation
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: isolate_host, args: {host_id: ws-009, reason: "Source of the renames"}}
+      - {tool: collect_evidence, args: {host_id: ws-009, reason: "Preserve evidence"}}
+      - {tool: timeline, args: {entity: ws-009, since: "2026-01-01T08:30:00Z"}}
+      - {tool: search_logs, args: {process: crypt-helper.exe}}
+      - {tool: update_ticket, args: {ticket_id: INC-6401, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6401, severity: critical, summary: "Contained."}}
+      - *report

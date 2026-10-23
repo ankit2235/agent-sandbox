@@ -1,0 +1,23 @@
+task: containment-exfil-workstation
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2202}}
+      - {tool: collect_evidence, args: {host_id: ws-004, reason: "Preserve evidence"}}
+      - {tool: isolate_host, args: {host_id: ws-004, reason: "sync-helper.exe uploading finance files"}}
+      - {tool: reset_credentials, args: {user_id: arjun.m, reason: "Session used to read the finance share"}}
+      - {tool: block_indicator, args: {kind: domain, value: files-drop.example, reason: "Upload destination"}}
+  wrong_isolates_the_servers_it_touched:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2202}}
+      - {tool: isolate_host, args: {host_id: ws-004, reason: "Uploading"}}
+      - {tool: reset_credentials, args: {user_id: arjun.m, reason: "Session used"}}
+      - {tool: isolate_host, args: {host_id: file-01, reason: "Data source"}}
+      - {tool: isolate_host, args: {host_id: backup-01, reason: "Also uploaded a lot"}}
+  wrong_blocks_the_destination_only:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2202}}
+      - {tool: block_indicator, args: {kind: domain, value: files-drop.example, reason: "Upload destination"}}
+      - {tool: block_indicator, args: {kind: ip, value: 203.0.113.77, reason: "Upload destination"}}

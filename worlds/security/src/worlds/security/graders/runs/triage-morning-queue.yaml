@@ -1,0 +1,41 @@
+task: triage-morning-queue
+runs:
+  golden:
+    steps:
+      - {tool: list_alerts, args: {}, expect: {alerts: [{id: ALR-5004}, {id: ALR-5003}, {id: ALR-5002}, {id: ALR-5001}]}}
+      - {tool: get_alert, args: {alert_id: ALR-5004}}
+      - {tool: timeline, args: {entity: omar.h, since: "2026-01-01T08:00:00Z"}}
+      - {tool: update_ticket, args: {ticket_id: INC-7004, classification: true_positive}}
+      - tool: escalate
+        args: {ticket_id: INC-7004, severity: high, summary: "omar.h submitted a login form on brand-assets.example; his mail was then used from 203.0.113.30.", recommended_actions: [{action: reset_credentials, target: omar.h}]}
+      - {tool: get_alert, args: {alert_id: ALR-5003}}
+      - {tool: get_user, args: {user_id: ana.p}, expect: {user: {travel: [{location: "Madrid, ES"}]}}}
+      - {tool: update_ticket, args: {ticket_id: INC-7003, classification: benign_positive, status: closed, comment: "Approved travel to Madrid, known laptop."}}
+      - {tool: get_alert, args: {alert_id: ALR-5001}}
+      - {tool: update_ticket, args: {ticket_id: INC-7001, classification: benign_positive, status: closed, comment: "Weekly scan under CHG-1311."}}
+      - {tool: get_alert, args: {alert_id: ALR-5002}}
+      - {tool: update_ticket, args: {ticket_id: INC-7002, classification: benign_positive, status: closed, comment: "Stale svc-build password after CHG-1312."}}
+  wrong_closes_the_whole_queue:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-5001}}
+      - {tool: get_alert, args: {alert_id: ALR-5002}}
+      - {tool: get_alert, args: {alert_id: ALR-5003}}
+      - {tool: get_alert, args: {alert_id: ALR-5004}}
+      - {tool: update_ticket, args: {ticket_id: INC-7001, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-7002, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-7003, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-7004, classification: benign_positive, status: closed}}
+  wrong_escalates_both_new_country_sign_ins:
+    fails_with: security.false_positive_escalated
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-5004}}
+      - {tool: get_alert, args: {alert_id: ALR-5003}}
+      - {tool: update_ticket, args: {ticket_id: INC-7004, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-7004, severity: high, summary: "New-country sign-in: omar.h."}}
+      - {tool: update_ticket, args: {ticket_id: INC-7003, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-7003, severity: medium, summary: "New-country sign-in: ana.p."}}
+      - {tool: get_alert, args: {alert_id: ALR-5001}}
+      - {tool: update_ticket, args: {ticket_id: INC-7001, classification: benign_positive, status: closed}}
+      - {tool: get_alert, args: {alert_id: ALR-5002}}
+      - {tool: update_ticket, args: {ticket_id: INC-7002, classification: benign_positive, status: closed}}

@@ -1,0 +1,23 @@
+id: reporting-mass-rename
+version: v0.1
+world: security
+category: reporting
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate ticket INC-6401 and submit the
+  incident report on it: verdict, incident type, root cause, affected hosts and accounts,
+  indicators, and when the activity started.
+initial_state:
+  scenario: mass-rename
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.reporting:mass_rename
+seed: 336
+tags: [malware, file-share, report]
+visibility: public
+expected_outcome: >-
+  Report on INC-6401: malicious malware; root cause ws-009 (or kenji.t); affected host ws-009 and
+  account kenji.t; indicators the crypt-helper.exe hash and keyserver.example; first activity
+  08:45 UTC.
+reviewer_signoff: null

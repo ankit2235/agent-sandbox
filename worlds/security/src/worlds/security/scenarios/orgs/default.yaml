@@ -1,0 +1,89 @@
+# Example Corp: the default simulated company. Synthetic people, RFC 5737 addresses and
+# RFC 2606 domains only. Stories add to it or change it through `org_changes`.
+name: Example Corp
+domain: corp.example
+office: {location: "Pune, IN", egress_ip: 198.51.100.10}
+
+hosts:
+  - {id: dc-01, ip: 192.0.2.10, role: Domain controller, os: Windows Server 2022, owner: lena.k, criticality: critical}
+  - {id: file-01, ip: 192.0.2.11, role: File server (finance and HR shares), os: Windows Server 2022, owner: lena.k, criticality: high}
+  - {id: backup-01, ip: 192.0.2.12, role: Backup server, os: Linux, owner: lena.k, criticality: high}
+  - {id: jump-01, ip: 192.0.2.13, role: Admin jump host, os: Windows Server 2022, owner: lena.k, criticality: high}
+  - {id: web-prod-01, ip: 192.0.2.20, role: Public website, os: Linux, owner: dev.r, criticality: critical}
+  - {id: db-prod-01, ip: 192.0.2.21, role: Customer database, os: Linux, owner: dev.r, criticality: critical}
+  - {id: build-01, ip: 192.0.2.30, role: Build server, os: Linux, owner: dev.r, criticality: medium}
+  - {id: scan-01, ip: 192.0.2.31, role: Vulnerability scanner, os: Linux, owner: lena.k, criticality: medium}
+  - {id: ws-001, ip: 192.0.2.101, role: Workstation, os: Windows 11, owner: lena.k, criticality: low}
+  - {id: ws-002, ip: 192.0.2.102, role: Workstation, os: Windows 11, owner: tomas.v, criticality: low}
+  - {id: ws-003, ip: 192.0.2.103, role: Workstation, os: Windows 11, owner: priya.n, criticality: low}
+  - {id: ws-004, ip: 192.0.2.104, role: Workstation, os: Windows 11, owner: arjun.m, criticality: low}
+  - {id: ws-005, ip: 192.0.2.105, role: Workstation, os: Windows 11, owner: meera.s, criticality: low}
+  - {id: ws-006, ip: 192.0.2.106, role: Workstation, os: Windows 11, owner: dev.r, criticality: low}
+  - {id: ws-007, ip: 192.0.2.107, role: Workstation, os: Windows 11, owner: omar.h, criticality: low}
+  - {id: ws-008, ip: 192.0.2.108, role: Workstation, os: Windows 11, owner: sara.b, criticality: medium}
+  - {id: ws-009, ip: 192.0.2.109, role: Workstation, os: Windows 11, owner: kenji.t, criticality: low}
+  - {id: ws-010, ip: 192.0.2.110, role: Workstation, os: Windows 11, owner: ana.p, criticality: low}
+  - {id: ws-011, ip: 192.0.2.111, role: Workstation, os: Windows 11, owner: li.w, criticality: low}
+  - {id: ws-012, ip: 192.0.2.112, role: Workstation, os: Windows 11, owner: noah.f, criticality: low}
+
+users:
+  - id: lena.k
+    name: Lena Kowal
+    title: IT administrator
+    department: IT
+    groups: [it-admins, domain-admins]
+    privileged: true
+    criticality: high
+    workstation: ws-001
+    baseline: {locations: ["Pune, IN"]}
+  - id: tomas.v
+    name: Tomas Varga
+    title: Helpdesk technician
+    department: IT
+    groups: [helpdesk]
+    privileged: true
+    criticality: medium
+    workstation: ws-002
+    baseline: {locations: ["Pune, IN"]}
+  - {id: priya.n, name: Priya Nair, title: Finance analyst, department: Finance, groups: [finance], workstation: ws-003, baseline: {locations: ["Pune, IN"]}}
+  - {id: arjun.m, name: Arjun Mehta, title: Sales manager, department: Sales, groups: [sales], workstation: ws-004, baseline: {locations: ["Pune, IN"]}}
+  - {id: meera.s, name: Meera Shah, title: HR manager, department: HR, groups: [hr], workstation: ws-005, baseline: {locations: ["Pune, IN"]}}
+  - {id: dev.r, name: Dev Rao, title: Software engineer, department: Engineering, groups: [engineering], workstation: ws-006, baseline: {locations: ["Pune, IN"]}}
+  - {id: omar.h, name: Omar Haddad, title: Marketing lead, department: Marketing, groups: [marketing], workstation: ws-007, baseline: {locations: ["Pune, IN"]}}
+  - {id: sara.b, name: Sara Bianchi, title: Chief financial officer, department: Finance, groups: [finance, executives], criticality: high, workstation: ws-008, baseline: {locations: ["Pune, IN"]}}
+  - {id: kenji.t, name: Kenji Tanaka, title: Accountant, department: Finance, groups: [finance], workstation: ws-009, baseline: {locations: ["Pune, IN"]}}
+  - {id: ana.p, name: Ana Pereira, title: Sales executive, department: Sales, groups: [sales], workstation: ws-010, baseline: {locations: ["Pune, IN"]}}
+  - {id: li.w, name: Li Wei, title: Software engineer, department: Engineering, groups: [engineering], workstation: ws-011, baseline: {locations: ["Pune, IN"]}}
+  - {id: noah.f, name: Noah Fischer, title: Office manager, department: Operations, groups: [operations], workstation: ws-012, baseline: {locations: ["Pune, IN"]}}
+  - {id: svc-backup, name: Backup service, title: Service account, department: IT, kind: service, groups: [service-accounts], criticality: high, baseline: {locations: ["Pune, IN"], hours_utc: [0, 24]}}
+  - {id: svc-build, name: Build service, title: Service account, department: Engineering, kind: service, groups: [service-accounts], criticality: medium, baseline: {locations: ["Pune, IN"], hours_utc: [0, 24]}}
+  - {id: svc-scanner, name: Scanner service, title: Service account, department: IT, kind: service, groups: [service-accounts], criticality: medium, baseline: {locations: ["Pune, IN"], hours_utc: [0, 24]}}
+
+jobs:
+  - id: offsite-sync
+    title: Offsite backup sync to the backup provider
+    host: backup-01
+    user: svc-backup
+    process: backup-agent
+    every_hours: 6
+    minute_of_day: 0
+    dst_ip: 198.51.100.60
+    domain: backup-vault.example.net
+    bytes_out: 12000000000
+
+business_indicators:
+  - {kind: domain, value: backup-vault.example.net, purpose: Offsite backup provider, criticality: high}
+  - {kind: ip, value: 198.51.100.60, purpose: Offsite backup provider, criticality: high}
+  - {kind: domain, value: mail.example.net, purpose: Hosted email, criticality: critical}
+  - {kind: ip, value: 198.51.100.40, purpose: Hosted email, criticality: critical}
+  - {kind: domain, value: crm.example.com, purpose: Sales CRM, criticality: high}
+  - {kind: domain, value: docs.example.org, purpose: Document collaboration, criticality: medium}
+  - {kind: domain, value: updates.example.org, purpose: Operating system updates, criticality: medium}
+
+common_domains:
+  - {domain: mail.example.net, ip: 198.51.100.40}
+  - {domain: crm.example.com, ip: 198.51.100.41}
+  - {domain: docs.example.org, ip: 198.51.100.42}
+  - {domain: updates.example.org, ip: 198.51.100.43}
+  - {domain: news.example.com, ip: 198.51.100.44}
+  - {domain: intranet.corp.example, ip: 192.0.2.50}

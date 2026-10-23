@@ -148,11 +148,15 @@ name = "agent-sandbox-world-security"
 version = "0.0.1.dev0"
 source = { editable = "worlds/security" }
 dependencies = [
-    { name = "agent-sandbox-kit" },
+    { name = "agent-sandbox-kit", extra = ["mcp"] },
+    { name = "fastapi" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "agent-sandbox-kit", editable = "kit" }]
+requires-dist = [
+    { name = "agent-sandbox-kit", extras = ["mcp"], editable = "kit" },
+    { name = "fastapi", specifier = ">=0.116" },
+]
 
 [[package]]
 name = "aiofile"

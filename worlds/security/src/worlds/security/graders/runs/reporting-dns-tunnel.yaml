@@ -1,0 +1,42 @@
+task: reporting-dns-tunnel
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - {tool: timeline, args: {entity: ws-012, since: "2026-01-01T05:30:00Z", limit: 10}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6501
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: user, id: noah.f}
+          affected_hosts: [ws-012]
+          indicators: [{kind: domain, value: data-sync.example}, {kind: domain, value: drivers-free.example}, {kind: sha256, value: 921a521ae4c28689d52aaf0a856396062954dec81a0a636820a0a6c0036bc8d3}]
+          first_activity_at: "2026-01-01T05:55:00Z"
+  wrong_dates_it_from_the_alert:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6501
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-012}
+          affected_hosts: [ws-012]
+          indicators: [{kind: domain, value: data-sync.example}, {kind: domain, value: drivers-free.example}]
+          first_activity_at: "2026-01-01T08:45:00Z"
+  wrong_adds_the_user_as_compromised:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4501}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6501
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-012}
+          affected_hosts: [ws-012]
+          affected_accounts: [noah.f]
+          indicators: [{kind: domain, value: data-sync.example}, {kind: domain, value: drivers-free.example}]
+          first_activity_at: "2026-01-01T05:55:00Z"
