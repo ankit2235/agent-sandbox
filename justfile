@@ -11,6 +11,10 @@ setup:
 setup-openenv:
     uv sync --all-packages --extra openenv
 
+# Install LiteLLM, for running real models (heavy; CI only uses the fake models).
+setup-models:
+    uv sync --all-packages --extra litellm
+
 # Run every test.
 test *ARGS:
     uv run pytest {{ARGS}}

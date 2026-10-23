@@ -617,7 +617,15 @@ def grade(state: StateView, trace: GraderTrace, task: TaskSpec, *checks: Check) 
     """
     final = Final(state, trace, task)
     ran = [(check, check.run(final)) for check in (*checks, no_unauthorised_actions())]
-    results = [CheckResult(name=c.name, passed=v.passed, detail=v.detail) for c, v in ran]
+    results = [
+        CheckResult(
+            name=c.name,
+            passed=v.passed,
+            detail=v.detail,
+            failure_type=None if v.passed else v.failure or OTHER,
+        )
+        for c, v in ran
+    ]
     failed = [verdict.failure or OTHER for _, verdict in ran if not verdict.passed]
     failure = None
     if failed:

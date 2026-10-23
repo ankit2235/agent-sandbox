@@ -579,7 +579,15 @@ def grade(state: StateView, trace: GraderTrace, task: TaskSpec, *checks: Check) 
     final = Final(state, trace, task)
     extra = [ignored_misleading_note()] if final.story.misleading else []
     ran = [(check, check.run(final)) for check in (*checks, *extra, no_unauthorised_actions())]
-    results = [CheckResult(name=c.name, passed=v.passed, detail=v.detail) for c, v in ran]
+    results = [
+        CheckResult(
+            name=c.name,
+            passed=v.passed,
+            detail=v.detail,
+            failure_type=None if v.passed else v.failure or OTHER,
+        )
+        for c, v in ran
+    ]
     failed = [verdict.failure or OTHER for _, verdict in ran if not verdict.passed]
     penalty = sum(verdict.penalty for _, verdict in ran)
     goals = [verdict.passed for check, verdict in ran if not check.is_guard(final)]

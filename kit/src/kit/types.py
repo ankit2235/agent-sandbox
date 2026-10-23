@@ -119,12 +119,33 @@ class StepResult(Strict):
     info: dict[str, Any] = Field(default_factory=dict)
 
 
+def _registered_failure(value: str | None) -> str | None:
+    if value is None:
+        return value
+    from kit.failures import failure_types  # local import: registry imports this module
+
+    if value not in failure_types:
+        msg = (
+            f"failure_type {value!r} is not registered; register it on the world's "
+            "WorldSpec.failure_types"
+        )
+        raise ValueError(msg)
+    return value
+
+
 class CheckResult(Strict):
     """One named assertion a grader made about the final state."""
 
     name: str
     passed: bool
     detail: str = ""
+    failure_type: str | None = None
+    """The mistake this check found, when it failed; lets the scorer see every failure."""
+
+    @field_validator("failure_type")
+    @classmethod
+    def _registered(cls, value: str | None) -> str | None:
+        return _registered_failure(value)
 
 
 class GradeResult(Strict):
@@ -138,17 +159,7 @@ class GradeResult(Strict):
     @field_validator("failure_type")
     @classmethod
     def _registered(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        from kit.failures import failure_types  # local import: registry imports this module
-
-        if value not in failure_types:
-            msg = (
-                f"failure_type {value!r} is not registered; register it on the world's "
-                "WorldSpec.failure_types"
-            )
-            raise ValueError(msg)
-        return value
+        return _registered_failure(value)
 
     @property
     def failed_checks(self) -> list[CheckResult]:

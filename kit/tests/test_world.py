@@ -112,3 +112,38 @@ def test_registering_a_world_registers_its_failure_types() -> None:
     worlds.get("hello_world")
     assert "hello_world.overshoot" in failure_types
     assert failure_types.high_impact_ids("hello_world") == {"hello_world.overshoot"}
+
+
+def test_a_listing_is_checked_against_the_world() -> None:
+    from kit.world import Listing, MetricDef
+
+    base = world_spec().model_dump(exclude={"episode_factory"})
+    factory = world_spec().episode_factory
+
+    def spec(listing: Listing) -> WorldSpec:
+        return WorldSpec(**{**base, "listing": listing}, episode_factory=factory)
+
+    plain = spec(Listing(title="Hello"))
+    assert plain.category_label("basics") == "Basics"
+    assert plain.unsafe_failures() == {"hello_world.overshoot", "kit.unauthorised_action"}
+    labelled = spec(
+        Listing(title="Hello", category_labels={"basics": "Counting"}, unsafe_failures=[])
+    )
+    assert labelled.category_label("basics") == "Counting"
+    assert labelled.unsafe_failures() == set()
+    with pytest.raises(ValueError, match="categories hello_world does not have"):
+        spec(Listing(title="Hello", category_labels={"nope": "Nope"}))
+    with pytest.raises(ValueError, match="cannot report"):
+        spec(Listing(title="Hello", unsafe_failures=["payments.overspend"]))
+    two = MetricDef(key="a", label="A", unit="%", higher_is_better=True, primary=True)
+    with pytest.raises(ValueError, match="exactly one metric primary"):
+        spec(Listing(title="Hello", metrics=[two, two.model_copy(update={"key": "b"})]))
+
+
+def test_base_episode_exposes_its_router(make_task) -> None:
+    from kit.clock import EPOCH, SimClock
+    from kit.rng import SeededRNG
+
+    task = make_task()
+    episode = world_spec().make_episode(task, SimClock(EPOCH), SeededRNG(1))
+    assert episode.router.names == ["get_count", "increment", "finish"]

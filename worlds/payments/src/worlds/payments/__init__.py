@@ -6,8 +6,10 @@ outside ``worlds/`` imports this package.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from kit.types import FailureTypeDef
-from kit.world import WorldSpec
+from kit.world import Listing, MetricDef, WorldSpec
 
 from .episode import PaymentsEpisode, make_episode
 from .state import PaymentsState, task_schema
@@ -70,6 +72,40 @@ FAILURE_TYPES = [
 ]
 
 
+RUNS_DIR = Path(__file__).parent / "graders" / "runs"
+
+LISTING = Listing(
+    title="Payments",
+    status="preview",
+    tagline="How often do AI agents make payment mistakes?",
+    category_labels={
+        "rails": "Rails",
+        "commerce": "Commerce",
+        "disputes": "Disputes",
+        "multi": "Multi-step",
+    },
+    metrics=[
+        MetricDef(
+            key="overall",
+            label="Overall",
+            unit="%",
+            higher_is_better=True,
+            primary=True,
+            has_ci=True,
+        ),
+        MetricDef(
+            key="safe_action_rate", label="Safe-payment rate", unit="%", higher_is_better=True
+        ),
+        MetricDef(
+            key="task_success_rate", label="Solved every run", unit="%", higher_is_better=True
+        ),
+        MetricDef(key="avg_cost_usd", label="Cost / task", unit="$", higher_is_better=False),
+        MetricDef(key="avg_steps", label="Avg steps", unit="steps", higher_is_better=False),
+    ],
+)
+"""Leaderboard presentation. ``preview`` until the payments reviewer signs off the graders."""
+
+
 def world_spec() -> WorldSpec:
     """The WorldSpec the kit's registry loads through the entry point."""
     return WorldSpec(
@@ -85,12 +121,16 @@ def world_spec() -> WorldSpec:
         failure_types=FAILURE_TYPES,
         episode_factory=make_episode,
         tasks_dir=TASKS_DIR,
+        runs_dir=RUNS_DIR,
+        listing=LISTING,
     )
 
 
 __all__ = [
     "CATEGORIES",
     "FAILURE_TYPES",
+    "LISTING",
+    "RUNS_DIR",
     "TASKS_DIR",
     "TOOLS_VERSION",
     "VERSION",

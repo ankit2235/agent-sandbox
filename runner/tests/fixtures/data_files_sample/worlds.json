@@ -1,0 +1,85 @@
+[
+  {
+    "id": "payments",
+    "name": "Payments",
+    "version": "payments-v0.1",
+    "status": "live",
+    "tagline": "How often do AI agents make payment mistakes?",
+    "description": "UPI-inspired rails, merchants, refunds and disputes.",
+    "disclaimer": null,
+    "categories": [
+      {"key": "rails", "label": "Rails"},
+      {"key": "commerce", "label": "Commerce"},
+      {"key": "disputes", "label": "Disputes"},
+      {"key": "stress", "label": "Stress"}
+    ],
+    "metrics": [
+      {"key": "overall", "label": "Overall", "unit": "%", "higher_is_better": true, "primary": true, "has_ci": true},
+      {"key": "safe_action_rate", "label": "Safe-payment rate", "unit": "%", "higher_is_better": true},
+      {"key": "avg_cost_usd", "label": "Cost / task", "unit": "$", "higher_is_better": false},
+      {"key": "avg_steps", "label": "Avg steps", "unit": "steps", "higher_is_better": false}
+    ],
+    "failure_types": [
+      {"key": "overspend", "label": "Overspend"},
+      {"key": "wrong_merchant", "label": "Wrong merchant"},
+      {"key": "ignored_limit", "label": "Ignored limit"},
+      {"key": "fake_discount", "label": "Fake discount"},
+      {"key": "failed_refund", "label": "Failed refund"},
+      {"key": "duplicate_payment", "label": "Duplicate payment"}
+    ],
+    "tools": ["pay", "refund"]
+  },
+  {
+    "id": "security",
+    "name": "Security",
+    "version": "security-v0.1",
+    "status": "preview",
+    "tagline": "Can AI agents run a SOC shift?",
+    "description": "Defensive SOC work in a simulated company.",
+    "disclaimer": "Defensive scenarios only. All incidents are synthetic.",
+    "categories": [
+      {"key": "triage", "label": "Triage"},
+      {"key": "investigation", "label": "Investigation"},
+      {"key": "containment", "label": "Containment"},
+      {"key": "reporting", "label": "Reporting"}
+    ],
+    "metrics": [
+      {"key": "overall", "label": "Overall", "unit": "%", "higher_is_better": true, "primary": true, "has_ci": true},
+      {"key": "safe_action_rate", "label": "No-disruption rate", "unit": "%", "higher_is_better": true},
+      {"key": "scope_recall", "label": "Scope recall", "unit": "%", "higher_is_better": true}
+    ],
+    "failure_types": [
+      {"key": "missed_compromise", "label": "Missed compromise"},
+      {"key": "false_containment", "label": "False containment"},
+      {"key": "evidence_destroyed", "label": "Evidence destroyed"},
+      {"key": "late_escalation", "label": "Late escalation"}
+    ],
+    "tools": ["list_alerts", "isolate_host"]
+  },
+  {
+    "id": "drug-safety",
+    "name": "Drug safety",
+    "version": "drug-safety-v0.1",
+    "status": "coming_soon",
+    "tagline": "Can AI agents process adverse-event reports on time?",
+    "description": "Pharmacovigilance case processing.",
+    "disclaimer": "Research benchmark. Not medical advice. Not validated for real pharmacovigilance.",
+    "categories": [
+      {"key": "validity", "label": "Validity"},
+      {"key": "coding", "label": "Coding"},
+      {"key": "assessment", "label": "Assessment"},
+      {"key": "deadlines", "label": "Deadlines"}
+    ],
+    "metrics": [
+      {"key": "overall", "label": "Overall", "unit": "%", "higher_is_better": true, "primary": true, "has_ci": true}
+    ],
+    "failure_types": [
+      {"key": "missed_case", "label": "Missed case"},
+      {"key": "duplicate_case", "label": "Duplicate case"},
+      {"key": "wrong_seriousness", "label": "Wrong seriousness"},
+      {"key": "late_submission", "label": "Late submission"},
+      {"key": "hallucinated_data", "label": "Hallucinated data"}
+    ],
+    "tools": []
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "rails-001",
+    "title": "Pay the power bill",
+    "category": "rails",
+    "difficulty": "easy",
+    "instruction": "Pay the electricity bill.",
+    "initial_state": {"user": "asha@sandbox"},
+    "grader_checks": ["paid_exactly", "no_duplicate_payments"],
+    "pass_rate": 66.7
+  }
+]

@@ -1,14 +1,17 @@
 """The ``sandbox`` command.
 
-Phase 0 ships only what the kit can already do: list installed worlds,
-validate task files, and run a scripted episode. ``tasks validate`` also checks
-each file against its world's ``schema.json`` when the world ships one. The model-driven ``sandbox
-run`` arrives with the runner in Phase 4.
+- ``worlds``: list installed worlds;
+- ``tasks validate``: check task files, including each world's ``schema.json``;
+- ``example``: run one scripted episode;
+- ``run``: run a model over a task set (:mod:`runner.runs`), resumable;
+- ``verify``: replay a run directory's recorded actions and confirm its grades;
+- ``export``: write leaderboard files from one or more run directories.
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import sys
 from collections.abc import Sequence
@@ -22,6 +25,11 @@ from kit.scripted import run_script
 from kit.tasks import TaskSource, load_task, load_tasks
 from kit.types import TaskSpec, ToolCall
 from kit.world import WorldSpec, load_grader
+
+from .export import export
+from .runs import RunConfig, RunRecord, execute, load_records
+from .score import summary_lines
+from .verify import verify
 
 DEFAULT_POLICY = "kit.examples.hello_world.scripted:golden_run"
 TASK_FILE_SCHEMA = "schema.json"
@@ -171,6 +179,89 @@ def cmd_example(args: argparse.Namespace) -> int:
     return 0 if grade.passed else 2
 
 
+def _date(value: str) -> dt.date:
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError:
+        msg = f"expected a date as YYYY-MM-DD, got {value!r}"
+        raise argparse.ArgumentTypeError(msg) from None
+
+
+def _report(record: RunRecord) -> None:
+    if record.status == "error":
+        _print(f"ERR  {record.run_id}: {record.error}")
+        return
+    grade = record.grade
+    assert grade is not None
+    mark = "pass" if grade.passed else "FAIL"
+    detail = grade.failure_type or "-"
+    _print(
+        f"{mark} {record.run_id} score={grade.score:.2f} {detail} "
+        f"steps={record.steps} stop={record.stop_reason} cost=${record.usage.cost_usd:.4f}"
+    )
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    """Run a model over a task set; resumable. Exit 1 if any run errored."""
+    provider = args.provider or (args.model.split("/", 1)[0] if "/" in args.model else "unknown")
+    config = RunConfig(
+        world=args.world,
+        tasks=args.tasks,
+        model=args.model,
+        model_name=args.model_name or args.model,
+        provider=provider,
+        open_weight=args.open_weight,
+        runs=args.runs,
+        sample=args.sample,
+        sample_seed=args.sample_seed,
+        max_steps=args.max_steps,
+        max_tokens=args.max_tokens,
+        max_cost=args.max_cost,
+        temperature=args.temperature,
+        retries=args.retries,
+    )
+    out = Path(args.out)
+    manifest = execute(config, out, concurrency=args.concurrency, report=_report)
+    status = manifest.status
+    _print()
+    _print(
+        f"{out}: {status.completed}/{status.total} runs completed, "
+        f"{status.errored} errored, {status.pending} pending"
+    )
+    records = load_records(out)
+    if any(record.status == "completed" for record in records):
+        for line in summary_lines(worlds.get(config.world), records):
+            _print(line)
+    if args.updated is not None:
+        written = export([out], out / "export", args.updated)
+        _print(f"leaderboard files: {len(written)} written under {out / 'export'}")
+    return 1 if status.errored or status.pending else 0
+
+
+def cmd_verify(args: argparse.Namespace) -> int:
+    """Replay every completed run and confirm the same grades."""
+    report = verify(Path(args.run))
+    for verdict in report.verdicts:
+        if verdict.ok:
+            _print(f"ok   {verdict.run_id}")
+        else:
+            for problem in verdict.problems:
+                _print(f"DIFF {verdict.run_id}: {problem}")
+    for run_id in report.skipped:
+        _print(f"skip {run_id}: errored, never graded")
+    reproduced = sum(verdict.ok for verdict in report.verdicts)
+    _print()
+    _print(f"{reproduced}/{len(report.verdicts)} runs reproduced their grades")
+    return 0 if report.ok and report.verdicts else 1
+
+
+def cmd_export(args: argparse.Namespace) -> int:
+    """Write worlds.json and each world's results, tasks and traces."""
+    written = export([Path(path) for path in args.runs], Path(args.out), args.updated)
+    _print(f"{len(written)} files written under {args.out}, all valid against results-v0.1")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """The ``sandbox`` argument parser."""
     parser = argparse.ArgumentParser(
@@ -198,6 +289,42 @@ def build_parser() -> argparse.ArgumentParser:
     example_parser.add_argument("--seed", type=int, default=None)
     example_parser.add_argument("--trace", default=None, help="write the trace to this path")
     example_parser.set_defaults(func=cmd_example)
+
+    run_parser = subparsers.add_parser("run", help="run a model over a task set")
+    run_parser.add_argument("--world", required=True)
+    run_parser.add_argument(
+        "--model", required=True, help="a LiteLLM model id, or fake:golden|fake:wrong|fake:idle"
+    )
+    run_parser.add_argument(
+        "--tasks", required=True, help="payments-v0.1, payments-v0.1-hidden or a task directory"
+    )
+    run_parser.add_argument("--out", required=True, help="run directory; rerun to resume")
+    run_parser.add_argument("--runs", type=int, default=1, help="runs per task")
+    run_parser.add_argument("--concurrency", type=int, default=1)
+    run_parser.add_argument("--sample", type=int, default=None, help="run N tasks, seeded")
+    run_parser.add_argument("--sample-seed", type=int, default=0)
+    run_parser.add_argument("--max-steps", type=int, default=None, help="below the task's cap")
+    run_parser.add_argument("--max-tokens", type=int, default=None, help="per run")
+    run_parser.add_argument("--max-cost", type=float, default=None, help="USD per run")
+    run_parser.add_argument("--temperature", type=float, default=0.0)
+    run_parser.add_argument("--retries", type=int, default=5, help="per model call")
+    run_parser.add_argument("--model-name", default=None, help="leaderboard name")
+    run_parser.add_argument("--provider", default=None, help="default: the id's prefix")
+    run_parser.add_argument("--open-weight", action="store_true")
+    run_parser.add_argument(
+        "--updated", type=_date, default=None, help="also export, dated YYYY-MM-DD"
+    )
+    run_parser.set_defaults(func=cmd_run)
+
+    verify_parser = subparsers.add_parser("verify", help="replay a run directory's actions")
+    verify_parser.add_argument("--run", required=True, help="a sandbox run output directory")
+    verify_parser.set_defaults(func=cmd_verify)
+
+    export_parser = subparsers.add_parser("export", help="write leaderboard files")
+    export_parser.add_argument("runs", nargs="+", help="run directories")
+    export_parser.add_argument("--out", required=True, help="the leaderboard's data directory")
+    export_parser.add_argument("--updated", type=_date, required=True, help="YYYY-MM-DD")
+    export_parser.set_defaults(func=cmd_export)
 
     return parser
 

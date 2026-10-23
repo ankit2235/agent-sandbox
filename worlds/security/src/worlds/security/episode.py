@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from kit.clock import ScheduledEvent, SimClock
-from kit.episode import BaseEpisode, ToolRouter
+from kit.episode import BaseEpisode
 from kit.rng import SeededRNG
 from kit.trace import DiffEntry
 from kit.types import TaskSpec
@@ -54,11 +54,6 @@ class SecurityEpisode(BaseEpisode):
             self.tickets,
         ]
         super().__init__(self._world_services, build_router(), clock, rng)
-
-    @property
-    def router(self) -> ToolRouter:
-        """The tools this episode serves, for the MCP bridge."""
-        return self._router
 
     def _setup(self, task: TaskSpec) -> None:
         """Expand the task's story and give each service its rows."""

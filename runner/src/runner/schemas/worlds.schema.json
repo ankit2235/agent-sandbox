@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/prarabdha-soni/agent-sandbox/schemas/results-v0.1/worlds.schema.json",
+  "title": "worlds.json (results-v0.1)",
+  "description": "The registry that drives the leaderboard: one entry per world.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "name",
+      "version",
+      "status",
+      "tagline",
+      "description",
+      "disclaimer",
+      "categories",
+      "metrics",
+      "failure_types",
+      "tools"
+    ],
+    "properties": {
+      "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_\\-]*$"},
+      "name": {"type": "string", "minLength": 1},
+      "version": {"type": "string", "minLength": 1},
+      "status": {"enum": ["live", "preview", "coming_soon"]},
+      "tagline": {"type": "string"},
+      "description": {"type": "string"},
+      "disclaimer": {"type": ["string", "null"]},
+      "categories": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["key", "label"],
+          "properties": {"key": {"type": "string"}, "label": {"type": "string"}}
+        }
+      },
+      "metrics": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["key", "label", "unit", "higher_is_better"],
+          "properties": {
+            "key": {"type": "string"},
+            "label": {"type": "string"},
+            "unit": {"type": "string"},
+            "higher_is_better": {"type": "boolean"},
+            "primary": {"type": "boolean"},
+            "has_ci": {"type": "boolean"}
+          }
+        }
+      },
+      "failure_types": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["key", "label"],
+          "properties": {"key": {"type": "string"}, "label": {"type": "string"}}
+        }
+      },
+      "tools": {"type": "array", "items": {"type": "string"}}
+    }
+  }
+}

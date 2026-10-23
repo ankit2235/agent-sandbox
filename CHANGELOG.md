@@ -6,6 +6,40 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — Phase 4: runner, model adapters, tracing, scoring
+
+- `sandbox run --world <w> --model <id> --tasks <set> --runs N --concurrency N --out <dir>`: a
+  reference tool-calling agent over the world's MCP tools (the kit's bridge, a real MCP client
+  session), with fixed, versioned system prompts per world (`runner/prompts/`). Resumable (it
+  skips finished runs and redoes killed or errored ones), retries provider errors with backoff,
+  and enforces step, token and dollar caps per run (`--max-steps`, `--max-tokens`, `--max-cost`).
+  `--sample N` runs a seeded subset. Records tokens, cost, steps and stop reason per run.
+- Model adapters (`runner/models.py`): any LiteLLM model id (extra `litellm`, `litellm==1.104.2`),
+  and fake models for CI: `fake:golden`, `fake:wrong` and `fake:idle` replay a task's run files.
+- Traces as JSONL per run, plus OpenTelemetry spans (`spans.jsonl`; OTLP or Langfuse by
+  environment variable, extra `otlp`).
+- Scoring (`runner/score.py`): per-task pass rate; per model `overall` and `task_success_rate`
+  with 95% bootstrap intervals over tasks, `safe_action_rate`, `avg_cost_usd`, `avg_steps`,
+  `by_category` and failure counts. Hidden runs are scored only in aggregate.
+- `sandbox export <run-dir>... --out <dir> --updated YYYY-MM-DD`: `worlds.json` and each world's
+  `results.json`, `tasks.json` (public tasks only) and `traces/<run_id>.json`, in the
+  leaderboard's format (`results-v0.1`), each validated against a JSON Schema in
+  `runner/schemas/` before it is written.
+- `sandbox verify --run <dir>`: replays every recorded run's actions on a fresh world and
+  confirms the same world steps and the same grade.
+- Kit: `kit.scripted` now holds the YAML run player (`RunFile`, `Run`, `Step`, `load_runs`,
+  `resolve_refs`, `play`); `WorldSpec.listing` (`Listing`, `MetricDef`) and
+  `WorldSpec.runs_dir`; `CheckResult.failure_type`; `BaseEpisode.router`.
+- Leaderboard listings for `payments` and `security` (both `preview`).
+
+### Changed — Phase 4
+
+- Both worlds' `graders/runs.py` are thin wrappers over the kit's player, and both worlds'
+  `grade()` record the failure type of every failed check. Their episodes no longer define
+  `router` themselves.
+- `uv.lock`: adding litellm moved `openai`, `huggingface-hub` and `filelock` to older majors (see
+  decision 114).
+
 ### Added — Phase 3S: security operations world (defensive only)
 
 - `worlds/security`, the second world, on the kit with no kit changes: five FastAPI + SQLite

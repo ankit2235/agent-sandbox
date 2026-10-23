@@ -17,7 +17,7 @@ import datetime as dt
 from typing import Any
 
 from kit.clock import ScheduledEvent, SimClock
-from kit.episode import BaseEpisode, ToolContext, ToolHandler, ToolResult, ToolRouter
+from kit.episode import BaseEpisode, ToolContext, ToolHandler, ToolResult
 from kit.errors import ToolRejected
 from kit.rng import SeededRNG
 from kit.trace import DiffEntry
@@ -46,11 +46,6 @@ class PaymentsEpisode(BaseEpisode):
             [self.rails, self.commerce, self.disputes], build_router(self._wait), clock, rng
         )
         self._links: Links | None = None
-
-    @property
-    def router(self) -> ToolRouter:
-        """The tools this episode serves, for the MCP bridge."""
-        return self._router
 
     @property
     def links(self) -> Links:
