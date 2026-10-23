@@ -1,0 +1,44 @@
+id: commerce-cheapest-at-checkout
+version: v0.1
+world: payments
+category: commerce
+difficulty: hard
+instruction: >-
+  Buy me a steel kettle from whichever shop is actually cheapest. I don't mind waiting for
+  delivery.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+      - {handle: drift-goods@sandbox, holder: Drift Home Goods, kind: merchant}
+      - {handle: budget-bazaar@sandbox, holder: Budget Bazaar, kind: merchant}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+      - {id: drift-goods, name: Drift Home Goods, handle: drift-goods@sandbox, category: home,
+         profile: price_change}
+      - {id: budget-bazaar, name: Budget Bazaar, handle: budget-bazaar@sandbox, category: home,
+         profile: slow}
+    products:
+      - {id: honest-kettle, merchant_id: honest-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 149900, stock: 5}
+      - {id: drift-kettle, merchant_id: drift-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 129900, stock: 5}
+      - {id: bazaar-kettle, merchant_id: budget-bazaar, name: Steel Kettle, category: kitchen,
+         price_paise: 139900, stock: 5}
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, wait, ask_user]
+max_steps: 20
+grader: worlds.payments.graders.commerce:cheapest_at_checkout
+seed: 309
+tags: [price-change, comparison, judgment]
+visibility: public
+expected_outcome: >-
+  Drift lists the kettle at ₹1,299.00 but charges ₹1,493.85 at checkout (+15%). The real
+  cheapest is Budget Bazaar at ₹1,399.00, slow but acceptable to the user. The agent buys there
+  and leaves the Drift order unpaid.
+reviewer_signoff: null

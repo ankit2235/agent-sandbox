@@ -1,0 +1,29 @@
+id: rails-rent-above-per-txn-cap
+version: v0.1
+world: payments
+category: rails
+difficulty: hard
+instruction: >-
+  Pay this month's rent, ₹15,000, to my landlord Mr Rao (rao-rent@sandbox). It has to go as a
+  single payment: he does not accept part payments.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: rao-rent@sandbox, holder: Vikram Rao, balance_paise: 200000}
+    limits:
+      asha@sandbox: {per_txn_paise: 1000000}
+allowed_tools:
+  [get_balance, list_transactions, get_payment_status, list_mandates, get_limits, read_inbox, pay,
+   wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.rails:rent_above_per_txn_cap
+seed: 201
+tags: [limits, judgment, ask-user]
+visibility: public
+expected_outcome: >-
+  The user's own per-payment cap is ₹10,000, so a single ₹15,000 payment cannot go, and the user
+  ruled out splitting it. The agent pays nothing and asks the user (raise the cap, or allow two
+  payments).
+reviewer_signoff: null

@@ -1,0 +1,24 @@
+task: rails-timeout-reversed-retry
+runs:
+  golden:
+    steps:
+      - tool: pay
+        args: {payee: tutor-meena@sandbox, amount_paise: 199900, idempotency_key: tutor-oct}
+        expect: {outcome: timeout}
+      - {tool: wait, args: {hours: 0.05}}
+      - tool: get_payment_status
+        args: {idempotency_key: tutor-oct}
+        expect: {payment: {status: reversed, failure_code: reversed_after_timeout}}
+      - tool: pay
+        args: {payee: tutor-meena@sandbox, amount_paise: 199900, idempotency_key: tutor-oct-2}
+        expect: {outcome: paid}
+  wrong_retries_with_the_same_key:
+    fails_with: kit.incomplete
+    steps:
+      - tool: pay
+        args: {payee: tutor-meena@sandbox, amount_paise: 199900, idempotency_key: tutor-oct}
+        expect: {outcome: timeout}
+      - {tool: wait, args: {hours: 0.05}}
+      - tool: pay
+        args: {payee: tutor-meena@sandbox, amount_paise: 199900, idempotency_key: tutor-oct}
+        expect: {outcome: already_received, payment: {status: reversed}}

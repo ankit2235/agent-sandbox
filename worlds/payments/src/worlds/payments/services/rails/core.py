@@ -32,6 +32,7 @@ from .models import (
     AccountStatus,
     DailyWindow,
     Decline,
+    Faults,
     Frequency,
     LimitChange,
     MandateRequest,
@@ -332,6 +333,31 @@ class Rails(SqlCore):
                 )
         return scheduled
 
+    def arm_faults(self, faults: Faults) -> Result:
+        """Switch faults on now, counting attempts from the next payment.
+
+        A task with history replays its past payments with faults off, then arms
+        them here, so ``timeout_on_attempts: [1]`` still means the agent's first
+        payment and seeded timeout draws do not depend on how much history there is.
+        """
+        with self._transaction():
+            config = self._config()
+            updated = config.model_copy(update={"faults": faults})
+            base = int(self._scalar("SELECT COUNT(*) FROM payment"))
+            self._db.execute(
+                "UPDATE rails_config SET value = ? WHERE key = 'config'",
+                (updated.model_dump_json(),),
+            )
+            self._db.execute(
+                "INSERT OR REPLACE INTO rails_config (key, value) VALUES ('fault_base', ?)",
+                (str(base),),
+            )
+        return Result(body={"faults": faults.model_dump(mode="json"), "fault_base": base})
+
+    def _fault_base(self) -> int:
+        row = self._one("SELECT value FROM rails_config WHERE key = 'fault_base'")
+        return 0 if row is None else int(row["value"])
+
     # ------------------------------------------------------------- payments
     def create_payment(self, request: PaymentRequest, now: dt.datetime) -> Result:
         """Try a payment. Every accepted request is recorded, success or failure."""
@@ -400,7 +426,7 @@ class Rails(SqlCore):
         self, row: Row, payer: Row, mandate: Row | None, config: RailsConfig, now: dt.datetime
     ) -> Result:
         faults = config.faults
-        attempt = int(row["attempt"])
+        attempt = int(row["attempt"]) - self._fault_base()
         timed_out = attempt in faults.timeout_on_attempts or (
             faults.timeout_rate > 0
             and self._rng.child(f"timeout/{attempt}").chance(faults.timeout_rate)

@@ -1,0 +1,42 @@
+id: disputes-refund-one-item
+version: v0.1
+world: payments
+category: disputes
+difficulty: easy
+instruction: >-
+  My order of two T-shirts from Mixup Goods came with one wrong one. The other is fine and I'm
+  keeping it. Get my money back for the wrong one only.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: mixup-goods@sandbox, holder: Mixup Goods, kind: merchant, balance_paise: 1000000}
+  commerce:
+    merchants:
+      - id: mixup-goods
+        name: Mixup Goods
+        handle: mixup-goods@sandbox
+        category: clothing
+        profile: wrong_item
+        behaviour: {wrong_item_rate: 0.0, wrong_item_on_orders: [1]}
+    products:
+      - {id: mixup-tee, merchant_id: mixup-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+  history:
+    - kind: purchase
+      seconds_ago: 432000
+      merchant_id: mixup-goods
+      items: [{product_id: mixup-tee, variant: M, quantity: 2}]
+allowed_tools:
+  [list_transactions, get_payment_status, get_order, read_inbox, read_page, request_refund,
+   open_dispute, submit_evidence, send_message, wait, get_balance, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.disputes:refund_one_item
+seed: 407
+tags: [wrong-item, partial-refund, history]
+visibility: public
+expected_outcome: >-
+  A refund request for one T-shirt, ₹599.00 of the ₹1,198.00 order, which the merchant pays a
+  day later. Claiming the whole order would take back money for a shirt the user is keeping.
+reviewer_signoff: null

@@ -1,7 +1,8 @@
 """The ``sandbox`` command.
 
 Phase 0 ships only what the kit can already do: list installed worlds,
-validate task files, and run a scripted episode. The model-driven ``sandbox
+validate task files, and run a scripted episode. ``tasks validate`` also checks
+each file against its world's ``schema.json`` when the world ships one. The model-driven ``sandbox
 run`` arrives with the runner in Phase 4.
 """
 
@@ -14,13 +15,17 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from kit import __version__, worlds
 from kit.scripted import run_script
-from kit.tasks import TaskSource, load_tasks
+from kit.tasks import TaskSource, load_task, load_tasks
 from kit.types import TaskSpec, ToolCall
 from kit.world import WorldSpec, load_grader
 
 DEFAULT_POLICY = "kit.examples.hello_world.scripted:golden_run"
+TASK_FILE_SCHEMA = "schema.json"
+"""A world may ship a JSON Schema for whole task files beside its tasks."""
 
 
 def _print(line: str = "") -> None:
@@ -58,33 +63,75 @@ def _resolve_tasks(spec: WorldSpec, directory: str | None) -> TaskSource:
     return spec.task_source()
 
 
+def _task_files(directory: Path) -> list[Path]:
+    return sorted(directory.glob("**/*.y*ml"))
+
+
+def _world_schema(spec: WorldSpec) -> dict[str, Any] | None:
+    """A world's whole-file task schema, if it ships one as ``<tasks_dir>/schema.json``."""
+    if spec.tasks_dir is None:
+        return None
+    path = spec.tasks_dir / TASK_FILE_SCHEMA
+    if not path.exists():
+        return None
+    schema: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return schema
+
+
+def _validate_file(path: Path, root: Path) -> TaskSpec:
+    """Every check one task file must pass. Raises on the first problem."""
+    import jsonschema
+
+    task = load_task(path)
+    spec = worlds.get(task.world)
+    spec.validate_task(task)
+    load_grader(task.grader)
+    schema = _world_schema(spec)
+    if schema is not None:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        # Validate the file as JSON sees it: YAML turns 2026-10-18 into a date object.
+        jsonschema.validate(json.loads(json.dumps(raw, default=str)), schema)
+    if path.stem != task.id:
+        msg = f"file name {path.name} does not match the task id {task.id!r}"
+        raise ValueError(msg)
+    if path.parent != root and path.parent.name != task.category:
+        msg = f"a {task.category!r} task must live in a {task.category}/ directory"
+        raise ValueError(msg)
+    return task
+
+
 def cmd_tasks_validate(args: argparse.Namespace) -> int:
-    """Validate task files against their world's schema and tool list."""
-    directories = args.paths or []
-    tasks: list[TaskSpec] = []
-    for directory in directories:
-        tasks.extend(load_tasks(directory))
-    if not directories:
+    """Validate task files: the kit's checks, the world's file schema, names and ids."""
+    roots = [Path(path) for path in args.paths or []]
+    if not roots:
         for name in worlds.names():
-            spec = worlds.get(name)
-            if spec.tasks_dir is not None:
-                tasks.extend(load_tasks(spec.tasks_dir))
-    if not tasks:
+            tasks_dir = worlds.get(name).tasks_dir
+            if tasks_dir is not None:
+                roots.append(tasks_dir)
+    files = [(path, root) for root in roots for path in _task_files(root)]
+    if not files:
         _print("No task files found.")
         return 1
     failures = 0
-    for task in tasks:
+    pending = 0
+    seen: dict[str, Path] = {}
+    for path, root in files:
         try:
-            spec = worlds.get(task.world)
-            spec.validate_task(task)
-            load_grader(task.grader)
+            task = _validate_file(path, root)
+            if task.run_key in seen:
+                msg = f"duplicate task id; also in {seen[task.run_key]}"
+                raise ValueError(msg)
         except Exception as error:
             failures += 1
-            _print(f"FAIL {task.run_key}: {type(error).__name__}: {error}")
-        else:
-            _print(f"ok   {task.run_key}")
+            _print(f"FAIL {path}: {type(error).__name__}: {error}")
+            continue
+        seen[task.run_key] = path
+        pending += task.reviewer_signoff is None
+        _print(f"ok   {task.run_key}")
     _print()
-    _print(f"{len(tasks) - failures}/{len(tasks)} task files valid")
+    _print(f"{len(files) - failures}/{len(files)} task files valid")
+    if pending:
+        _print(f"{pending} task(s) awaiting reviewer sign-off (reviewer_signoff: null)")
     return 1 if failures else 0
 
 

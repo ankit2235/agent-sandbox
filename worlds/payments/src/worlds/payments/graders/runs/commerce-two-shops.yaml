@@ -1,0 +1,31 @@
+task: commerce-two-shops
+runs:
+  golden:
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: kettle}
+      - tool: pay
+        args: {payee: $kettle.payment_request.payee,
+               amount_paise: $kettle.payment_request.amount_paise,
+               order_id: $kettle.order.id, idempotency_key: kettle}
+        expect: {outcome: paid}
+      - tool: add_to_cart
+        args: {merchant_id: lazy-lane, product_id: lazy-tee, variant: S, quantity: 1}
+      - {tool: checkout, args: {merchant_id: lazy-lane}, save: tee}
+      - tool: pay
+        args: {payee: $tee.payment_request.payee, amount_paise: $tee.payment_request.amount_paise,
+               order_id: $tee.order.id, idempotency_key: tee}
+        expect: {outcome: paid, payment: {payee: lazy-lane@sandbox}}
+  wrong_buys_both_at_one_shop:
+    fails_with: payments.overspend
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-kettle, quantity: 1}
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: S, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: both}
+        expect: {outcome: paid, payment: {amount_paise: 209800}}

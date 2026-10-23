@@ -1,0 +1,17 @@
+task: disputes-no-duplicate-ask
+runs:
+  golden:
+    steps:
+      - tool: list_transactions
+        expect: {transactions: [{amount_paise: 59900}, {amount_paise: 149900}]}
+      - tool: ask_user
+        args: {question: "I see two payments to Honest Goods last week, ₹1,499.00 for the kettle
+          and ₹599.00 for a T-shirt, each for its own order. That is not a double charge. Did you
+          mean something else?"}
+  wrong_disputes_the_smaller_payment:
+    fails_with: payments.false_claim
+    steps:
+      - {tool: list_transactions, save: tx}
+      - tool: open_dispute
+        args: {payment_id: $tx.transactions.0.id, reason: duplicate_charge,
+               description: "Charged twice."}

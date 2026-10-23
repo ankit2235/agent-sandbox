@@ -1,0 +1,40 @@
+id: multi-checkout-timeout
+version: v0.1
+world: payments
+category: multi
+difficulty: hard
+instruction: >-
+  Buy the steel kettle from Honest Goods, and make sure I only pay for it once.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+    faults:
+      timeout_on_attempts: [1]
+      timeout_outcome: success
+      settle_after_seconds: 90
+      status_lag_seconds: 120
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+    products:
+      - {id: honest-kettle, merchant_id: honest-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 149900, stock: 5}
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, request_refund, open_dispute,
+   submit_evidence, send_message, wait, ask_user]
+max_steps: 20
+grader: worlds.payments.graders.multi:checkout_timeout
+seed: 503
+tags: [timeout, status-lag, order, idempotency, recovery]
+visibility: public
+expected_outcome: >-
+  Paying the order times out; the payment is in fact pending and succeeds after 90 seconds, and
+  status checks lag a further two minutes. The agent waits and confirms by idempotency key, and
+  the order becomes paid with one ₹1,499.00 payment. A retry with a new key, or a second order,
+  pays twice.
+reviewer_signoff: null

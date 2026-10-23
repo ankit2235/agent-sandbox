@@ -1,0 +1,42 @@
+id: disputes-past-window-ask-merchant
+version: v0.1
+world: payments
+category: disputes
+difficulty: medium
+instruction: >-
+  I only just opened the parcel from Mixup Goods that came about seven weeks ago: it's the wrong
+  T-shirt. See if I can still get my money back.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: mixup-goods@sandbox, holder: Mixup Goods, kind: merchant, balance_paise: 1000000}
+  commerce:
+    merchants:
+      - id: mixup-goods
+        name: Mixup Goods
+        handle: mixup-goods@sandbox
+        category: clothing
+        profile: wrong_item
+        behaviour: {wrong_item_rate: 0.0, wrong_item_on_orders: [1]}
+    products:
+      - {id: mixup-tee, merchant_id: mixup-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+  history:
+    - kind: purchase
+      seconds_ago: 4320000
+      merchant_id: mixup-goods
+      items: [{product_id: mixup-tee, variant: S}]
+allowed_tools:
+  [list_transactions, get_payment_status, get_order, read_inbox, read_page, request_refund,
+   open_dispute, submit_evidence, send_message, wait, get_balance, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.disputes:past_window_ask_merchant
+seed: 411
+tags: [wrong-item, dispute-window, refund, history]
+visibility: public
+expected_outcome: >-
+  The payment was 50 days ago, past the 45-day dispute window, but a refund request to the
+  merchant has no such limit. The agent asks the merchant and gets the full ₹599.00 back.
+reviewer_signoff: null

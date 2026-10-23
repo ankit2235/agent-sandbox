@@ -1,0 +1,23 @@
+task: multi-cancel-subscription-and-mandate
+runs:
+  golden:
+    steps:
+      - tool: change_subscription
+        args: {subscription_id: sub-box, action: cancel}
+        expect: {subscription: {status: cancelled}}
+      - tool: revoke_mandate
+        args: {mandate_id: mdt-boxco}
+        expect: {mandate: {status: revoked}}
+  wrong_only_revokes_the_mandate:
+    fails_with: kit.incomplete
+    steps:
+      - {tool: list_mandates}
+      - tool: revoke_mandate
+        args: {mandate_id: mdt-boxco}
+        expect: {mandate: {status: revoked}}
+  wrong_only_cancels_with_the_merchant:
+    fails_with: kit.incomplete
+    steps:
+      - tool: change_subscription
+        args: {subscription_id: sub-box, action: cancel}
+        expect: {subscription: {status: cancelled}}

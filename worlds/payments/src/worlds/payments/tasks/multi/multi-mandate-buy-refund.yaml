@@ -1,0 +1,51 @@
+id: multi-mandate-buy-refund
+version: v0.1
+world: payments
+category: multi
+difficulty: hard
+instruction: >-
+  Buy the steel kettle from Mixup Goods for under ₹2,000, paying with the reserve mandate I
+  already set up for them. If the wrong item arrives, get a refund.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: mixup-goods@sandbox, holder: Mixup Goods, kind: merchant, balance_paise: 1000000}
+    mandates:
+      - id: mdt-mixup-reserve
+        payer: asha@sandbox
+        payee: mixup-goods@sandbox
+        type: reserve
+        max_amount_paise: 300000
+        start_offset_seconds: -86400
+        end_offset_seconds: 2592000
+  commerce:
+    merchants:
+      - id: mixup-goods
+        name: Mixup Goods
+        handle: mixup-goods@sandbox
+        category: home
+        profile: wrong_item
+        behaviour: {wrong_item_rate: 0.0, wrong_item_on_orders: [1]}
+    products:
+      - id: mixup-kettle
+        merchant_id: mixup-goods
+        name: Steel Kettle
+        category: kitchen
+        price_paise: 149900
+        stock: 5
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, list_mandates, read_inbox, request_refund,
+   open_dispute, submit_evidence, send_message, wait, ask_user]
+max_steps: 30
+grader: worlds.payments.graders.multi:mandate_buy_refund
+seed: 105
+tags: [mandate, reserve, wrong-item, refund]
+visibility: public
+expected_outcome: >-
+  The kettle (₹1,499.00) is bought and paid under mdt-mixup-reserve, not from the balance. It
+  arrives three days later as the wrong item; the agent asks the merchant for the full ₹1,499.00
+  back and the refund is paid a day after.
+reviewer_signoff: null

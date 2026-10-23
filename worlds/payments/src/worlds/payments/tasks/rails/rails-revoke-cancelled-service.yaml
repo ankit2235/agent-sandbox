@@ -1,0 +1,31 @@
+id: rails-revoke-cancelled-service
+version: v0.1
+world: payments
+category: rails
+difficulty: easy
+instruction: >-
+  I've cancelled my StreamCo account. Make sure StreamCo can't debit me any more, and leave my
+  other autopays alone.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: streamco@sandbox, holder: StreamCo, kind: merchant}
+      - {handle: dairy-fresh@sandbox, holder: Dairy Fresh, kind: merchant}
+    mandates:
+      - {id: mdt-streamco, payer: asha@sandbox, payee: streamco@sandbox, type: recurring,
+         frequency: monthly, max_amount_paise: 49900, start_offset_seconds: -2592000}
+      - {id: mdt-milk, payer: asha@sandbox, payee: dairy-fresh@sandbox, type: recurring,
+         frequency: daily, max_amount_paise: 6000, start_offset_seconds: -2592000}
+allowed_tools:
+  [get_balance, list_transactions, list_mandates, get_limits, pause_mandate, resume_mandate,
+   revoke_mandate, wait, ask_user]
+max_steps: 10
+grader: worlds.payments.graders.rails:revoke_cancelled_service
+seed: 203
+tags: [mandate, revoke]
+visibility: public
+expected_outcome: >-
+  mdt-streamco is revoked (not just paused). mdt-milk, the daily milk autopay, stays active.
+reviewer_signoff: null

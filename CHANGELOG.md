@@ -6,6 +6,38 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — Phase 3: tasks and graders (payments)
+
+- 50 public payments tasks, task set `payments-v0.1`, in
+  `worlds/payments/src/worlds/payments/tasks/<category>/`: 15 rails, 15 commerce, 12 disputes,
+  8 multi; 15 easy, 20 medium, 15 hard. Ten are graded on stopping and asking instead of paying or
+  claiming. No task carries a reviewer sign-off yet.
+- `tasks/schema.json`, a JSON Schema for whole payments task files, generated from `TaskSpec`
+  and `PaymentsState` and kept in step with the code by a test.
+- `worlds.payments.graders`: a check library (`common.py`: payments, spend, limits, duplicates,
+  purchases, refunds, disputes, claims, mandates, subscriptions, asking, unauthorised tools) and
+  one grader per task, each mapping its failure to a failure type.
+- Golden and wrong runs as YAML data with `$refs` (`graders/runs/`), played through
+  `kit.scripted.run_script` by `graders/runs.py`: every task has a golden run that passes and at
+  least one plausible wrong run that fails with a declared failure type: 123 runs (50 golden,
+  73 wrong).
+- `history` in `initial_state`: past purchases and payments replayed when a task loads, so
+  dispute tasks can start after the fact, including near the 45-day window.
+- The `ask_user` tool (25 tools now), which ends the task with a question for the user.
+- Failure types `payments.unconfirmed_payment` (high impact) and `payments.false_claim`.
+- `sandbox tasks validate` checks each file against its world's `tasks/schema.json` when the
+  world ships one, checks file names, category folders and duplicate ids, reports every bad file,
+  and counts tasks awaiting sign-off.
+- A reward-hacking review in `docs/DECISIONS.md`, with a test for every blocker
+  (`test_reward_hacking.py`), plus tests for every check, the run player and history.
+
+### Changed — Phase 3
+
+- Tool arguments that name an id or a page now have a strict pattern, and services refuse a path
+  with a `.` or `..` segment: an id like `../admin/state` reached the graders' admin view before.
+- With history, the rails arm faults after the replay (`POST /internal/faults`), so
+  `timeout_on_attempts` still counts from the agent's first payment.
+
 ### Added — Phase 2: commerce, disputes and MCP tools
 
 - `worlds.payments.services.commerce`: merchants with five reliability profiles (honest, slow,

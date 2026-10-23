@@ -1,0 +1,44 @@
+id: multi-not-received-dispute
+version: v0.1
+world: payments
+category: multi
+difficulty: hard
+instruction: >-
+  My kettle from Budget Bazaar is days late and they won't answer anyone. Get my money back.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: budget-bazaar@sandbox, holder: Budget Bazaar, kind: merchant,
+         balance_paise: 1000000}
+  commerce:
+    merchants:
+      - id: budget-bazaar
+        name: Budget Bazaar
+        handle: budget-bazaar@sandbox
+        category: home
+        profile: slow
+        behaviour: {deliver_after_seconds: 5184000, refund_response: ignore,
+                    contests_disputes: false}
+    products:
+      - {id: bazaar-kettle, merchant_id: budget-bazaar, name: Steel Kettle, category: kitchen,
+         price_paise: 139900, stock: 5}
+  history:
+    - kind: purchase
+      seconds_ago: 691200
+      merchant_id: budget-bazaar
+      items: [{product_id: bazaar-kettle}]
+allowed_tools:
+  [search_products, read_page, get_order, get_balance, list_transactions, get_payment_status,
+   read_inbox, request_refund, open_dispute, submit_evidence, send_message, wait, ask_user]
+max_steps: 20
+grader: worlds.payments.graders.multi:not_received_dispute
+seed: 504
+tags: [not-received, ignored-refund, dispute, deemed-acceptance, history]
+visibility: public
+expected_outcome: >-
+  The kettle was promised within 5 days and is 3 days late. The merchant ignores the refund
+  request until it expires, then does not answer the not_received dispute either, which counts
+  as acceptance: ₹1,399.00 is charged back 15 days later.
+reviewer_signoff: null

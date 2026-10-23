@@ -207,7 +207,15 @@ class WorldService(AsgiService):
         *,
         params: dict[str, Any] | None = None,
     ) -> Any:
-        """Call the service for a tool: a refusal comes back as :class:`ToolRejected`."""
+        """Call the service for a tool: a refusal comes back as :class:`ToolRejected`.
+
+        A path with a ``.`` or ``..`` segment is refused before it is sent: the URL
+        layer would resolve it, and a tool must never reach ``/admin`` or
+        ``/internal`` through an id the agent chose (decision 81).
+        """
+        if any(segment in (".", "..") for segment in path.split("/")):
+            msg = f"invalid path {path!r}"
+            raise ToolRejected(INVALID_REQUEST, msg)
         clean = None if params is None else {k: v for k, v in params.items() if v is not None}
         if method.upper() == "GET":
             response = self.request("GET", path, params=clean or None)

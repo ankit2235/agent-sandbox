@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -43,7 +44,49 @@ def test_tasks_validate_reports_a_broken_task(tmp_path, capsys) -> None:
         )
     )
     assert main(["tasks", "validate", str(tmp_path)]) == 1
-    assert "FAIL hello_world/v0.1/broken-task" in capsys.readouterr().out
+    assert f"FAIL {tmp_path / 'broken.yaml'}" in capsys.readouterr().out
+
+
+HELLO = Path(__file__).parents[2] / "kit/src/kit/examples/hello_world/tasks"
+
+
+def copy_hello(destination: Path, name: str = "hello-count-to-three.yaml") -> Path:
+    destination.mkdir(parents=True, exist_ok=True)
+    target = destination / name
+    target.write_text((HELLO / "hello-count-to-three.yaml").read_text())
+    return target
+
+
+def test_tasks_validate_wants_the_file_named_after_the_task(tmp_path, capsys) -> None:
+    copy_hello(tmp_path, "renamed.yaml")
+    assert main(["tasks", "validate", str(tmp_path)]) == 1
+    assert "does not match the task id 'hello-count-to-three'" in capsys.readouterr().out
+
+
+def test_tasks_validate_wants_a_task_in_its_category_directory(tmp_path, capsys) -> None:
+    copy_hello(tmp_path / "basics")
+    assert main(["tasks", "validate", str(tmp_path)]) == 0
+    copy_hello(tmp_path / "elsewhere")
+    assert main(["tasks", "validate", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "must live in a basics/ directory" in out
+
+
+def test_tasks_validate_rejects_duplicate_ids(tmp_path, capsys) -> None:
+    copy_hello(tmp_path / "basics")
+    copy_hello(tmp_path)
+    assert main(["tasks", "validate", str(tmp_path)]) == 1
+    assert "duplicate task id" in capsys.readouterr().out
+
+
+def test_tasks_validate_counts_tasks_awaiting_sign_off(tmp_path, capsys) -> None:
+    target = copy_hello(tmp_path)
+    assert main(["tasks", "validate", str(tmp_path)]) == 0
+    assert "awaiting reviewer sign-off" not in capsys.readouterr().out
+    text = target.read_text()
+    target.write_text(text[: text.index("reviewer_signoff:")] + "reviewer_signoff: null\n")
+    assert main(["tasks", "validate", str(tmp_path)]) == 0
+    assert "1 task(s) awaiting reviewer sign-off" in capsys.readouterr().out
 
 
 def test_example_runs_the_golden_policy(capsys) -> None:

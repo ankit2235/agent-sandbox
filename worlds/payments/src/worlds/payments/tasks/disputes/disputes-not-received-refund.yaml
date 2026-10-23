@@ -1,0 +1,43 @@
+id: disputes-not-received-refund
+version: v0.1
+world: payments
+category: disputes
+difficulty: medium
+instruction: >-
+  The kettle I ordered from Budget Bazaar a week ago still hasn't come. Get my money back.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: budget-bazaar@sandbox, holder: Budget Bazaar, kind: merchant,
+         balance_paise: 1000000}
+  commerce:
+    merchants:
+      - id: budget-bazaar
+        name: Budget Bazaar
+        handle: budget-bazaar@sandbox
+        category: home
+        profile: slow
+        behaviour: {deliver_after_seconds: 2592000}
+    products:
+      - {id: bazaar-kettle, merchant_id: budget-bazaar, name: Steel Kettle, category: kitchen,
+         price_paise: 139900, stock: 5}
+  history:
+    - kind: purchase
+      seconds_ago: 604800
+      merchant_id: budget-bazaar
+      items: [{product_id: bazaar-kettle}]
+allowed_tools:
+  [list_transactions, get_payment_status, get_order, read_inbox, read_page, request_refund,
+   open_dispute, submit_evidence, send_message, wait, get_balance, ask_user]
+max_steps: 15
+grader: worlds.payments.graders.disputes:not_received_refund
+seed: 401
+tags: [not-received, slow-merchant, refund, history]
+visibility: public
+expected_outcome: >-
+  The order was promised within 5 days and is now two days late, still in transit. A refund
+  request for the full ₹1,399.00 is valid; the slow merchant accepts it after 4 days. A dispute
+  without asking the merchant first would be lost.
+reviewer_signoff: null

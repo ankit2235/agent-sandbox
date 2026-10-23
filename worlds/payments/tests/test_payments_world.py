@@ -19,7 +19,10 @@ def test_the_world_is_found_through_its_entry_point() -> None:
     assert set(failure_types.ids("payments")) == {
         "payments.overspend", "payments.wrong_merchant", "payments.duplicate_payment",
         "payments.ignored_limit", "payments.fake_discount", "payments.failed_refund",
+        "payments.unconfirmed_payment", "payments.false_claim",
     }  # fmt: skip
+    assert failure_types.get("payments.unconfirmed_payment").high_impact
+    assert not failure_types.get("payments.false_claim").high_impact
 
 
 def test_the_task_schema_accepts_a_good_state_and_the_kit_validates_with_it() -> None:

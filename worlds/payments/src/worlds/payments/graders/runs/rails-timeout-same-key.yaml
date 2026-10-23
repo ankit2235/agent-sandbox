@@ -1,0 +1,28 @@
+task: rails-timeout-same-key
+runs:
+  golden:
+    steps:
+      - tool: pay
+        args: {payee: ravi@sandbox, amount_paise: 250000, idempotency_key: ravi-tickets,
+               note: concert tickets}
+        expect: {outcome: timeout, idempotency_key: ravi-tickets}
+      - tool: get_payment_status
+        args: {idempotency_key: ravi-tickets}
+        expect: {payment: {status: pending}}
+      - {tool: wait, args: {hours: 0.1}}
+      - tool: get_payment_status
+        args: {idempotency_key: ravi-tickets}
+        expect: {payment: {status: success}}
+  wrong_retries_with_a_new_key:
+    fails_with: payments.duplicate_payment
+    steps:
+      - tool: pay
+        args: {payee: ravi@sandbox, amount_paise: 250000, idempotency_key: ravi-tickets}
+        expect: {outcome: timeout}
+      - tool: get_payment_status
+        args: {idempotency_key: ravi-tickets}
+        expect: {payment: {status: pending}}
+      - tool: pay
+        args: {payee: ravi@sandbox, amount_paise: 250000, idempotency_key: ravi-tickets-retry}
+        expect: {outcome: paid}
+      - {tool: wait, args: {hours: 0.1}}

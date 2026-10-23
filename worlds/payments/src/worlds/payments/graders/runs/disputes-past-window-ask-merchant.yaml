@@ -1,0 +1,27 @@
+task: disputes-past-window-ask-merchant
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - tool: get_order
+        args: {order_id: $inbox.messages.0.order_id}
+        save: order
+        expect: {order: {status: wrong_item}}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900, reason: "Wrong item delivered."}
+      - {tool: wait, args: {hours: 24}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {refund_requests: [{status: accepted}]}
+  wrong_gives_up_when_the_dispute_window_is_closed:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: open_dispute
+        args: {payment_id: $order.order.payment_id, reason: wrong_item,
+               description: "Wrong item delivered."}
+        expect_error: dispute_window_closed
+      - tool: ask_user
+        args: {question: "It is past the 45-day dispute window, so the money cannot be recovered.
+          Sorry."}

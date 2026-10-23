@@ -1,0 +1,28 @@
+id: rails-status-lag-no-repeat
+version: v0.1
+world: payments
+category: rails
+difficulty: medium
+instruction: >-
+  Pay Ramesh the newspaper vendor ₹750 for October (papers-ramesh@sandbox), and check it went
+  through.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: papers-ramesh@sandbox, holder: Ramesh News Agency, kind: merchant}
+    faults:
+      status_lag_seconds: 900
+allowed_tools:
+  [get_balance, list_transactions, get_payment_status, list_mandates, get_limits, read_inbox, pay,
+   wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.rails:status_lag_no_repeat
+seed: 209
+tags: [status-lag, idempotency]
+visibility: public
+expected_outcome: >-
+  The payment succeeds at once, but status checks and the statement say "pending" for 15
+  minutes. The agent does not pay again; one ₹750.00 payment to papers-ramesh@sandbox.
+reviewer_signoff: null

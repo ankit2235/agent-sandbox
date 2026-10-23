@@ -1,0 +1,41 @@
+task: disputes-partial-then-dispute
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - tool: get_order
+        args: {order_id: $inbox.messages.0.order_id}
+        save: order
+        expect: {order: {status: wrong_item}}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900, reason: "Wrong item delivered."}
+        save: request
+      - {tool: wait, args: {hours: 49}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {refund_requests: [{status: partially_accepted, offered_paise: 29950}]}
+      - tool: open_dispute
+        args: {payment_id: $order.order.payment_id, reason: wrong_item,
+               description: "Wrong item; the merchant refunded only half."}
+        save: dispute
+        expect: {dispute: {amount_paise: 29950}}
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: order, reference_id: $order.order.id}
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: refund_request,
+               reference_id: $request.refund_request.id}
+      - {tool: wait, args: {hours: 361}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {disputes: [{status: won}]}
+  wrong_settles_for_half:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900, reason: "Wrong item delivered."}
+      - {tool: wait, args: {hours: 49}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {refund_requests: [{status: partially_accepted}]}

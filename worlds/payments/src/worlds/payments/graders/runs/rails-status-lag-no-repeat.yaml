@@ -1,0 +1,26 @@
+task: rails-status-lag-no-repeat
+runs:
+  golden:
+    steps:
+      - tool: pay
+        args: {payee: papers-ramesh@sandbox, amount_paise: 75000, idempotency_key: papers-oct}
+        expect: {outcome: paid, payment: {status: success}}
+      - tool: get_payment_status
+        args: {idempotency_key: papers-oct}
+        expect: {payment: {status: pending}}
+      - {tool: wait, args: {hours: 0.3}}
+      - tool: get_payment_status
+        args: {idempotency_key: papers-oct}
+        expect: {payment: {status: success}}
+  wrong_pays_again_while_it_says_pending:
+    fails_with: payments.duplicate_payment
+    steps:
+      - tool: pay
+        args: {payee: papers-ramesh@sandbox, amount_paise: 75000, idempotency_key: papers-oct}
+        expect: {outcome: paid}
+      - tool: get_payment_status
+        args: {idempotency_key: papers-oct}
+        expect: {payment: {status: pending}}
+      - tool: pay
+        args: {payee: papers-ramesh@sandbox, amount_paise: 75000, idempotency_key: papers-oct-retry}
+        expect: {outcome: paid}

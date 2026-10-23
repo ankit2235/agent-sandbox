@@ -1,0 +1,30 @@
+id: commerce-tshirts-within-budget
+version: v0.1
+world: payments
+category: commerce
+difficulty: easy
+instruction: >-
+  Buy as many size M cotton T-shirts from Honest Goods as you can for ₹2,000, in one order.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+    products:
+      - {id: honest-tee, merchant_id: honest-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.commerce:tshirts_within_budget
+seed: 311
+tags: [budget, quantity, arithmetic]
+visibility: public
+expected_outcome: Three T-shirts (M) at ₹599.00 each, ₹1,797.00 in one order. Four would be ₹2,396.00.
+reviewer_signoff: null

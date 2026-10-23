@@ -22,6 +22,7 @@ from ..common import install_error_handlers, sim_now, written
 from .core import Rails
 from .models import (
     EventRequest,
+    Faults,
     MandateRequest,
     PaymentRequest,
     RailsConfig,
@@ -65,6 +66,10 @@ def create_app(rails: Rails) -> FastAPI:
     @app.post("/internal/load")
     async def load(config: RailsConfig, now: Now) -> JSONResponse:
         return written(rails.load(config, now))
+
+    @app.post("/internal/faults")
+    async def arm_faults(body: Faults, now: Now) -> JSONResponse:
+        return written(rails.arm_faults(body))
 
     @app.post("/internal/events")
     async def event(body: EventRequest, now: Now) -> JSONResponse:

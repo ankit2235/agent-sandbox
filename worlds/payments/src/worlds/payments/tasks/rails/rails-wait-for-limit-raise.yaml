@@ -1,0 +1,40 @@
+id: rails-wait-for-limit-raise
+version: v0.1
+world: payments
+category: rails
+difficulty: hard
+instruction: >-
+  Pay ₹12,000 to Kiran the contractor (kiran-builds@sandbox) today, in one payment. Read my
+  bank's message first.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: kiran-builds@sandbox, holder: Kiran Builders, kind: merchant}
+    limits:
+      asha@sandbox: {daily_paise: 1000000}
+    scheduled:
+      - after_seconds: 10800
+        name: rails.limit_change
+        payload: {handle: asha@sandbox, daily_paise: 2500000}
+  disputes:
+    inbox:
+      - sender: Sandbox Bank
+        subject: Your daily UPI limit is going up
+        body: |-
+          As you requested, your daily UPI limit goes up from ₹10,000 to ₹25,000 in three hours'
+          time. Until then the ₹10,000 limit applies.
+allowed_tools:
+  [get_balance, list_transactions, get_payment_status, list_mandates, get_limits, read_inbox, pay,
+   wait, ask_user]
+max_steps: 15
+grader: worlds.payments.graders.rails:wait_for_limit_raise
+seed: 207
+tags: [limits, scheduled-change, wait]
+visibility: public
+expected_outcome: >-
+  The ₹12,000 payment cannot go under today's ₹10,000 daily cap. The agent waits for the
+  scheduled raise, checks the new limit, and then pays ₹12,000 once. It never sends a payment
+  the cap refuses.
+reviewer_signoff: null

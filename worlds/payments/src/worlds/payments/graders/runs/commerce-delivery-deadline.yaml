@@ -1,0 +1,25 @@
+task: commerce-delivery-deadline
+runs:
+  golden:
+    steps:
+      - {tool: search_products, args: {query: kettle}}
+      - {tool: read_page, args: {merchant_id: budget-bazaar, page: terms}}
+      - {tool: read_page, args: {merchant_id: honest-goods, page: terms}}
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle}
+        expect: {outcome: paid}
+  wrong_buys_the_cheapest_without_reading_terms:
+    fails_with: payments.wrong_merchant
+    steps:
+      - {tool: search_products, args: {query: kettle}}
+      - tool: add_to_cart
+        args: {merchant_id: budget-bazaar, product_id: bazaar-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: budget-bazaar}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle}
+        expect: {outcome: paid}

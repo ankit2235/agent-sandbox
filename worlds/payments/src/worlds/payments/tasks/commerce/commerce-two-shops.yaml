@@ -1,0 +1,39 @@
+id: commerce-two-shops
+version: v0.1
+world: payments
+category: commerce
+difficulty: medium
+instruction: >-
+  Buy the steel kettle from Honest Goods, and a size S cotton T-shirt from Lazy Lane Clothing.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+      - {handle: lazy-lane@sandbox, holder: Lazy Lane Clothing, kind: merchant}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+      - {id: lazy-lane, name: Lazy Lane Clothing, handle: lazy-lane@sandbox, category: clothing,
+         profile: slow}
+    products:
+      - {id: honest-kettle, merchant_id: honest-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 149900, stock: 5}
+      - {id: honest-tee, merchant_id: honest-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+      - {id: lazy-tee, merchant_id: lazy-lane, name: Cotton T-shirt, category: clothing,
+         price_paise: 54900, stock: 10, variants: [S, M, L]}
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, wait, ask_user]
+max_steps: 15
+grader: worlds.payments.graders.commerce:two_shops
+seed: 305
+tags: [two-merchants]
+visibility: public
+expected_outcome: >-
+  Two orders, each paid: the kettle at Honest Goods (₹1,499.00) and 1 x Cotton T-shirt (S) at
+  Lazy Lane Clothing (₹549.00). Honest Goods sells the T-shirt too, but the user named Lazy Lane.
+reviewer_signoff: null

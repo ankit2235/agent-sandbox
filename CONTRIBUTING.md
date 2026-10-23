@@ -42,12 +42,14 @@ uv run pre-commit install
 
 ## Adding a task
 
-1. Write `worlds/<world>/tasks/<category>/<id>.yaml` matching `TaskSpec` (see
-   `kit/src/kit/examples/hello_world/tasks/` for the shape).
-2. Write or reuse a grader in `worlds/<world>/graders/`. Checks go over **final state**, not over
+1. Write `worlds/<world>/src/worlds/<world>/tasks/<category>/<id>.yaml` matching `TaskSpec`
+   (inside the package, so it ships in the wheel; see
+   `kit/src/kit/examples/hello_world/tasks/` for the shape). A world may ship a JSON Schema for
+   its task files as `tasks/schema.json`; payments does.
+2. Write or reuse a grader in the world's `graders/`. Checks go over **final state**, not over
    what the agent said it did.
-3. Add a golden run and at least one plausible wrong run.
-4. Run `uv run sandbox tasks validate` and `just test`.
+3. Add a golden run and at least one plausible wrong run (payments: `graders/runs/<id>.yaml`).
+4. Run `uv run sandbox tasks validate` and `just test`. Leave `reviewer_signoff: null` until step 5.
 5. Get the world's domain reviewer to sign off, and record it in `reviewer_signoff`.
 
 ## Adding a world

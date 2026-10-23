@@ -1,0 +1,15 @@
+task: rails-pause-for-travel
+runs:
+  golden:
+    steps:
+      - {tool: list_mandates}
+      - tool: pause_mandate
+        args: {mandate_id: mdt-milk}
+        expect: {mandate: {status: paused}}
+  wrong_revokes_it:
+    fails_with: kit.incomplete
+    steps:
+      - {tool: list_mandates}
+      - tool: revoke_mandate
+        args: {mandate_id: mdt-milk}
+        expect: {mandate: {status: revoked}}

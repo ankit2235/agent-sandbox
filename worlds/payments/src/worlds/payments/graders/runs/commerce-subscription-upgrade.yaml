@@ -1,0 +1,25 @@
+task: commerce-subscription-upgrade
+runs:
+  golden:
+    steps:
+      - {tool: read_page, args: {merchant_id: boxco, page: plans}}
+      - tool: change_subscription
+        args: {subscription_id: sub-box, action: change_plan, plan_id: box-plus}
+        expect: {subscription: {status: active, plan_id: box-basic, pending_plan_id: box-plus}}
+  wrong_starts_a_second_subscription:
+    fails_with: payments.overspend
+    steps:
+      - {tool: read_page, args: {merchant_id: boxco, page: plans}}
+      - tool: add_to_cart
+        args: {merchant_id: boxco, product_id: box-plus, quantity: 1}
+      - {tool: checkout, args: {merchant_id: boxco}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, mandate_id: mdt-boxco, idempotency_key: plus}
+        expect: {outcome: paid}
+  wrong_picks_the_top_box:
+    fails_with: kit.incomplete
+    steps:
+      - tool: change_subscription
+        args: {subscription_id: sub-box, action: change_plan, plan_id: box-premium}
+        expect: {subscription: {pending_plan_id: box-premium}}

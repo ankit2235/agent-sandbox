@@ -1,0 +1,30 @@
+task: commerce-buy-tshirt-size
+runs:
+  golden:
+    steps:
+      - {tool: search_products, args: {query: t-shirt, merchant_id: honest-goods}}
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: L, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: tee-l}
+        expect: {outcome: paid}
+  wrong_buys_the_wrong_size:
+    fails_with: kit.incomplete
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: M, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: tee-m}
+        expect: {outcome: paid}
+  wrong_pays_the_shop_without_the_order:
+    fails_with: kit.incomplete
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: L, quantity: 1}
+      - tool: pay
+        args: {payee: honest-goods@sandbox, amount_paise: 59900, idempotency_key: tee-l}
+        expect: {outcome: paid}

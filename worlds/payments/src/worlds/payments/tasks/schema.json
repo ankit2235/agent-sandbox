@@ -1,0 +1,1485 @@
+{
+  "$defs": {
+    "AccountSeed": {
+      "additionalProperties": false,
+      "description": "One account a task starts with.",
+      "properties": {
+        "balance_paise": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Balance Paise",
+          "type": "integer"
+        },
+        "handle": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "Handle",
+          "type": "string"
+        },
+        "holder": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Holder",
+          "type": "string"
+        },
+        "kind": {
+          "default": "user",
+          "enum": [
+            "user",
+            "merchant"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/AccountStatus",
+          "default": "active"
+        }
+      },
+      "required": [
+        "handle",
+        "holder"
+      ],
+      "title": "AccountSeed",
+      "type": "object"
+    },
+    "AccountStatus": {
+      "description": "Whether an account can send or receive money.",
+      "enum": [
+        "active",
+        "frozen"
+      ],
+      "title": "AccountStatus",
+      "type": "string"
+    },
+    "BehaviourOverrides": {
+      "additionalProperties": false,
+      "description": "Any behaviour a task wants different from the profile's default.",
+      "properties": {
+        "contests_disputes": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contests Disputes"
+        },
+        "deliver_after_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deliver After Seconds"
+        },
+        "partial_refund_bps": {
+          "anyOf": [
+            {
+              "maximum": 10000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Partial Refund Bps"
+        },
+        "price_change_bps": {
+          "anyOf": [
+            {
+              "maximum": 10000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price Change Bps"
+        },
+        "promised_delivery_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Promised Delivery Seconds"
+        },
+        "refund_reply_after_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Refund Reply After Seconds"
+        },
+        "refund_response": {
+          "anyOf": [
+            {
+              "enum": [
+                "accept",
+                "partial",
+                "ignore"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Refund Response"
+        },
+        "reply_after_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reply After Seconds"
+        },
+        "reply_style": {
+          "anyOf": [
+            {
+              "enum": [
+                "clear",
+                "vague"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reply Style"
+        },
+        "ship_after_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ship After Seconds"
+        },
+        "wrong_item_on_orders": {
+          "anyOf": [
+            {
+              "items": {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wrong Item On Orders"
+        },
+        "wrong_item_rate": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wrong Item Rate"
+        }
+      },
+      "title": "BehaviourOverrides",
+      "type": "object"
+    },
+    "CommerceConfig": {
+      "additionalProperties": false,
+      "description": "The ``commerce`` part of a payments task's ``initial_state``.",
+      "properties": {
+        "merchants": {
+          "items": {
+            "$ref": "#/$defs/MerchantSeed"
+          },
+          "title": "Merchants",
+          "type": "array"
+        },
+        "offers": {
+          "items": {
+            "$ref": "#/$defs/OfferSeed"
+          },
+          "title": "Offers",
+          "type": "array"
+        },
+        "page_content": {
+          "items": {
+            "$ref": "#/$defs/PageContent"
+          },
+          "title": "Page Content",
+          "type": "array"
+        },
+        "plans": {
+          "items": {
+            "$ref": "#/$defs/PlanSeed"
+          },
+          "title": "Plans",
+          "type": "array"
+        },
+        "products": {
+          "items": {
+            "$ref": "#/$defs/ProductSeed"
+          },
+          "title": "Products",
+          "type": "array"
+        },
+        "settings": {
+          "$ref": "#/$defs/CommerceSettings"
+        },
+        "subscriptions": {
+          "items": {
+            "$ref": "#/$defs/SubscriptionSeed"
+          },
+          "title": "Subscriptions",
+          "type": "array"
+        }
+      },
+      "title": "CommerceConfig",
+      "type": "object"
+    },
+    "CommerceSettings": {
+      "additionalProperties": false,
+      "description": "Rules no public source fixes. See docs/DECISIONS.md.",
+      "properties": {
+        "order_payment_window_seconds": {
+          "default": 900,
+          "exclusiveMinimum": 0,
+          "title": "Order Payment Window Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "CommerceSettings",
+      "type": "object"
+    },
+    "DailyWindow": {
+      "description": "How a \"daily\" cap is counted. Public sources disagree, so a task chooses.",
+      "enum": [
+        "rolling_24h",
+        "calendar_day"
+      ],
+      "title": "DailyWindow",
+      "type": "string"
+    },
+    "DisputeSettings": {
+      "additionalProperties": false,
+      "description": "Windows a task may change. Defaults and their sources are in docs/DECISIONS.md.",
+      "properties": {
+        "dispute_response_seconds": {
+          "default": 1296000,
+          "exclusiveMinimum": 0,
+          "title": "Dispute Response Seconds",
+          "type": "integer"
+        },
+        "dispute_window_seconds": {
+          "default": 3888000,
+          "exclusiveMinimum": 0,
+          "title": "Dispute Window Seconds",
+          "type": "integer"
+        },
+        "refund_response_seconds": {
+          "default": 432000,
+          "exclusiveMinimum": 0,
+          "title": "Refund Response Seconds",
+          "type": "integer"
+        },
+        "require_merchant_contact": {
+          "default": true,
+          "title": "Require Merchant Contact",
+          "type": "boolean"
+        }
+      },
+      "title": "DisputeSettings",
+      "type": "object"
+    },
+    "DisputesConfig": {
+      "additionalProperties": false,
+      "description": "The ``disputes`` part of a payments task's ``initial_state``.",
+      "properties": {
+        "inbox": {
+          "items": {
+            "$ref": "#/$defs/InboxSeed"
+          },
+          "title": "Inbox",
+          "type": "array"
+        },
+        "settings": {
+          "$ref": "#/$defs/DisputeSettings"
+        }
+      },
+      "title": "DisputesConfig",
+      "type": "object"
+    },
+    "Faults": {
+      "additionalProperties": false,
+      "description": "Realistic trouble, switched on per task. Every draw is seeded.",
+      "properties": {
+        "settle_after_seconds": {
+          "default": 90,
+          "exclusiveMinimum": 0,
+          "title": "Settle After Seconds",
+          "type": "integer"
+        },
+        "status_lag_seconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Status Lag Seconds",
+          "type": "integer"
+        },
+        "timeout_on_attempts": {
+          "items": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "title": "Timeout On Attempts",
+          "type": "array"
+        },
+        "timeout_outcome": {
+          "default": "success",
+          "enum": [
+            "success",
+            "reversed"
+          ],
+          "title": "Timeout Outcome",
+          "type": "string"
+        },
+        "timeout_rate": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Timeout Rate",
+          "type": "number"
+        }
+      },
+      "title": "Faults",
+      "type": "object"
+    },
+    "Frequency": {
+      "description": "How often a recurring mandate may be debited: once per calendar period, in IST.",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly"
+      ],
+      "title": "Frequency",
+      "type": "string"
+    },
+    "InboxSeed": {
+      "additionalProperties": false,
+      "description": "A message in the user's inbox at the start, or arriving later.",
+      "properties": {
+        "after_seconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "After Seconds",
+          "type": "integer"
+        },
+        "body": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Body",
+          "type": "string"
+        },
+        "merchant_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Merchant Id"
+        },
+        "order_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Order Id"
+        },
+        "sender": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Sender",
+          "type": "string"
+        },
+        "subject": {
+          "maxLength": 140,
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sender",
+        "subject",
+        "body"
+      ],
+      "title": "InboxSeed",
+      "type": "object"
+    },
+    "LimitChange": {
+      "additionalProperties": false,
+      "description": "A cap change at a scheduled time. Only the fields given are changed.",
+      "properties": {
+        "daily_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Daily Paise"
+        },
+        "handle": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "Handle",
+          "type": "string"
+        },
+        "monthly_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Monthly Paise"
+        },
+        "per_merchant_daily_paise": {
+          "anyOf": [
+            {
+              "patternProperties": {
+                "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$": {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Per Merchant Daily Paise"
+        },
+        "per_txn_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Per Txn Paise"
+        }
+      },
+      "required": [
+        "handle"
+      ],
+      "title": "LimitChange",
+      "type": "object"
+    },
+    "LimitsSeed": {
+      "additionalProperties": false,
+      "description": "A payer's caps. ``None`` means no cap of that kind.",
+      "properties": {
+        "daily_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Daily Paise"
+        },
+        "monthly_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Monthly Paise"
+        },
+        "per_merchant_daily_paise": {
+          "patternProperties": {
+            "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$": {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            }
+          },
+          "title": "Per Merchant Daily Paise",
+          "type": "object"
+        },
+        "per_txn_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Per Txn Paise"
+        }
+      },
+      "title": "LimitsSeed",
+      "type": "object"
+    },
+    "MandateSeed": {
+      "additionalProperties": false,
+      "description": "One mandate a task starts with. Times are offsets from the moment the task loads.",
+      "properties": {
+        "end_offset_seconds": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Offset Seconds"
+        },
+        "frequency": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Frequency"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "max_amount_paise": {
+          "exclusiveMinimum": 0,
+          "title": "Max Amount Paise",
+          "type": "integer"
+        },
+        "payee": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "Payee",
+          "type": "string"
+        },
+        "payer": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "Payer",
+          "type": "string"
+        },
+        "remaining_limit_paise": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remaining Limit Paise"
+        },
+        "start_offset_seconds": {
+          "default": 0,
+          "title": "Start Offset Seconds",
+          "type": "integer"
+        },
+        "status": {
+          "default": "active",
+          "enum": [
+            "active",
+            "paused",
+            "revoked"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/MandateType"
+        }
+      },
+      "required": [
+        "id",
+        "payer",
+        "payee",
+        "type",
+        "max_amount_paise"
+      ],
+      "title": "MandateSeed",
+      "type": "object"
+    },
+    "MandateType": {
+      "description": "The three mandate shapes UPI publicly describes.",
+      "enum": [
+        "recurring",
+        "one_time",
+        "reserve"
+      ],
+      "title": "MandateType",
+      "type": "string"
+    },
+    "MerchantSeed": {
+      "additionalProperties": false,
+      "description": "One merchant a task starts with. Its handle must be a merchant account in the rails.",
+      "properties": {
+        "behaviour": {
+          "$ref": "#/$defs/BehaviourOverrides"
+        },
+        "category": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "handle": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "Handle",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "pages": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Pages",
+          "type": "object"
+        },
+        "profile": {
+          "$ref": "#/$defs/Profile",
+          "default": "honest"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "handle",
+        "category"
+      ],
+      "title": "MerchantSeed",
+      "type": "object"
+    },
+    "OfferSeed": {
+      "additionalProperties": false,
+      "description": "A discount code. Exactly one of ``percent_off`` and ``flat_off_paise``.",
+      "properties": {
+        "code": {
+          "pattern": "^[A-Z0-9][A-Z0-9_-]{0,31}$",
+          "title": "Code",
+          "type": "string"
+        },
+        "expires_after_seconds": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires After Seconds"
+        },
+        "first_order_only": {
+          "default": false,
+          "title": "First Order Only",
+          "type": "boolean"
+        },
+        "flat_off_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Flat Off Paise"
+        },
+        "max_discount_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Discount Paise"
+        },
+        "merchant_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "min_cart_paise": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Min Cart Paise",
+          "type": "integer"
+        },
+        "percent_off": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Percent Off"
+        },
+        "product_ids": {
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+            "type": "string"
+          },
+          "title": "Product Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "merchant_id"
+      ],
+      "title": "OfferSeed",
+      "type": "object"
+    },
+    "PageContent": {
+      "additionalProperties": false,
+      "description": "Extra text on a merchant page. The extension point for Phase 5's stress content.",
+      "properties": {
+        "merchant_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "mode": {
+          "default": "append",
+          "enum": [
+            "append",
+            "prepend",
+            "replace"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "page": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Page",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "merchant_id",
+        "page",
+        "text"
+      ],
+      "title": "PageContent",
+      "type": "object"
+    },
+    "PastItem": {
+      "additionalProperties": false,
+      "description": "One line of a past purchase.",
+      "properties": {
+        "product_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Product Id",
+          "type": "string"
+        },
+        "quantity": {
+          "default": 1,
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "variant": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Variant"
+        }
+      },
+      "required": [
+        "product_id"
+      ],
+      "title": "PastItem",
+      "type": "object"
+    },
+    "PastPayment": {
+      "additionalProperties": false,
+      "description": "A payment the user sent before the task starts, outside any order.",
+      "properties": {
+        "amount_paise": {
+          "exclusiveMinimum": 0,
+          "title": "Amount Paise",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "payment",
+          "title": "Kind",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 140,
+          "title": "Note",
+          "type": "string"
+        },
+        "payee": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "Payee",
+          "type": "string"
+        },
+        "seconds_ago": {
+          "exclusiveMinimum": 0,
+          "title": "Seconds Ago",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "seconds_ago",
+        "payee",
+        "amount_paise"
+      ],
+      "title": "PastPayment",
+      "type": "object"
+    },
+    "PastPurchase": {
+      "additionalProperties": false,
+      "description": "An order the user placed and paid at a merchant before the task starts.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/PastItem"
+          },
+          "minItems": 1,
+          "title": "Items",
+          "type": "array"
+        },
+        "kind": {
+          "const": "purchase",
+          "title": "Kind",
+          "type": "string"
+        },
+        "merchant_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "offer_code": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Offer Code"
+        },
+        "seconds_ago": {
+          "exclusiveMinimum": 0,
+          "title": "Seconds Ago",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "seconds_ago",
+        "merchant_id",
+        "items"
+      ],
+      "title": "PastPurchase",
+      "type": "object"
+    },
+    "PaymentsState": {
+      "additionalProperties": false,
+      "description": "``initial_state`` for every payments task. The agent acts as ``user``.",
+      "properties": {
+        "commerce": {
+          "$ref": "#/$defs/CommerceConfig"
+        },
+        "disputes": {
+          "$ref": "#/$defs/DisputesConfig"
+        },
+        "history": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "payment": "#/$defs/PastPayment",
+                "purchase": "#/$defs/PastPurchase"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/PastPurchase"
+              },
+              {
+                "$ref": "#/$defs/PastPayment"
+              }
+            ]
+          },
+          "title": "History",
+          "type": "array"
+        },
+        "rails": {
+          "$ref": "#/$defs/RailsConfig"
+        },
+        "user": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "User",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user",
+        "rails"
+      ],
+      "title": "PaymentsState",
+      "type": "object"
+    },
+    "PlanSeed": {
+      "additionalProperties": false,
+      "description": "A subscription plan, billed through a recurring mandate.",
+      "properties": {
+        "description": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Description",
+          "type": "string"
+        },
+        "frequency": {
+          "$ref": "#/$defs/Frequency"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "merchant_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "price_paise": {
+          "exclusiveMinimum": 0,
+          "title": "Price Paise",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "merchant_id",
+        "name",
+        "price_paise",
+        "frequency"
+      ],
+      "title": "PlanSeed",
+      "type": "object"
+    },
+    "ProductSeed": {
+      "additionalProperties": false,
+      "description": "Something a merchant sells.",
+      "properties": {
+        "category": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "merchant_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "price_paise": {
+          "exclusiveMinimum": 0,
+          "title": "Price Paise",
+          "type": "integer"
+        },
+        "stock": {
+          "default": 10,
+          "minimum": 0,
+          "title": "Stock",
+          "type": "integer"
+        },
+        "variants": {
+          "items": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Variants",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "merchant_id",
+        "name",
+        "category",
+        "price_paise"
+      ],
+      "title": "ProductSeed",
+      "type": "object"
+    },
+    "Profile": {
+      "description": "The five reliability profiles the phase prompt names.",
+      "enum": [
+        "honest",
+        "slow",
+        "wrong_item",
+        "price_change",
+        "unclear_refund_policy"
+      ],
+      "title": "Profile",
+      "type": "string"
+    },
+    "RailsConfig": {
+      "additionalProperties": false,
+      "description": "The ``rails`` part of a payments task's ``initial_state``.",
+      "properties": {
+        "accounts": {
+          "items": {
+            "$ref": "#/$defs/AccountSeed"
+          },
+          "minItems": 1,
+          "title": "Accounts",
+          "type": "array"
+        },
+        "faults": {
+          "$ref": "#/$defs/Faults"
+        },
+        "limits": {
+          "patternProperties": {
+            "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$": {
+              "$ref": "#/$defs/LimitsSeed"
+            }
+          },
+          "title": "Limits",
+          "type": "object"
+        },
+        "mandates": {
+          "items": {
+            "$ref": "#/$defs/MandateSeed"
+          },
+          "title": "Mandates",
+          "type": "array"
+        },
+        "scheduled": {
+          "items": {
+            "$ref": "#/$defs/ScheduledChange"
+          },
+          "title": "Scheduled",
+          "type": "array"
+        },
+        "settings": {
+          "$ref": "#/$defs/Settings"
+        }
+      },
+      "required": [
+        "accounts"
+      ],
+      "title": "RailsConfig",
+      "type": "object"
+    },
+    "ScheduledChange": {
+      "additionalProperties": false,
+      "description": "Something the world does on its own, ``after_seconds`` after the task loads.",
+      "properties": {
+        "after_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "After Seconds",
+          "type": "integer"
+        },
+        "name": {
+          "const": "rails.limit_change",
+          "title": "Name",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/LimitChange"
+        }
+      },
+      "required": [
+        "after_seconds",
+        "name",
+        "payload"
+      ],
+      "title": "ScheduledChange",
+      "type": "object"
+    },
+    "Settings": {
+      "additionalProperties": false,
+      "description": "Rules public sources leave open. See docs/DECISIONS.md.",
+      "properties": {
+        "daily_window": {
+          "$ref": "#/$defs/DailyWindow",
+          "default": "rolling_24h"
+        },
+        "reserve_max_block_paise": {
+          "default": 1000000,
+          "exclusiveMinimum": 0,
+          "title": "Reserve Max Block Paise",
+          "type": "integer"
+        },
+        "reserve_max_validity_seconds": {
+          "default": 7776000,
+          "exclusiveMinimum": 0,
+          "title": "Reserve Max Validity Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "Settings",
+      "type": "object"
+    },
+    "Signoff": {
+      "additionalProperties": false,
+      "description": "A named human taking responsibility for a task or grader.",
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "role",
+        "date"
+      ],
+      "title": "Signoff",
+      "type": "object"
+    },
+    "SubscriptionSeed": {
+      "additionalProperties": false,
+      "description": "A subscription the user already has, billed through a mandate in the rails.",
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "mandate_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Mandate Id",
+          "type": "string"
+        },
+        "next_billing_after_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Next Billing After Seconds",
+          "type": "integer"
+        },
+        "plan_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Plan Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "plan_id",
+        "mandate_id",
+        "next_billing_after_seconds"
+      ],
+      "title": "SubscriptionSeed",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One unit of work given to an agent, and everything needed to reproduce it.",
+  "properties": {
+    "allowed_tools": {
+      "contains": {
+        "const": "ask_user"
+      },
+      "items": {
+        "enum": [
+          "get_balance",
+          "list_transactions",
+          "get_payment_status",
+          "list_mandates",
+          "get_limits",
+          "search_products",
+          "read_page",
+          "view_cart",
+          "get_order",
+          "read_inbox",
+          "add_to_cart",
+          "apply_offer",
+          "checkout",
+          "pay",
+          "create_mandate",
+          "pause_mandate",
+          "resume_mandate",
+          "revoke_mandate",
+          "request_refund",
+          "open_dispute",
+          "submit_evidence",
+          "send_message",
+          "change_subscription",
+          "wait",
+          "ask_user"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "category": {
+      "enum": [
+        "rails",
+        "commerce",
+        "disputes",
+        "multi"
+      ]
+    },
+    "difficulty": {
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "expected_outcome": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "grader": {
+      "pattern": "^worlds\\.payments\\.graders\\.[a-z_]+:[a-z_][a-z0-9_]*$",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9_\\-.]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "initial_state": {
+      "$ref": "#/$defs/PaymentsState"
+    },
+    "instruction": {
+      "minLength": 1,
+      "title": "Instruction",
+      "type": "string"
+    },
+    "max_steps": {
+      "exclusiveMinimum": 0,
+      "title": "Max Steps",
+      "type": "integer"
+    },
+    "reviewer_signoff": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Signoff"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "seed": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "stress": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Stress",
+      "type": "array"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "version": {
+      "pattern": "^[a-z0-9][a-z0-9_\\-.]*$",
+      "title": "Version",
+      "type": "string"
+    },
+    "visibility": {
+      "default": "public",
+      "enum": [
+        "public",
+        "hidden"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    },
+    "world": {
+      "const": "payments"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "world",
+    "category",
+    "difficulty",
+    "instruction",
+    "initial_state",
+    "allowed_tools",
+    "max_steps",
+    "grader",
+    "seed",
+    "expected_outcome",
+    "reviewer_signoff"
+  ],
+  "title": "Payments task file",
+  "type": "object"
+}

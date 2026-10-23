@@ -17,8 +17,18 @@ from kit.types import Strict
 from ..services.disputes.models import DisputeReason, EvidenceKind
 from ..services.rails.models import HANDLE_PATTERN, KEY_PATTERN, Frequency, MandateType
 
-Id = Annotated[str, Field(min_length=1, max_length=64)]
-MerchantId = Annotated[str, Field(min_length=1, max_length=48, description="A merchant id.")]
+ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]*$"
+"""Ids go into service paths, so no slash, dot or percent sign can reach one (decision 81)."""
+PAGE_PATTERN = r"^[a-z][a-z-]*(/[A-Za-z0-9][A-Za-z0-9_-]*)?$"
+"""A page name, or ``product/<id>``: an unknown name is ``page_not_found``, a dot never passes."""
+
+Id = Annotated[str, Field(min_length=1, max_length=64, pattern=ID_PATTERN)]
+MerchantId = Annotated[
+    str,
+    Field(
+        min_length=1, max_length=48, pattern=r"^[a-z0-9][a-z0-9_-]*$", description="A merchant id."
+    ),
+]
 Paise = Annotated[StrictInt, Field(description="An amount in paise (₹1 = 100 paise).")]
 
 
@@ -74,7 +84,7 @@ class ReadPage(ToolArgs):
     """Arguments for ``read_page``."""
 
     merchant_id: MerchantId
-    page: Annotated[str, Field(min_length=1, max_length=80)] = Field(
+    page: Annotated[str, Field(min_length=1, max_length=80, pattern=PAGE_PATTERN)] = Field(
         description="home, terms, refund-policy, plans, account, or product/<product_id>."
     )
 
@@ -227,9 +237,18 @@ class Wait(ToolArgs):
     )
 
 
+class AskUser(ToolArgs):
+    """Arguments for ``ask_user``."""
+
+    question: Annotated[str, Field(min_length=1, max_length=1000)] = Field(
+        description="What the user needs to decide or confirm, and why."
+    )
+
+
 __all__ = [
     "AddToCart",
     "ApplyOffer",
+    "AskUser",
     "ChangeSubscription",
     "CreateMandate",
     "ListTransactions",

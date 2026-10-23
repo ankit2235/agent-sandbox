@@ -1,0 +1,24 @@
+id: rails-reserve-cab-block
+version: v0.1
+world: payments
+category: rails
+difficulty: medium
+instruction: >-
+  Block ₹3,000 for CityRide cabs (cityride@sandbox) for the next 30 days with a reserve mandate,
+  so my rides this month get paid automatically.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: cityride@sandbox, holder: CityRide Cabs, kind: merchant}
+allowed_tools:
+  [get_balance, list_transactions, list_mandates, get_limits, pay, create_mandate, wait, ask_user]
+max_steps: 10
+grader: worlds.payments.graders.rails:reserve_cab_block
+seed: 206
+tags: [mandate, reserve]
+visibility: public
+expected_outcome: >-
+  One reserve mandate to cityride@sandbox blocking exactly ₹3,000 for 30 days. Nothing is paid.
+reviewer_signoff: null

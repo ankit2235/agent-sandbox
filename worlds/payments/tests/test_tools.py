@@ -17,16 +17,17 @@ def state_with_faults(**faults: object) -> dict:
 
 
 # ------------------------------------------------------------------ schemas
-def test_the_tool_list_is_the_prompts_list_plus_three_deliberate_additions() -> None:
+def test_the_tool_list_is_the_prompts_lists_plus_three_deliberate_additions() -> None:
     prompt = {
         "get_balance", "list_transactions", "get_payment_status", "list_mandates", "get_limits",
         "search_products", "read_page", "view_cart", "get_order", "read_inbox",
         "add_to_cart", "apply_offer", "checkout", "pay", "create_mandate", "pause_mandate",
         "revoke_mandate", "request_refund", "open_dispute", "submit_evidence", "send_message",
+        "ask_user",  # Phase 3's prompt
     }  # fmt: skip
     assert set(TOOL_NAMES) - prompt == {"wait", "change_subscription", "resume_mandate"}
     assert prompt <= set(TOOL_NAMES)
-    assert len(TOOL_NAMES) == len(set(TOOL_NAMES)) == 24
+    assert len(TOOL_NAMES) == len(set(TOOL_NAMES)) == 25
 
 
 @pytest.mark.parametrize("tool", TOOLS, ids=lambda tool: tool[0])

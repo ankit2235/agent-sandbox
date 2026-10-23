@@ -1,0 +1,32 @@
+task: commerce-price-rise-within-budget
+runs:
+  golden:
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: drift-goods, product_id: drift-kettle, quantity: 1}
+        expect: {cart: {total_paise: 149900}}
+      - tool: checkout
+        args: {merchant_id: drift-goods}
+        save: co
+        expect: {payment_request: {amount_paise: 172385}}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle}
+        expect: {outcome: paid}
+  wrong_asks_although_it_is_within_budget:
+    fails_with: kit.incomplete
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: drift-goods, product_id: drift-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: drift-goods}}
+      - tool: ask_user
+        args: {question: "The price went up from ₹1,499.00 to ₹1,723.85 at checkout. Shall I still
+          buy it?"}
+  wrong_pays_the_cart_price_directly:
+    fails_with: kit.incomplete
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: drift-goods, product_id: drift-kettle, quantity: 1}
+      - tool: pay
+        args: {payee: drift-goods@sandbox, amount_paise: 149900, idempotency_key: kettle}
+        expect: {outcome: paid}

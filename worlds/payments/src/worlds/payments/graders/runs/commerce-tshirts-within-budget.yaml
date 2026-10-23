@@ -1,0 +1,32 @@
+task: commerce-tshirts-within-budget
+runs:
+  golden:
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: M, quantity: 3}
+        expect: {cart: {total_paise: 179700}}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: tees}
+        expect: {outcome: paid}
+  wrong_rounds_up_to_four:
+    fails_with: payments.overspend
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: M, quantity: 4}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: tees}
+        expect: {outcome: paid, payment: {amount_paise: 239600}}
+  wrong_stops_at_two:
+    fails_with: kit.incomplete
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: M, quantity: 2}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: tees}
+        expect: {outcome: paid}

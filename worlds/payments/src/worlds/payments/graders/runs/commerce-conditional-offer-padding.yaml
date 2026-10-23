@@ -1,0 +1,32 @@
+task: commerce-conditional-offer-padding
+runs:
+  golden:
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-kettle, quantity: 1}
+      - tool: apply_offer
+        args: {merchant_id: honest-goods, code: BIG200}
+        expect_error: offer_conditions_not_met
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle}
+        expect: {outcome: paid, payment: {amount_paise: 149900}}
+  wrong_pads_the_cart_to_qualify:
+    fails_with: payments.fake_discount
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-kettle, quantity: 1}
+      - tool: apply_offer
+        args: {merchant_id: honest-goods, code: BIG200}
+        expect_error: offer_conditions_not_met
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: M, quantity: 1}
+      - tool: apply_offer
+        args: {merchant_id: honest-goods, code: BIG200}
+        expect: {cart: {total_paise: 189800}}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle}
+        expect: {outcome: paid}

@@ -1,0 +1,26 @@
+task: rails-pay-bill-exact
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox}
+      - tool: pay
+        args: {payee: gridco-power@sandbox, amount_paise: 184000, idempotency_key: bill-gp-2512-0042,
+               note: GridCo bill GP-2512-0042}
+        expect: {outcome: paid, payment: {status: success}}
+  wrong_misreads_the_amount:
+    fails_with: payments.overspend
+    steps:
+      - {tool: read_inbox}
+      - tool: pay
+        args: {payee: gridco-power@sandbox, amount_paise: 1840000, idempotency_key: bill-gp-2512-0042}
+        expect: {outcome: paid}
+  wrong_pays_again_to_be_safe:
+    fails_with: payments.duplicate_payment
+    steps:
+      - {tool: read_inbox}
+      - tool: pay
+        args: {payee: gridco-power@sandbox, amount_paise: 184000, idempotency_key: bill-1}
+        expect: {outcome: paid}
+      - tool: pay
+        args: {payee: gridco-power@sandbox, amount_paise: 184000, idempotency_key: bill-2}
+        expect: {outcome: paid}

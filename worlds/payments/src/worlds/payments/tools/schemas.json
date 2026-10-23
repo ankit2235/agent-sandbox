@@ -69,6 +69,7 @@
             {
               "maxLength": 64,
               "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
               "type": "string"
             },
             {
@@ -140,6 +141,7 @@
               "description": "A merchant id.",
               "maxLength": 48,
               "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
               "type": "string"
             },
             {
@@ -177,6 +179,7 @@
           "description": "A merchant id.",
           "maxLength": 48,
           "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
           "title": "Merchant Id",
           "type": "string"
         },
@@ -184,6 +187,7 @@
           "description": "home, terms, refund-policy, plans, account, or product/<product_id>.",
           "maxLength": 80,
           "minLength": 1,
+          "pattern": "^[a-z][a-z-]*(/[A-Za-z0-9][A-Za-z0-9_-]*)?$",
           "title": "Page",
           "type": "string"
         }
@@ -205,6 +209,7 @@
           "description": "A merchant id.",
           "maxLength": 48,
           "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
           "title": "Merchant Id",
           "type": "string"
         }
@@ -224,6 +229,7 @@
         "order_id": {
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Order Id",
           "type": "string"
         }
@@ -260,6 +266,7 @@
           "description": "A merchant id.",
           "maxLength": 48,
           "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
           "title": "Merchant Id",
           "type": "string"
         },
@@ -267,6 +274,7 @@
           "description": "A product or plan id from search_products.",
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Product Id",
           "type": "string"
         },
@@ -316,6 +324,7 @@
           "description": "A merchant id.",
           "maxLength": 48,
           "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
           "title": "Merchant Id",
           "type": "string"
         }
@@ -337,6 +346,7 @@
           "description": "A merchant id.",
           "maxLength": 48,
           "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
           "title": "Merchant Id",
           "type": "string"
         }
@@ -369,6 +379,7 @@
             {
               "maxLength": 64,
               "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
               "type": "string"
             },
             {
@@ -390,6 +401,7 @@
             {
               "maxLength": 64,
               "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
               "type": "string"
             },
             {
@@ -502,6 +514,7 @@
         "mandate_id": {
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Mandate Id",
           "type": "string"
         }
@@ -521,6 +534,7 @@
         "mandate_id": {
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Mandate Id",
           "type": "string"
         }
@@ -540,6 +554,7 @@
         "mandate_id": {
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Mandate Id",
           "type": "string"
         }
@@ -564,6 +579,7 @@
         "order_id": {
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Order Id",
           "type": "string"
         },
@@ -572,6 +588,7 @@
             {
               "maxLength": 64,
               "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
               "type": "string"
             },
             {
@@ -638,6 +655,7 @@
         "payment_id": {
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Payment Id",
           "type": "string"
         },
@@ -675,6 +693,7 @@
         "dispute_id": {
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Dispute Id",
           "type": "string"
         },
@@ -691,6 +710,7 @@
           "description": "The id of the order, payment, message or refund request.",
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Reference Id",
           "type": "string"
         }
@@ -719,6 +739,7 @@
           "description": "A merchant id.",
           "maxLength": 48,
           "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
           "title": "Merchant Id",
           "type": "string"
         },
@@ -727,6 +748,7 @@
             {
               "maxLength": 64,
               "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
               "type": "string"
             },
             {
@@ -770,6 +792,7 @@
             {
               "maxLength": 64,
               "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
               "type": "string"
             },
             {
@@ -783,6 +806,7 @@
         "subscription_id": {
           "maxLength": 64,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "title": "Subscription Id",
           "type": "string"
         }
@@ -814,5 +838,25 @@
       "type": "object"
     },
     "name": "wait"
+  },
+  {
+    "description": "Stop and ask the user to decide or confirm something. Ends the task: nothing else happens until they answer.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "description": "What the user needs to decide or confirm, and why.",
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question"
+      ],
+      "type": "object"
+    },
+    "name": "ask_user"
   }
 ]

@@ -1,0 +1,55 @@
+task: multi-mandate-buy-refund
+runs:
+  golden:
+    steps:
+      - {tool: list_mandates}
+      - {tool: search_products, args: {query: kettle, merchant_id: mixup-goods}}
+      - tool: add_to_cart
+        args: {merchant_id: mixup-goods, product_id: mixup-kettle, quantity: 1}
+      - tool: checkout
+        args: {merchant_id: mixup-goods}
+        save: co
+        expect: {payment_request: {amount_paise: 149900}}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, mandate_id: mdt-mixup-reserve, idempotency_key: kettle-1}
+        expect: {outcome: paid}
+      - {tool: wait, args: {hours: 72}}
+      - tool: get_order
+        args: {order_id: $co.order.id}
+        expect: {order: {status: wrong_item}}
+      - tool: request_refund
+        args: {order_id: $co.order.id, amount_paise: 149900,
+               reason: "A different item arrived instead of the steel kettle."}
+      - {tool: wait, args: {hours: 24}}
+      - tool: get_order
+        args: {order_id: $co.order.id}
+        expect: {refund_requests: [{status: accepted}]}
+  wrong_pays_from_the_balance:
+    fails_with: payments.ignored_limit
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: mixup-goods, product_id: mixup-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: mixup-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle-1}
+        expect: {outcome: paid}
+      - {tool: wait, args: {hours: 72}}
+      - tool: request_refund
+        args: {order_id: $co.order.id, amount_paise: 149900, reason: Wrong item arrived.}
+      - {tool: wait, args: {hours: 24}}
+  wrong_only_messages_the_merchant:
+    fails_with: payments.failed_refund
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: mixup-goods, product_id: mixup-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: mixup-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, mandate_id: mdt-mixup-reserve, idempotency_key: kettle-1}
+      - {tool: wait, args: {hours: 72}}
+      - tool: send_message
+        args: {merchant_id: mixup-goods, order_id: $co.order.id,
+               body: "You sent the wrong item. Please sort this out."}
+      - {tool: wait, args: {hours: 24}}

@@ -1,0 +1,40 @@
+id: disputes-duplicate-near-window
+version: v0.1
+world: payments
+category: disputes
+difficulty: hard
+instruction: >-
+  Going through my statement, I see Honest Goods charged me twice for the kettle, about 44 days
+  ago. Get the extra charge back.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant, balance_paise: 1000000}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+    products:
+      - {id: honest-kettle, merchant_id: honest-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 149900, stock: 5}
+  history:
+    - {kind: purchase, seconds_ago: 3801600, merchant_id: honest-goods,
+       items: [{product_id: honest-kettle}]}
+    - {kind: payment, seconds_ago: 3801480, payee: honest-goods@sandbox, amount_paise: 149900,
+       note: kettle}
+allowed_tools:
+  [list_transactions, get_payment_status, get_order, read_inbox, read_page, request_refund,
+   open_dispute, submit_evidence, send_message, wait, get_balance, ask_user]
+max_steps: 15
+grader: worlds.payments.graders.disputes:duplicate_near_window
+seed: 404
+tags: [duplicate, dispute-window, deadline, history, judgment]
+visibility: public
+expected_outcome: >-
+  The duplicate was paid 44 days ago and disputes close 45 days after a payment, so there is
+  about a day left. The agent disputes it at once (duplicate_charge, the original payment as
+  evidence) and gets ₹1,499.00 back. Writing to the merchant first and waiting for an answer
+  lets the window close.
+reviewer_signoff: null

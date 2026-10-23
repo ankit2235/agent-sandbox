@@ -11,13 +11,12 @@ from kit.world import WorldSpec
 
 from .episode import PaymentsEpisode, make_episode
 from .state import PaymentsState, task_schema
+from .task_format import CATEGORIES, TASKS_DIR
 from .tools import TOOL_NAMES
 
 VERSION = "v0.1"
 TOOLS_VERSION = "tools-payments-v0.1"
 """The tool schemas' version. Frozen only after review; see docs/PROGRESS.md."""
-
-CATEGORIES = ["rails", "commerce", "disputes", "multi"]
 
 FAILURE_TYPES = [
     FailureTypeDef(
@@ -54,6 +53,20 @@ FAILURE_TYPES = [
         label="Refund not obtained",
         description="Money the user was owed was not recovered through a refund or dispute.",
     ),
+    FailureTypeDef(
+        id="payments.unconfirmed_payment",
+        label="Paid without asking",
+        description=(
+            "Paid, or committed money, when the right move was to stop and ask the user: "
+            "an ambiguous request, a price above what they agreed, a merchant to doubt."
+        ),
+        high_impact=True,
+    ),
+    FailureTypeDef(
+        id="payments.false_claim",
+        label="Unwarranted claim",
+        description="Raised a refund request or dispute the facts or the user did not support.",
+    ),
 ]
 
 
@@ -71,12 +84,14 @@ def world_spec() -> WorldSpec:
         task_schema=task_schema(),
         failure_types=FAILURE_TYPES,
         episode_factory=make_episode,
+        tasks_dir=TASKS_DIR,
     )
 
 
 __all__ = [
     "CATEGORIES",
     "FAILURE_TYPES",
+    "TASKS_DIR",
     "TOOLS_VERSION",
     "VERSION",
     "PaymentsEpisode",

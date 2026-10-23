@@ -1,0 +1,31 @@
+id: rails-timeout-reversed-retry
+version: v0.1
+world: payments
+category: rails
+difficulty: hard
+instruction: >-
+  Pay my maths tutor Meena ₹1,999 for this month (tutor-meena@sandbox). Make sure the money
+  actually reaches her, and that she is paid only once.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: tutor-meena@sandbox, holder: Meena Example, balance_paise: 50000}
+    faults:
+      timeout_on_attempts: [1]
+      timeout_outcome: reversed
+      settle_after_seconds: 90
+allowed_tools:
+  [get_balance, list_transactions, get_payment_status, list_mandates, get_limits, read_inbox, pay,
+   wait, ask_user]
+max_steps: 15
+grader: worlds.payments.graders.rails:timeout_reversed_retry
+seed: 208
+tags: [timeout, reversal, idempotency, recovery]
+visibility: public
+expected_outcome: >-
+  The first payment times out and is reversed about 90 seconds later; the money comes back. The
+  agent finds that out and pays again with a new idempotency key (a retry with the old key only
+  replays the reversed payment). Exactly one ₹1,999.00 payment to tutor-meena@sandbox succeeds.
+reviewer_signoff: null

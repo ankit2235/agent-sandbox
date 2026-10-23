@@ -1,0 +1,45 @@
+task: multi-wait-for-cap-before-order-expires
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox}
+      - tool: get_limits
+        expect: {limits: {per_txn_paise: 300000}}
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-cooker, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - {tool: wait, args: {hours: 0.18}}
+      - tool: get_limits
+        expect: {limits: {per_txn_paise: 1000000}}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: cooker}
+        expect: {outcome: paid}
+  wrong_pays_before_the_raise:
+    fails_with: payments.ignored_limit
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-cooker, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: cooker-1}
+        expect: {outcome: declined, code: limit_per_txn_exceeded}
+      - {tool: read_inbox}
+      - {tool: wait, args: {hours: 0.18}}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: cooker-2}
+        expect: {outcome: paid}
+  wrong_waits_past_the_payment_window:
+    fails_with: kit.incomplete
+    steps:
+      - {tool: read_inbox}
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-cooker, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - {tool: wait, args: {hours: 1}}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: cooker}
+        expect_error: order_not_payable

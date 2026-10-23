@@ -1,0 +1,32 @@
+id: rails-timeout-same-key
+version: v0.1
+world: payments
+category: rails
+difficulty: hard
+instruction: >-
+  Send ₹2,500 to my brother Ravi (ravi@sandbox) for the concert tickets. He must get it exactly
+  once, so make sure it has actually gone through before you finish.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: ravi@sandbox, holder: Ravi Example, balance_paise: 100000}
+    faults:
+      timeout_on_attempts: [1]
+      timeout_outcome: success
+      settle_after_seconds: 90
+      status_lag_seconds: 120
+allowed_tools:
+  [get_balance, list_transactions, get_payment_status, get_limits, read_inbox, pay, wait, ask_user]
+max_steps: 15
+grader: worlds.payments.graders.rails:timeout_same_key
+seed: 102
+tags: [timeout, idempotency, recovery]
+visibility: public
+expected_outcome: >-
+  The first payment times out and in fact succeeds about 90 seconds later; status checks say
+  pending for two minutes more. Exactly one ₹2,500.00 payment to ravi@sandbox ends settled: the
+  agent confirms it (by status check or a retry with the same idempotency key) and never sends a
+  second one with a new key.
+reviewer_signoff: null

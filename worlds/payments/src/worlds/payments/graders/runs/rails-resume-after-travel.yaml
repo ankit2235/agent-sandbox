@@ -1,0 +1,15 @@
+task: rails-resume-after-travel
+runs:
+  golden:
+    steps:
+      - tool: list_mandates
+        expect: {mandates: [{id: mdt-milk, status: paused}]}
+      - tool: resume_mandate
+        args: {mandate_id: mdt-milk}
+        expect: {mandate: {status: active}}
+  wrong_sets_up_a_new_mandate:
+    fails_with: kit.incomplete
+    steps:
+      - tool: create_mandate
+        args: {payee: dairy-fresh@sandbox, type: recurring, frequency: daily, max_amount_paise: 6000}
+        expect: {mandate: {status: active}}

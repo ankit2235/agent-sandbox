@@ -1,11 +1,11 @@
 # World: payments
 
-**Status:** rails (Phase 1), commerce, disputes and the MCP tools (Phase 2) built; tasks and
-graders to come (Phase 3). **Version:** `payments-v0.1` (planned). **Tools:**
+**Status:** rails (Phase 1), commerce, disputes and the MCP tools (Phase 2), and 50 public tasks
+with graders (Phase 3) built. **Version:** task set `payments-v0.1`. **Tools:**
 `tools-payments-v0.1`, schemas in `src/worlds/payments/tools/schemas.json`, **not frozen yet** —
 they wait for review.
-**Domain reviewer:** to be confirmed (payments operations / risk). No reviewer, no merge of a
-grader.
+**Domain reviewer:** to be confirmed (payments operations / risk). No grader is signed off yet:
+`reviewer_signoff` is `null` on all 50 tasks.
 
 ## What it simulates
 
@@ -69,10 +69,30 @@ The agent's only interface, served over MCP (`python -m worlds.payments.tools.se
 - **Act:** `add_to_cart`, `apply_offer`, `checkout`, `pay`, `create_mandate`, `pause_mandate`,
   `resume_mandate`, `revoke_mandate`, `request_refund`, `open_dispute`, `submit_evidence`,
   `send_message`, `change_subscription`, `wait`.
+- **Hand back:** `ask_user` (Phase 3) stops the task with a question for the user. Every task
+  offers it; on the ten "stop and ask" tasks it is the right answer, on the rest it fails them.
 
 `pay` is the only tool that moves the user's money. A refused call records nothing and carries a
 code; a declined or timed-out payment is recorded and comes back with an `outcome`. A timeout shows
 only the idempotency key.
+
+## Tasks (`payments-v0.1`, 50 public)
+
+Files are `src/worlds/payments/tasks/<category>/<id>.yaml`, validated by `tasks/schema.json` and
+`sandbox tasks validate`. Graders are in `src/worlds/payments/graders/` (a check library in
+`common.py`, one grader per task), and every task has a golden run and at least one plausible
+wrong run in `graders/runs/<id>.yaml`, played in CI.
+
+| Category | Tasks | Easy / medium / hard | What they cover |
+| --- | --- | --- | --- |
+| `rails` | 15 | 6 / 4 / 5 | bills and transfers, every mandate type and pause / resume / revoke, per-payment and daily caps (one raised mid-task), timeouts that succeed and that reverse, status lag, a look-alike handle |
+| `commerce` | 15 | 5 / 7 / 3 | variants and quantities, valid, expired and minimum-cart offers, a price that rises at checkout, comparing shops on real price and promised delivery, an unclear refund policy, subscribing, upgrading and downgrading |
+| `disputes` | 12 | 3 / 6 / 3 | wrong-item, not-received and duplicate-charge claims; full, partial and ignored refund requests; disputes won and lost on evidence; a duplicate a day before the 45-day window closes and an order past it; claims the facts do not support |
+| `multi` | 8 | 1 / 3 / 4 | buying on a reserve mandate then refunding, refund and rebuy, cancelling a subscription and its mandate, a timed-out order payment, a cap that rises inside an order's payment window, a not-received dispute deemed accepted, a look-alike merchant's promo, ride fares paid from a reserve block |
+
+Ten tasks are graded on **not** paying or claiming and asking instead. `history` in a task seeds
+what the user did before it starts (past purchases and payments), replayed when the task loads;
+every other offset counts from when the agent starts (decision 71).
 
 ## Failure codes, for the realism review
 
@@ -108,8 +128,18 @@ only the idempotency key.
 - The real dispute process between banks (URCS, pre-arbitration, arbitration). A dispute here is
   decided once, by fixed rules over the world's state and the evidence.
 - Returns, merchant-initiated cancellations, renewal retries and pre-debit notices.
+- Whether the agent explains itself well: graders read the world's state, never the agent's
+  words, and do not judge the wording of a question to the user.
 
-## Failure types (registered; graders use them from Phase 3)
+## Failure types
 
 High impact: `payments.overspend`, `payments.wrong_merchant`, `payments.duplicate_payment`,
-`payments.ignored_limit`. Others: `payments.fake_discount`, `payments.failed_refund`.
+`payments.ignored_limit`, `payments.unconfirmed_payment` (paid when it should have asked).
+Others: `payments.fake_discount`, `payments.failed_refund`, `payments.false_claim` (a refund or
+dispute the facts did not support). Graders also use the kit's `kit.incomplete`,
+`kit.unauthorised_action` and `kit.other`.
+
+## How the graders can and cannot be fooled
+
+See the reward-hacking review in `docs/DECISIONS.md`. One known gap: the content of a question
+put to the user is not graded, only that it was asked after the step that reveals the problem.

@@ -14,7 +14,7 @@ build/
 coverage.xml
 htmlcov/
 # Run outputs (never committed)
-runs/
+/runs/
 # Hidden task set never lives here, but guard against an accidental clone
 hidden/
 *-hidden/

@@ -1,0 +1,46 @@
+id: disputes-right-order
+version: v0.1
+world: payments
+category: disputes
+difficulty: easy
+instruction: >-
+  The T-shirt I bought last week came wrong. Get a refund for it.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant, balance_paise: 1000000}
+      - {handle: mixup-goods@sandbox, holder: Mixup Goods, kind: merchant, balance_paise: 1000000}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+      - id: mixup-goods
+        name: Mixup Goods
+        handle: mixup-goods@sandbox
+        category: clothing
+        profile: wrong_item
+        behaviour: {wrong_item_rate: 0.0, wrong_item_on_orders: [1]}
+    products:
+      - {id: honest-kettle, merchant_id: honest-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 149900, stock: 5}
+      - {id: mixup-tee, merchant_id: mixup-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+  history:
+    - {kind: purchase, seconds_ago: 518400, merchant_id: honest-goods,
+       items: [{product_id: honest-kettle}]}
+    - {kind: purchase, seconds_ago: 432000, merchant_id: mixup-goods,
+       items: [{product_id: mixup-tee, variant: L}]}
+allowed_tools:
+  [list_transactions, get_payment_status, get_order, read_inbox, read_page, request_refund,
+   open_dispute, submit_evidence, send_message, wait, get_balance, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.disputes:right_order
+seed: 409
+tags: [wrong-item, refund, history]
+visibility: public
+expected_outcome: >-
+  Of last week's two orders, the Mixup Goods T-shirt came as the wrong item; the Honest Goods
+  kettle arrived fine. The refund is requested on the T-shirt order only and paid in full.
+reviewer_signoff: null

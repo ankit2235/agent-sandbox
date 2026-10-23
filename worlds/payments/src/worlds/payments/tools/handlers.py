@@ -593,6 +593,19 @@ def change_subscription(raw: dict[str, Any], context: ToolContext) -> ToolResult
     return ToolResult(text=text, data={"subscription": sub}, state_diff=diff_of(body))
 
 
+def ask_user(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Hand a decision back to the user. The episode ends: they answer outside it."""
+    args = parse(a.AskUser, raw)
+    return ToolResult(
+        text=(
+            "Your question has been passed to the user. Nothing more happens in this task "
+            "until they answer."
+        ),
+        data={"outcome": "asked", "question": args.question},
+        done=True,
+    )
+
+
 # ------------------------------------------------------------------- router
 NO_ARGS = a.NoArgs
 
@@ -716,6 +729,13 @@ TOOLS: list[tuple[str, str, type[a.ToolArgs], ToolHandler | None]] = [
         "Let time pass, so deliveries, replies and deadlines can happen. Reports what happened.",
         a.Wait,
         None,
+    ),
+    (
+        "ask_user",
+        "Stop and ask the user to decide or confirm something. Ends the task: nothing else "
+        "happens until they answer.",
+        a.AskUser,
+        ask_user,
     ),
 ]
 """Name, description, argument model and handler. ``wait`` is the episode's own."""

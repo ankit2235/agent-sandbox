@@ -4,6 +4,11 @@ Reset, snapshot and restore come from :class:`kit.episode.BaseEpisode`, over
 all three services. Scheduled events are routed to the service that scheduled
 them by name (``rails.*``, ``commerce.*``, ``disputes.*``), and their effects on
 the other services are carried by :class:`~.links.Links`.
+
+A task's ``history`` is replayed in ``_setup``, before the kit takes the
+baseline snapshot: through the tools' own handlers, with faults off and nothing
+traced, so the agent starts in a world where those purchases really happened and
+graders can tell them apart from the agent's (they are not in the trace).
 """
 
 from __future__ import annotations
@@ -12,7 +17,8 @@ import datetime as dt
 from typing import Any
 
 from kit.clock import ScheduledEvent, SimClock
-from kit.episode import BaseEpisode, ToolContext, ToolResult, ToolRouter
+from kit.episode import BaseEpisode, ToolContext, ToolHandler, ToolResult, ToolRouter
+from kit.errors import ToolRejected
 from kit.rng import SeededRNG
 from kit.trace import DiffEntry
 from kit.types import TaskSpec
@@ -22,9 +28,9 @@ from .services.commerce import CommerceService
 from .services.common import iso
 from .services.disputes import DisputesService
 from .services.rails import RailsService
-from .state import PaymentsState
+from .state import PastPayment, PastPurchase, PaymentsState, shifted
 from .tools import args as a
-from .tools.handlers import build_router, parse
+from .tools.handlers import add_to_cart, apply_offer, build_router, checkout, parse, pay
 
 
 class PaymentsEpisode(BaseEpisode):
@@ -57,7 +63,10 @@ class PaymentsEpisode(BaseEpisode):
     def _setup(self, task: TaskSpec) -> None:
         """Validate the whole ``initial_state``, then give each service its part."""
         state = PaymentsState.model_validate(task.initial_state)
-        raw = task.initial_state
+        raw = shifted(task.initial_state, state.history_seconds)
+        faults = raw["rails"].get("faults")
+        if state.history:
+            raw["rails"].pop("faults", None)
         self.rails.load(raw["rails"])
         self.commerce.load({"user": state.user, "config": raw.get("commerce", {})})
         self.disputes.load(
@@ -68,6 +77,75 @@ class PaymentsEpisode(BaseEpisode):
             }
         )
         self._links = Links(self.rails, self.commerce, self.disputes, state.user)
+        if state.history:
+            self._replay(task, state)
+            self.rails.call("POST", "/internal/faults", faults or {})
+
+    def _replay(self, task: TaskSpec, state: PaymentsState) -> None:
+        """Run the task's history, oldest first, then move the clock on to the present."""
+        present = self.clock.now() + dt.timedelta(seconds=state.history_seconds)
+        numbered = sorted(enumerate(state.history, start=1), key=lambda pair: -pair[1].seconds_ago)
+        for number, entry in numbered:
+            self._quietly_until(present - dt.timedelta(seconds=entry.seconds_ago))
+            key = f"history-{number}"
+            if isinstance(entry, PastPayment):
+                args = {
+                    "payee": entry.payee,
+                    "amount_paise": entry.amount_paise,
+                    "idempotency_key": key,
+                    "note": entry.note,
+                }
+            else:
+                assert isinstance(entry, PastPurchase)
+                merchant = {"merchant_id": entry.merchant_id}
+                for item in entry.items:
+                    self._history_tool(task, number, add_to_cart, {**merchant, **item.model_dump()})
+                if entry.offer_code is not None:
+                    self._history_tool(
+                        task, number, apply_offer, {**merchant, "code": entry.offer_code}
+                    )
+                due = self._history_tool(task, number, checkout, merchant)["payment_request"]
+                if due is None:
+                    continue
+                args = {
+                    "payee": due["payee"],
+                    "amount_paise": due["amount_paise"],
+                    "idempotency_key": key,
+                    "order_id": due["order_id"],
+                }
+            paid = self._history_tool(task, number, pay, args)
+            if paid["outcome"] != "paid":
+                msg = f"history entry {number}: the payment was {paid['outcome']}: {paid}"
+                raise ValueError(msg)
+        self._quietly_until(present)
+
+    def _history_tool(
+        self, task: TaskSpec, number: int, handler: ToolHandler, args: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Call one tool handler for a history entry, outside the trace."""
+        context = ToolContext(
+            task=task,
+            clock=self.clock,
+            rng=self._rng.child(f"history/{number}/{handler.__name__}"),
+            services=self.services,
+            step_index=0,
+        )
+        try:
+            return handler(args, context).data
+        except ToolRejected as refused:
+            msg = (
+                f"history entry {number}: {handler.__name__} refused: "
+                f"{refused.code}: {refused.message}"
+            )
+            raise ValueError(msg) from None
+
+    def _quietly_until(self, moment: dt.datetime) -> None:
+        """Move the clock to ``moment``, applying due events without tracing them."""
+        while (due := self.clock.next_event_at()) is not None and due <= moment:
+            self.clock.advance(max(due - self.clock.now(), dt.timedelta(0)))
+            for event in self.clock.due():
+                self._on_event(event)
+        self.clock.advance(max(moment - self.clock.now(), dt.timedelta(0)))
 
     def _on_event(self, event: ScheduledEvent) -> list[DiffEntry]:
         return self.links.on_event(event)

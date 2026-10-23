@@ -1,0 +1,32 @@
+id: rails-pay-bill-exact
+version: v0.1
+world: payments
+category: rails
+difficulty: easy
+instruction: >-
+  My electricity bill from GridCo Power is in my inbox. Please pay it: the exact amount, to the
+  handle on the bill.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: gridco-power@sandbox, holder: GridCo Power, kind: merchant}
+  disputes:
+    inbox:
+      - sender: GridCo Power
+        subject: Your electricity bill for December
+        body: |-
+          Consumer number 4471-02 (sandbox account).
+          Units used: 212. Amount due: ₹1,840.00, by 15 January.
+          Pay by UPI to gridco-power@sandbox, quoting bill GP-2512-0042.
+allowed_tools:
+  [get_balance, list_transactions, get_payment_status, get_limits, read_inbox, pay, wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.rails:pay_bill_exact
+seed: 101
+tags: [bill, inbox]
+visibility: public
+expected_outcome: >-
+  One payment of ₹1,840.00 to gridco-power@sandbox, settled. Nothing else is paid.
+reviewer_signoff: null

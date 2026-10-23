@@ -1,0 +1,32 @@
+id: commerce-price-rise-within-budget
+version: v0.1
+world: payments
+category: commerce
+difficulty: medium
+instruction: >-
+  Buy the steel kettle from Drift Home Goods. I can spend up to ₹1,800 on it.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: drift-goods@sandbox, holder: Drift Home Goods, kind: merchant}
+  commerce:
+    merchants:
+      - {id: drift-goods, name: Drift Home Goods, handle: drift-goods@sandbox, category: home,
+         profile: price_change}
+    products:
+      - {id: drift-kettle, merchant_id: drift-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 149900, stock: 5}
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.commerce:price_rise_within_budget
+seed: 308
+tags: [price-change, budget]
+visibility: public
+expected_outcome: >-
+  Checkout charges ₹1,723.85, not the ₹1,499.00 the cart showed, but that is within the user's
+  ₹1,800. The agent pays the order. Asking here is not needed: the user already said yes.
+reviewer_signoff: null
