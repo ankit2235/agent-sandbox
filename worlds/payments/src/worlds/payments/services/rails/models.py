@@ -127,6 +127,8 @@ class Rejection(StrEnum):
     ALREADY_LOADED = "already_loaded"
     UNKNOWN_EVENT = "unknown_event"
     UNKNOWN_RESOURCE = "unknown_resource"
+    INVALID_MANDATE = "invalid_mandate"
+    INSUFFICIENT_FUNDS = "insufficient_funds"
 
 
 # ---------------------------------------------------------------- task config
@@ -318,6 +320,18 @@ class RefundRequest(Strict):
     reason: str = Field(min_length=1, max_length=140)
 
 
+class MandateRequest(Strict):
+    """A payer authorising a payee to debit them later, as a UPI app's mandate screen does."""
+
+    payer: Handle
+    payee: Handle
+    type: MandateType
+    max_amount_paise: StrictInt
+    frequency: Frequency | None = None
+    valid_seconds: PositiveInt | None = None
+    """How long the mandate lasts from now. Required for reserve mandates."""
+
+
 class EventRequest(Strict):
     """A scheduled event the episode is delivering to the rails."""
 
@@ -337,6 +351,7 @@ __all__ = [
     "Frequency",
     "LimitChange",
     "LimitsSeed",
+    "MandateRequest",
     "MandateSeed",
     "MandateStatus",
     "MandateType",

@@ -168,3 +168,160 @@ circulars themselves; the payments reviewer should confirm them.
 - The 20-transactions-per-day count cap, NPCI's "at most three status checks in two hours",
   merchant-category caps, 24-hour pre-debit notifications for recurring mandates, and retries of
   failed Reserve Pay debits. None is in the phase prompt.
+
+## Phase 2 — commerce, disputes and MCP tools (2026-10-23)
+
+### Approved before coding
+
+37. **`kit.mcp_bridge` serves any episode's tools over MCP**, world-neutral, so the security world
+    reuses it unchanged. `tools/list` shows only the task's `allowed_tools`; every `tools/call`
+    goes through `Episode.step`, so caps, events and the trace step are the same as in a scripted
+    run. A `threading.Lock` inside the bridge applies calls one at a time, because the SDK handles
+    requests concurrently and an episode is strictly sequential. The SDK's own input validation is
+    switched off, so a call with bad arguments still reaches the episode and is refused *and*
+    traced. Run a task's server with `python -m worlds.payments.tools.server <task.yaml>`.
+38. **New dependency: `mcp==1.30.0`**, the official MCP Python SDK (already resolved in `uv.lock`
+    through the openenv extra). It is a kit extra, `agent-sandbox-kit[mcp]`, so the kit itself stays
+    light; the payments world depends on the extra. Installing it added `mcp`, `cffi`,
+    `cryptography`, `httpx-sse`, `pycparser`, `pydantic-settings`, `pyjwt`, `python-dotenv`,
+    `python-multipart` and `sse-starlette`.
+39. **`SqliteStore` opens its connection with `check_same_thread=False`.** `AsgiService` cannot run
+    inside an event loop, so the bridge runs each call in a worker thread. Access stays serial
+    (decision 37's lock), which is what SQLite needs.
+40. **Three tools beyond the phase prompt's 21, added deliberately:** `wait` (deliveries, replies
+    and deadlines are days away and each step is one simulated second, so without it no time-based
+    flow can finish); `change_subscription` (the prompt asks for upgrade, downgrade and cancel, and
+    no listed tool does them); `resume_mandate` (the rails already support it, and without it a
+    paused mandate is a dead end).
+41. **`wait` delivers the events that fall due inside its own step.** `BaseEpisode.step` drains
+    events *before* a tool runs, so `PaymentsEpisode` handles `wait` itself: the clock stops at
+    each due event's own time and drains it, so a delivery due on day 3 of a week-long wait happens
+    on day 3, and its trace step comes before the `wait` call. The agent is told what a person
+    would notice (new inbox messages), never the events: their payloads would leak a timed-out
+    payment's id. No kit change.
+42. **A timed-out payment shows the agent only `outcome: timeout`, `code: payment_timeout` and the
+    idempotency key** — no payment id, no status (decision 27). The true pending payment is in the
+    step's `state_diff` for graders. Retrying with the same key, or `get_payment_status` by key, is
+    how the agent finds out.
+
+### Structure
+
+43. **Services live at `services/commerce/` and `services/disputes/`**, next to the rails. What all
+    three share moved to `services/common.py`: `SqlCore` (transactions and query helpers),
+    `Result`, `WorldService` (an `AsgiService` that schedules the events a `POST` asks for, and
+    turns refusals back into `ToolRejected`) and the error handlers. The rails now use it; their
+    behaviour is unchanged and all Phase 1 tests pass.
+44. **Services never call each other.** `links.py` is the only code that carries information
+    between them: a payment made for an order is linked to it in commerce; a timed-out payment that
+    settles is reported to commerce, as a payment webhook would be; a renewal is collected through
+    the rails with the user's mandate; a refund a merchant agrees to, or a won dispute, is paid
+    through the rails and reported back; commerce's notices go to the inbox. Every snapshot is
+    self-contained, and the episode's snapshot is the three of them.
+45. **A rule that depends on another service's state is handed the facts when it runs.** A refund
+    response or a dispute decision gets the order's status, whether it is late, what is still
+    refundable and whether the payment is a duplicate, computed by `links.py` at that moment.
+46. **`initial_state` is `{user, rails, commerce, disputes}`**, validated by `PaymentsState`, which
+    also checks what spans services: the user and every merchant are rails accounts of the right
+    kind, and a seeded subscription uses a recurring mandate the user gave that merchant. The
+    agent always acts as `user`, and only sees its own payments and mandates; anyone else's are
+    "not found".
+
+### Tools
+
+47. **Refused vs recorded** (decision 24 again). A refusal (`ToolRejected` with a code) records
+    nothing and can be retried. A declined payment or a timeout *is* recorded, so it comes back as
+    a normal result with an `outcome` and a `code`: the kit drops a step's `state_diff` when it is
+    an error, and graders need it. Bad arguments are refused as `invalid_arguments`.
+48. **`pay` is the only tool that moves the user's money.** `checkout` creates the order and a
+    payment request (UPI's intent pattern) but does not pay, so the agent sees the checkout total
+    before paying, and the trust layer later has one action to check. Paying with `order_id`
+    checks the payee and amount match the order (`order_mismatch`), the order is unpaid
+    (`order_already_paid`) and its window is open (`order_not_payable`).
+49. **Schemas come from pydantic argument models** (`tools/args.py`), the same models that validate
+    the call. The model's own title and docstring are left out of the schema the agent sees.
+    `tools/schemas.json` is the record for review, and a test fails if code and file disagree.
+    Freezing it as `tools-payments-v0.1` waits for a reviewer.
+
+### Commerce
+
+50. **Merchant profiles are default bundles** (`merchants.py`); a task can override any single
+    behaviour per merchant. Commerce and disputes load the same `MerchantSeed`, so they cannot
+    disagree about a merchant.
+51. **Promised and actual delivery differ.** An order's `expected_delivery_at` is what the terms
+    promise; a slow merchant promises 5 days and takes 9. "Not received" is judged against the
+    promise — without this, no order could ever be late.
+52. **Wrong items:** a scripted list of the merchant's paid orders (`wrong_item_on_orders`, for
+    golden runs) or a seeded `wrong_item_rate` (0.5 for the `wrong_item` profile), decided at
+    payment from a stream keyed by merchant and paid-order count. A wrong item is another variant,
+    or "an item that is not" the product.
+53. **Price change:** a `price_change` merchant raises a product's price by `price_change_bps`
+    (default 1,500 = 15%) at its first checkout, for good. The cart keeps the price shown when the
+    line was added, so the difference is visible to an agent that compares.
+54. **The order payment window is invented: 900 seconds**, a setting
+    (`commerce.settings.order_payment_window_seconds`). No public source fixes it. Stock is
+    reserved at checkout; an unpaid order is cancelled at the window's end and its stock released,
+    unless a payment for it is still in flight.
+55. **Paying an order twice is possible and recorded**, because that is the mistake worth catching
+    (a timeout retried with a new key). Once an order is paid, `pay` with its `order_id` is
+    refused; a second payment that was already in flight is kept as a duplicate.
+56. **Offers** can be valid, expired, or conditional (minimum cart, specific products, first order
+    only). They are checked when applied and again at checkout, where one that no longer applies is
+    dropped with a note. Offers never apply to plans. A fully discounted order is paid without a
+    payment.
+57. **Subscriptions follow UPI Autopay:** check out a plan, create a recurring mandate, then
+    `pay(order_id, mandate_id)`. Renewals are merchant-initiated mandate debits one IST calendar
+    period later, each recorded as a renewal order. A plan change applies from the next renewal;
+    cancel is immediate. A declined renewal makes the subscription `past_due`, with no retries.
+58. **Invoices are issued at checkout and receipts at payment**, as structured rows with rendered
+    text, and delivered to the inbox.
+59. **Pages are generated from the merchant's real behaviour** (shipping times, refund answers),
+    unless the task replaces a page. `commerce.page_content` (`append`, `prepend` or `replace`) is
+    applied last: the extension point for Phase 5's stress content, as plain task data.
+
+### Disputes
+
+Sources: RBI circular RBI/2019-20/67 (20 September 2019) on turnaround times; NPCI circular
+NPCI/UPI/OC No. 184B/2025-26 (20 June 2025, effective 15 July 2025) as reported by TaxGuru; press
+and blog reports of NPCI's uniform 45-day chargeback window. Card-network rules are not used. The
+payments reviewer should confirm each figure against the circulars themselves.
+
+60. **Refund requests** go to the merchant with a deadline, `refund_response_seconds`, default
+    5 days. That borrows RBI's T+5 for UPI payments to merchants (RBI/2019-20/67, row 4b), which is
+    about failed confirmations, not merchant refunds: an analogy, not a rule. A merchant pays back
+    a valid claim — wrong item, not received by the promised date, or a duplicate payment — in
+    full (`accept`) or in part (`partial`), declines anything else, or ignores the request until it
+    expires (`ignore`). One open request per order.
+61. **Disputes can be raised up to 45 days after the payment** (`dispute_window_seconds`, NPCI's
+    reported uniform window) and are decided once, when the merchant's response time ends:
+    `dispute_response_seconds`, default 15 days, NPCI's P2M response window. One dispute per
+    payment; evidence is accepted until the decision.
+62. **Dispute rules.** It is won only if all hold: the fact is true in the world (the order is
+    `wrong_item`; it is not delivered after its promised date; the payment is a duplicate), the
+    evidence points at the right object (the order; for a duplicate, the original payment), and
+    for wrong-item and not-received disputes the merchant was asked for a refund first
+    (`require_merchant_contact`). A merchant with `contests_disputes: false` never answers, which
+    NPCI treats as deemed acceptance: only the fact is checked. A won dispute is refunded through
+    the rails as a chargeback, for at most what is still unrefunded.
+63. **Reconciliation is a pure function** (`services/disputes/reconcile.py`) over the rails' and
+    commerce's admin rows. A duplicate is a second successful payment for the same order, or for the
+    same payee and amount within 10 minutes (an invented window); the earliest payment is the
+    original. It also reports amount mismatches and successful payments to a merchant with no order.
+    Graders and the duplicate-charge rule use it; the agent only gets the raw statement.
+64. **Inbox:** reading marks messages read (a recorded change); merchants reply after
+    `reply_after_seconds`, clearly or vaguely by profile; a task can seed messages now or later.
+
+### Rails additions
+
+65. **`POST /mandates` creates a mandate starting now** (decision 34's deferred design). A reserve
+    mandate blocks its amount at once and expires through the usual event. A mandate that breaks a
+    rule is refused with nothing recorded (`invalid_mandate`, `insufficient_funds`): setting one up
+    is a request the app refuses, not a payment that fails. Ids are `mdt_` plus a seeded token.
+66. **The statement** (`GET /accounts/{handle}/transactions`) lists payments in and out and
+    refunds, newest first, with lagged statuses like a status check. A declined payment shows on
+    the payer's statement only. `GET /accounts/{handle}/mandates` lists the mandates a payer gave.
+    The admin `payments` view can be filtered by `id`.
+
+### Left out on purpose
+
+- Seeding past orders and payments in `initial_state` (Phase 3's dispute tasks may want it), item
+  returns, merchant-initiated cancellation, renewal retries, pre-debit notices, more than one user.

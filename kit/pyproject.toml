@@ -11,6 +11,11 @@ dependencies = [
   "jsonschema>=4.23",
 ]
 
+[project.optional-dependencies]
+# The MCP bridge (kit.mcp_bridge) needs the official MCP SDK; worlds that serve
+# tools over MCP depend on this extra. See DECISIONS.md.
+mcp = ["mcp==1.30.0"]
+
 [project.entry-points."agent_sandbox.worlds"]
 hello_world = "kit.examples.hello_world:world_spec"
 

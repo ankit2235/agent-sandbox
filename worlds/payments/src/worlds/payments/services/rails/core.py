@@ -18,9 +18,6 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-from collections.abc import Iterator
-from contextlib import contextmanager
-from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from kit.clock import ScheduledEvent
@@ -29,6 +26,7 @@ from kit.rng import SeededRNG
 from kit.service import SqliteStore
 from kit.trace import DiffEntry
 
+from ..common import Result, Row, SqlCore, iso, parse
 from .models import (
     IST,
     AccountStatus,
@@ -36,6 +34,7 @@ from .models import (
     Decline,
     Frequency,
     LimitChange,
+    MandateRequest,
     MandateStatus,
     MandateType,
     PaymentRequest,
@@ -63,7 +62,7 @@ DAY = dt.timedelta(days=1)
 LIMIT_FIELDS = ("per_txn_paise", "daily_paise", "monthly_paise")
 ADMIN_RESOURCES = ("state", "accounts", "mandates", "limits", "payments", "refunds", "ledger")
 ADMIN_FILTERS = {
-    "payments": ("idempotency_key", "status", "payer", "payee", "mandate_id"),
+    "payments": ("id", "idempotency_key", "status", "payer", "payee", "mandate_id"),
     "refunds": ("payment_id", "status"),
 }
 
@@ -150,24 +149,10 @@ CREATE TABLE ledger_entry (
 ) STRICT;
 """
 
-Row = dict[str, Any]
 DeclineInfo = tuple[Decline, dict[str, Any]]
 
 
 # ---------------------------------------------------------------------- time
-def iso(moment: dt.datetime) -> str:
-    """Fixed-width UTC text, so comparing two stored timestamps as strings compares times."""
-    if moment.tzinfo is None:
-        msg = "rails timestamps must be timezone-aware"
-        raise ValueError(msg)
-    return moment.astimezone(dt.UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-
-
-def parse(value: str) -> dt.datetime:
-    """Read a stored timestamp back."""
-    return dt.datetime.fromisoformat(value)
-
-
 def day_start(now: dt.datetime) -> dt.datetime:
     """Midnight IST at the start of ``now``'s calendar day."""
     return now.astimezone(IST).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -209,57 +194,17 @@ def account_id(handle: str) -> str:
     return f"acc_{handle.split('@', 1)[0]}"
 
 
-# -------------------------------------------------------------------- result
-@dataclass(slots=True)
-class Result:
-    """What a changing operation did: the body, the rows it touched, and what to schedule."""
-
-    body: dict[str, Any]
-    state_diff: list[DiffEntry] = field(default_factory=list)
-    scheduled: list[ScheduledEvent] = field(default_factory=list)
-    created: bool = False
-
-    def to_json(self) -> dict[str, Any]:
-        """The response body, with the diff and the events in JSON form."""
-        return {
-            **self.body,
-            "state_diff": [entry.model_dump(mode="json") for entry in self.state_diff],
-            "scheduled_events": [event.model_dump(mode="json") for event in self.scheduled],
-        }
-
-
 # --------------------------------------------------------------------- rails
-class Rails:
+class Rails(SqlCore):
     """Accounts, mandates, limits, payments, refunds and the ledger behind them."""
 
+    service = "rails"
+
     def __init__(self, rng: SeededRNG, store: SqliteStore | None = None) -> None:
-        self.store = store if store is not None else SqliteStore(SCHEMA)
-        self._rng = rng
+        super().__init__(rng, SCHEMA, store)
         self._config_cache: tuple[str, RailsConfig] | None = None
 
     # ------------------------------------------------------------- plumbing
-    @property
-    def _db(self) -> Any:
-        return self.store.connection
-
-    @contextmanager
-    def _transaction(self) -> Iterator[None]:
-        """All of an operation's writes happen, or none do."""
-        self._db.execute("BEGIN")
-        try:
-            yield
-        except BaseException:
-            self._db.execute("ROLLBACK")
-            raise
-        self._db.execute("COMMIT")
-
-    def _one(self, sql: str, params: tuple[Any, ...] = ()) -> Row | None:
-        rows = self.store.query_all(sql, params)
-        return rows[0] if rows else None
-
-    def _scalar(self, sql: str, params: tuple[Any, ...] = ()) -> Any:
-        return self._db.execute(sql, params).fetchone()[0]
-
     def _config(self) -> RailsConfig:
         row = self._one("SELECT value FROM rails_config WHERE key = 'config'")
         if row is None:
@@ -844,6 +789,88 @@ class Rails:
             assert updated is not None
         return Result(body={"mandate": self._mandate_view(updated, now)}, state_diff=diff)
 
+    def create_mandate(self, request: MandateRequest, now: dt.datetime) -> Result:
+        """Create a mandate that starts now. A reserve mandate blocks its amount at once.
+
+        Nothing is recorded when a rule is broken: setting up a mandate is a request
+        the payer's app refuses, not a payment that fails.
+        """
+        if request.max_amount_paise <= 0:
+            msg = "max_amount_paise must be a positive whole number of paise"
+            raise ToolRejected(Rejection.INVALID_AMOUNT, msg)
+        if request.payer == request.payee:
+            msg = "payer and payee are the same handle"
+            raise ToolRejected(Rejection.SAME_ACCOUNT, msg)
+        recurring = request.type is MandateType.RECURRING
+        if recurring != (request.frequency is not None):
+            msg = "a frequency is required for recurring mandates, and only for them"
+            raise ToolRejected(Rejection.INVALID_MANDATE, msg)
+        with self._transaction():
+            config = self._config()
+            payer = self._account(request.payer)
+            if payer is None:
+                msg = f"no account with handle {request.payer!r}"
+                raise ToolRejected(Rejection.PAYER_NOT_FOUND, msg)
+            if self._account(request.payee) is None:
+                msg = f"no account with handle {request.payee!r}"
+                raise ToolRejected(Rejection.ACCOUNT_NOT_FOUND, msg)
+            reserve = request.type is MandateType.RESERVE
+            if reserve:
+                self._check_reserve_request(request, config, int(payer["balance_paise"]))
+            count = int(self._scalar("SELECT COUNT(*) FROM mandate")) + 1
+            end = (
+                None
+                if request.valid_seconds is None
+                else now + dt.timedelta(seconds=request.valid_seconds)
+            )
+            row: Row = {
+                "id": f"mdt_{self._rng.child(f'mandate/{count}').token(12)}",
+                "payer": request.payer,
+                "payee": request.payee,
+                "type": request.type.value,
+                "max_amount_paise": request.max_amount_paise,
+                "frequency": None if request.frequency is None else request.frequency.value,
+                "start_at": iso(now),
+                "end_at": None if end is None else iso(end),
+                "remaining_limit_paise": None if recurring else request.max_amount_paise,
+                "status": MandateStatus.ACTIVE.value,
+            }
+            self._insert("mandate", row)
+            diff = [self._created("mandate", row)]
+            scheduled: list[ScheduledEvent] = []
+            if reserve:
+                assert end is not None  # checked in _check_reserve_request
+                diff += self._move(
+                    str(row["id"]), str(payer["id"]), HOLDS, request.max_amount_paise, iso(now)
+                )
+                scheduled.append(
+                    ScheduledEvent(
+                        at=end, name=EVENT_RESERVE_EXPIRY, payload={"mandate_id": row["id"]}
+                    )
+                )
+        return Result(
+            body={"mandate": self._mandate_view(row, now)},
+            state_diff=diff,
+            scheduled=scheduled,
+            created=True,
+        )
+
+    @staticmethod
+    def _check_reserve_request(request: MandateRequest, config: RailsConfig, balance: int) -> None:
+        settings = config.settings
+        if request.valid_seconds is None:
+            msg = "a reserve mandate needs valid_seconds: blocks always expire"
+            raise ToolRejected(Rejection.INVALID_MANDATE, msg)
+        if request.max_amount_paise > settings.reserve_max_block_paise:
+            msg = f"a reserve block may be at most {settings.reserve_max_block_paise} paise"
+            raise ToolRejected(Rejection.INVALID_MANDATE, msg)
+        if request.valid_seconds > settings.reserve_max_validity_seconds:
+            msg = f"a reserve block may last at most {settings.reserve_max_validity_seconds} s"
+            raise ToolRejected(Rejection.INVALID_MANDATE, msg)
+        if balance < request.max_amount_paise:
+            msg = f"the balance ({balance} paise) cannot fund a block of {request.max_amount_paise}"
+            raise ToolRejected(Rejection.INSUFFICIENT_FUNDS, msg)
+
     def _release_hold(self, mandate: Row, stamp: str) -> list[DiffEntry]:
         """Return what is left of a reserve block to the payer."""
         remaining = int(mandate["remaining_limit_paise"] or 0)
@@ -969,6 +996,74 @@ class Rails:
             msg = f"no account with handle {handle!r}"
             raise ToolRejected(Rejection.ACCOUNT_NOT_FOUND, msg)
         return {key: row[key] for key in ("handle", "holder", "kind", "status", "balance_paise")}
+
+    def transactions(
+        self, handle: str, now: dt.datetime, *, limit: int = 20, status: str | None = None
+    ) -> list[Row]:
+        """The holder's statement, newest first: payments in and out, and refunds.
+
+        Payment statuses are what a status check would say, so they lag like one.
+        A declined payment shows on the payer's statement only.
+        """
+        self.account(handle)
+        entries: list[Row] = []
+        payments = self.store.query_all(
+            "SELECT * FROM payment WHERE payer = ? OR payee = ? ORDER BY rowid", (handle, handle)
+        )
+        for row in payments:
+            view = self._payment_view(row, now)
+            outgoing = row["payer"] == handle
+            if not outgoing and row["status"] == PaymentStatus.FAILED:
+                continue  # a payee never hears of a payment that was declined
+            entries.append(
+                {
+                    "kind": "payment",
+                    "id": view["id"],
+                    "direction": "debit" if outgoing else "credit",
+                    "counterparty": row["payee"] if outgoing else row["payer"],
+                    "amount_paise": view["amount_paise"],
+                    "status": view["status"],
+                    "failure_code": view["failure_code"],
+                    "mandate_id": view["mandate_id"],
+                    "note": view["note"],
+                    "payment_id": None,
+                    "created_at": view["created_at"],
+                }
+            )
+        refunds = self.store.query_all(
+            "SELECT refund.*, payment.payer, payment.payee FROM refund"
+            " JOIN payment ON payment.id = refund.payment_id"
+            " WHERE payment.payer = ? OR payment.payee = ? ORDER BY refund.rowid",
+            (handle, handle),
+        )
+        for row in refunds:
+            incoming = row["payer"] == handle
+            entries.append(
+                {
+                    "kind": "refund",
+                    "id": row["id"],
+                    "direction": "credit" if incoming else "debit",
+                    "counterparty": row["payee"] if incoming else row["payer"],
+                    "amount_paise": row["amount_paise"],
+                    "status": row["status"],
+                    "failure_code": row["failure_code"],
+                    "mandate_id": None,
+                    "note": row["reason"],
+                    "payment_id": row["payment_id"],
+                    "created_at": row["created_at"],
+                }
+            )
+        if status is not None:
+            entries = [entry for entry in entries if entry["status"] == status]
+        # Stable: equal timestamps keep insertion order, payments before refunds.
+        entries.sort(key=lambda entry: str(entry["created_at"]), reverse=True)
+        return entries[:limit]
+
+    def mandates_of(self, handle: str, now: dt.datetime) -> list[Row]:
+        """Every mandate the holder has granted, with ``expired`` worked out."""
+        self.account(handle)
+        rows = self.store.query_all("SELECT * FROM mandate WHERE payer = ? ORDER BY id", (handle,))
+        return [self._mandate_view(row, now) for row in rows]
 
     def lookup_handle(self, handle: str) -> Row:
         """Check an address before paying it, as UPI apps do."""
@@ -1102,11 +1197,6 @@ class Rails:
         return out
 
     # -------------------------------------------------------------- helpers
-    def _insert(self, table: str, row: Row) -> None:
-        columns = ", ".join(row)
-        marks = ", ".join("?" for _ in row)
-        self._db.execute(f"INSERT INTO {table} ({columns}) VALUES ({marks})", tuple(row.values()))
-
     def _created(self, table: str, row: Row) -> DiffEntry:
         return DiffEntry(op="create", path=f"rails/{table}/{row['id']}", after=self._admin_row(row))
 

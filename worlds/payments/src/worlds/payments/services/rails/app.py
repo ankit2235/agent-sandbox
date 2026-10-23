@@ -16,22 +16,27 @@ from enum import StrEnum
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from kit.errors import ToolRejected
-from kit.service import sim_time_from_headers
+from ..common import install_error_handlers, sim_now, written
+from .core import Rails
+from .models import (
+    EventRequest,
+    MandateRequest,
+    PaymentRequest,
+    RailsConfig,
+    RefundRequest,
+    Rejection,
+)
 
-from .core import Rails, Result
-from .models import EventRequest, PaymentRequest, RailsConfig, RefundRequest, Rejection
-
-HTTP_STATUS = {
+HTTP_STATUS: dict[str, int] = {
     Rejection.ACCOUNT_NOT_FOUND: 404,
     Rejection.MANDATE_NOT_FOUND: 404,
     Rejection.PAYMENT_NOT_FOUND: 404,
     Rejection.REFUND_NOT_FOUND: 404,
     Rejection.PAYER_NOT_FOUND: 404,
     Rejection.UNKNOWN_RESOURCE: 404,
+    Rejection.INSUFFICIENT_FUNDS: 409,
     Rejection.IDEMPOTENCY_CONFLICT: 409,
     Rejection.INVALID_TRANSITION: 409,
     Rejection.ALREADY_LOADED: 409,
@@ -47,54 +52,28 @@ class MandateAction(StrEnum):
     REVOKE = "revoke"
 
 
-def sim_now(request: Request) -> dt.datetime:
-    """The simulated time the episode sent. A request without it fails loudly."""
-    return dt.datetime.fromisoformat(sim_time_from_headers(request.headers))
-
-
 Now = Annotated[dt.datetime, Depends(sim_now)]
-
-
-def _written(result: Result) -> JSONResponse:
-    """201 when something new was recorded, 200 for a replay or an update."""
-    return JSONResponse(status_code=201 if result.created else 200, content=result.to_json())
 
 
 def create_app(rails: Rails) -> FastAPI:
     """Build the rails app around one episode's :class:`~.core.Rails`."""
     app = FastAPI(title="sandbox rails", docs_url=None, redoc_url=None)
 
-    @app.exception_handler(ToolRejected)
-    async def _rejected(_: Request, exc: ToolRejected) -> JSONResponse:
-        status = HTTP_STATUS.get(Rejection(exc.code), 422)
-        return JSONResponse(
-            status_code=status, content={"error": {"code": exc.code, "message": exc.message}}
-        )
-
-    @app.exception_handler(RequestValidationError)
-    async def _invalid(_: Request, exc: RequestValidationError) -> JSONResponse:
-        problems = "; ".join(
-            f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
-            for error in exc.errors()
-        )
-        return JSONResponse(
-            status_code=422,
-            content={"error": {"code": Rejection.INVALID_REQUEST.value, "message": problems}},
-        )
+    install_error_handlers(app, HTTP_STATUS)
 
     # ------------------------------------------------------- episode only
     @app.post("/internal/load")
     async def load(config: RailsConfig, now: Now) -> JSONResponse:
-        return _written(rails.load(config, now))
+        return written(rails.load(config, now))
 
     @app.post("/internal/events")
     async def event(body: EventRequest, now: Now) -> JSONResponse:
-        return _written(rails.apply_event(body.name, body.payload, now))
+        return written(rails.apply_event(body.name, body.payload, now))
 
     # ----------------------------------------------------------- payments
     @app.post("/payments")
     async def create_payment(body: PaymentRequest, now: Now) -> JSONResponse:
-        return _written(rails.create_payment(body, now))
+        return written(rails.create_payment(body, now))
 
     @app.get("/payments")
     async def payment_by_key(idempotency_key: str, now: Now) -> dict[str, Any]:
@@ -106,7 +85,7 @@ def create_app(rails: Rails) -> FastAPI:
 
     @app.post("/refunds")
     async def create_refund(body: RefundRequest, now: Now) -> JSONResponse:
-        return _written(rails.create_refund(body, now))
+        return written(rails.create_refund(body, now))
 
     @app.get("/refunds/{refund_id}")
     async def refund(refund_id: str, now: Now) -> dict[str, Any]:
@@ -117,6 +96,16 @@ def create_app(rails: Rails) -> FastAPI:
     async def account(handle: str, now: Now) -> dict[str, Any]:
         return rails.account(handle)
 
+    @app.get("/accounts/{handle}/transactions")
+    async def transactions(
+        handle: str, now: Now, limit: int = 20, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        return rails.transactions(handle, now, limit=limit, status=status)
+
+    @app.get("/accounts/{handle}/mandates")
+    async def account_mandates(handle: str, now: Now) -> list[dict[str, Any]]:
+        return rails.mandates_of(handle, now)
+
     @app.get("/handles/{handle}")
     async def lookup_handle(handle: str, now: Now) -> dict[str, Any]:
         return rails.lookup_handle(handle)
@@ -125,13 +114,17 @@ def create_app(rails: Rails) -> FastAPI:
     async def limits(handle: str, now: Now) -> dict[str, Any]:
         return rails.limits(handle, now)
 
+    @app.post("/mandates")
+    async def create_mandate(body: MandateRequest, now: Now) -> JSONResponse:
+        return written(rails.create_mandate(body, now))
+
     @app.get("/mandates/{mandate_id}")
     async def mandate(mandate_id: str, now: Now) -> dict[str, Any]:
         return rails.mandate(mandate_id, now)
 
     @app.post("/mandates/{mandate_id}/{action}")
     async def mandate_action(mandate_id: str, action: MandateAction, now: Now) -> JSONResponse:
-        return _written(rails.mandate_action(mandate_id, action.value, now))
+        return written(rails.mandate_action(mandate_id, action.value, now))
 
     # -------------------------------------------------------- graders only
     @app.get("/admin/{resource}")
@@ -141,4 +134,4 @@ def create_app(rails: Rails) -> FastAPI:
     return app
 
 
-__all__ = ["MandateAction", "create_app", "sim_now"]
+__all__ = ["MandateAction", "create_app"]

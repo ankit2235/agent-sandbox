@@ -6,7 +6,7 @@ import pytest
 from rails_testkit import ALICE, BOB, SHOP, Harness, config_dict
 
 from kit.errors import ToolRejected
-from worlds.payments.services.rails.models import Decline, Rejection
+from worlds.payments.services.rails.models import Decline, MandateRequest, Rejection
 
 ICE = "ice@sandbox"
 
@@ -195,6 +195,29 @@ def unknown_resource() -> str:
     return rejected(lambda: Harness().admin("secrets"))
 
 
+def mandate_request(**fields: object) -> MandateRequest:
+    base: dict[str, object] = {
+        "payer": ALICE,
+        "payee": SHOP,
+        "type": "reserve",
+        "max_amount_paise": 10_000,
+        "valid_seconds": 3_600,
+    }
+    base.update(fields)
+    return MandateRequest.model_validate(base)
+
+
+def invalid_mandate() -> str:
+    h = Harness()
+    return rejected(lambda: h.rails.create_mandate(mandate_request(valid_seconds=None), h.now))
+
+
+def insufficient_funds_for_a_block() -> str:
+    h = Harness()
+    request = mandate_request(payer=BOB, max_amount_paise=100_001)
+    return rejected(lambda: h.rails.create_mandate(request, h.now))
+
+
 DECLINES: dict[Decline, Callable[[], str]] = {
     Decline.INSUFFICIENT_FUNDS: insufficient_funds,
     Decline.PAYEE_NOT_FOUND: payee_not_found,
@@ -231,6 +254,8 @@ REJECTIONS: dict[Rejection, Callable[[], str]] = {
     Rejection.ALREADY_LOADED: already_loaded,
     Rejection.UNKNOWN_EVENT: unknown_event,
     Rejection.UNKNOWN_RESOURCE: unknown_resource,
+    Rejection.INVALID_MANDATE: invalid_mandate,
+    Rejection.INSUFFICIENT_FUNDS: insufficient_funds_for_a_block,
 }
 
 

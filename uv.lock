@@ -91,13 +91,20 @@ dependencies = [
     { name = "pyyaml" },
 ]
 
+[package.optional-dependencies]
+mcp = [
+    { name = "mcp" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "jsonschema", specifier = ">=4.23" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = "==1.30.0" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
+provides-extras = ["mcp"]
 
 [[package]]
 name = "agent-sandbox-runner"
@@ -126,13 +133,13 @@ name = "agent-sandbox-world-payments"
 version = "0.0.1.dev0"
 source = { editable = "worlds/payments" }
 dependencies = [
-    { name = "agent-sandbox-kit" },
+    { name = "agent-sandbox-kit", extra = ["mcp"] },
     { name = "fastapi" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "agent-sandbox-kit", editable = "kit" },
+    { name = "agent-sandbox-kit", extras = ["mcp"], editable = "kit" },
     { name = "fastapi", specifier = ">=0.116" },
 ]
 

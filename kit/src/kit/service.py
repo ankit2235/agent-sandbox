@@ -56,7 +56,10 @@ class SqliteStore:
     """
 
     def __init__(self, schema: str = "") -> None:
-        self.connection = sqlite3.connect(":memory:", isolation_level=None)
+        # Not tied to the creating thread: the MCP bridge drives an episode from a
+        # worker thread. Calls are still strictly one at a time (the bridge holds a
+        # lock around every step), which is what SQLite needs to be safe here.
+        self.connection = sqlite3.connect(":memory:", isolation_level=None, check_same_thread=False)
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
         if schema:
