@@ -6,7 +6,7 @@ module unchanged. Every call goes through :meth:`kit.world.Episode.step`, so the
 allowed-tools check, simulated time, scheduled events and the trace step are the
 same whether a scripted test, the OpenEnv adapter or an MCP client drives the run.
 
-Needs the ``mcp`` extra: ``pip install 'agent-sandbox-kit[mcp]'``.
+Needs the ``mcp`` extra: ``pip install 'agent-sandbox-bench-kit[mcp]'``.
 
 Two details matter for determinism:
 

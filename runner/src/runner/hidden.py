@@ -28,13 +28,14 @@ from typing import Any
 import yaml
 
 from kit.rng import SeededRNG
-from kit.scripted import Run, RunError, RunFile, ScriptRun, load_runs, play
+from kit.scripted import Run, RunFile, load_runs
 from kit.tasks import hidden_tasks_dir, load_task, load_tasks
 from kit.types import TaskSpec
 from kit.world import WorldSpec, load_grader
 from stress.core import NotApplicable, applicable, apply, scripted_runs
 
 from .runs import task_set_version
+from .validate import play_runs, played
 
 CANARY_PREFIX = "sandbox-canary:"
 CANARY_RE = re.compile(
@@ -120,23 +121,15 @@ def _refuse_public(destination: Path) -> None:
         raise HiddenSetError(msg)
 
 
-def _played(spec: WorldSpec, task: TaskSpec, run: Run) -> ScriptRun | None:
-    """The run played, or None if a step did not go as scripted (it was refused)."""
-    try:
-        return play(spec, task, run)
-    except RunError:
-        return None
-
-
 def _behaves(spec: WorldSpec, task: TaskSpec, runs: RunFile) -> RunFile | None:
     """The runs that play as declared; None if the golden run fails or no trap is left."""
-    golden = _played(spec, task, runs.runs["golden"])
+    golden = played(spec, task, runs.runs["golden"])
     if golden is None or not golden.passed:
         return None
     kept: dict[str, Run] = {"golden": runs.runs["golden"]}
     for name in runs.wrong:
         trap = runs.runs[name]
-        result = _played(spec, task, trap)
+        result = played(spec, task, trap)
         grade = result.grade if result is not None else None
         if grade is not None and grade.failure_type == trap.fails_with:
             kept[name] = trap
@@ -372,17 +365,9 @@ def check_set(spec: WorldSpec) -> CheckReport:
         except FileNotFoundError:
             report.problems.append(f"{task.id}: no run file")
             continue
-        golden = _played(spec, task, runs.runs["golden"])
-        report.runs += 1
-        if golden is None or not golden.passed:
-            report.problems.append(f"{task.id}: the golden run does not pass as scripted")
-        for name in runs.wrong:
-            trap = runs.runs[name]
-            result = _played(spec, task, trap)
-            report.runs += 1
-            got = result.grade.failure_type if result is not None and result.grade else None
-            if got != trap.fails_with:
-                report.problems.append(f"{task.id}: {name} fails with {got}, not {trap.fails_with}")
+        outcome = play_runs(spec, task, runs)
+        report.runs += outcome.runs
+        report.problems += outcome.problems
     return report
 
 

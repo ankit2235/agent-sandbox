@@ -57,5 +57,29 @@ worlds:
 validate-tasks:
     uv run sandbox tasks validate
 
+# Ten tasks with one model, and a score (no key needed for the default fake model).
+quickstart MODEL="fake:golden":
+    uv run sandbox quickstart --model {{MODEL}}
+
+# The release gate, e.g. `just release-check payments-v0.1 --results ~/runs/payments-v0.1`.
+release-check SET *ARGS:
+    uv run sandbox release-check {{SET}} {{ARGS}}
+
+# Build the six distributions into dist/. Nothing is uploaded.
+build:
+    uv build --all-packages --out-dir dist
+
+# Build the docs site into site/, strictly (a broken link fails).
+docs:
+    uv run --group docs mkdocs build --strict
+
+# Serve the docs site at http://127.0.0.1:8000 while editing it.
+docs-serve:
+    uv run --group docs mkdocs serve
+
+# Regenerate the docs site's tool reference from the worlds' tool schemas.
+tool-docs:
+    for world in payments security; do uv run sandbox tools --world $world > docs/site/tools/$world.md; done
+
 # What CI runs.
 ci: lint typecheck test

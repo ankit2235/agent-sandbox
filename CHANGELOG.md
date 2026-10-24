@@ -6,6 +6,46 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+This section becomes **[0.1.0] — payments-v0.1** when the repo owner tags `payments-v0.1` and
+`v0.1.0` (`docs/RELEASING.md`). The release gate does not pass yet: it waits on the payments
+reviewer's sign-off, real model results and the real calibration report.
+
+### Added — Phase 6: v0.1 release
+
+- Packaging: six distributions at 0.1.0, pinned to each other, published as
+  `agent-sandbox-bench` (`agent-sandbox` on PyPI is an unrelated project), with
+  `scripts/rename_distribution.py` to change the name in one go. The umbrella sdist holds only
+  its metadata; a test builds every archive and checks what is inside.
+- `sandbox quickstart --model <id>`: ten seeded tasks, one run each, and a score.
+- `sandbox release-check <set>`: nine named conditions (public tasks, hidden set, sign-off,
+  grader runs, frozen content, calibration, results for 5+ real models reproduced by
+  `verify`, published leaderboard files equal to those results, no hidden content), each saying
+  what it waits on. `sandbox freeze <set>` and `tasks/frozen-v0.1.json` for payments.
+- Results submission: `submissions/<set>/<model>.json` (`submission-v1`), `sandbox submission
+  fetch | check | spot-check`, a pull request template and `.github/workflows/results-submission.yml`
+  (a secret-free check on every results pull request, and a maintainer-started spot-check that
+  reruns ten seeded tasks with the model).
+- `sandbox tools --world <name>`: the tool reference, generated from what the agent is served.
+- The docs site (`mkdocs.yml`, `docs/site/`, `mkdocs-material==9.7.7` in a `docs` group) and
+  `.github/workflows/docs.yml` (strict build on pull requests, GitHub Pages from main).
+- `Dockerfile` (the `sandbox` command with every world and LiteLLM) and
+  `.github/workflows/release.yml` (PyPI trusted publishing and the GHCR image on a version tag).
+  A `package` job in CI installs the built wheels into a clean virtualenv and runs the quickstart.
+- `worlds/payments/openenv/`: the payments world as an OpenEnv / Hugging Face Space
+  environment, with a `finish_episode` action; it passes `openenv validate`.
+- `docs/RELEASING.md` (every step that needs the repo owner), `docs/blog/v0.1.md` (method, setup
+  and limitations; findings pending real runs), `docs/calibration/`.
+
+### Changed — Phase 6
+
+- Distribution names: `agent-sandbox-*` → `agent-sandbox-bench-*`. Imports and the `sandbox`
+  command are unchanged.
+- `task_hash` leaves out `reviewer_signoff`, so a run made before a sign-off still verifies.
+- Kit (additive, on the `kit-v0.1` review list): the OpenEnv adapter's reset observation lists
+  the task's tools (`tools`).
+- `runner/validate.py` holds the task-file checks and the run player that `tasks validate`,
+  `hidden check` and the gate share.
+
 ### Added — Phase 5: stress library and hidden set
 
 - `stress/core`: the five generic modifier contracts, shared seeded wording, the `Modifier` and

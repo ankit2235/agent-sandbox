@@ -7,6 +7,9 @@ frozen yet**; they wait for review.
 **Domain reviewer:** to be confirmed (SOC analyst or incident responder). No grader is signed off:
 `reviewer_signoff` is `null` on all 50 tasks, and the benign look-alike stories need the same
 review.
+**Release (Phase 6):** ships inside 0.1.0 as `agent-sandbox-bench-world-security`, listed as
+`preview`. It is not part of the v0.1 release gate: no freeze file and no OpenEnv listing yet.
+`sandbox release-check security-v0.1` works and reports what it is missing.
 
 **Defensive only.** The agent investigates and defends. Nothing here attacks anything, and every
 incident is a synthetic story told as observable evidence.

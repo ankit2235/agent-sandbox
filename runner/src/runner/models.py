@@ -28,6 +28,8 @@ from kit.types import TaskSpec, Usage
 from kit.world import WorldSpec
 from stress.core import base_id, scripted_runs
 
+from . import DISTRIBUTION
+
 FAKE_PREFIX = "fake:"
 Message = dict[str, Any]
 
@@ -290,7 +292,7 @@ def _import_litellm() -> Any:
     except ImportError as error:
         msg = (
             "real models need the litellm extra: uv sync --all-packages --extra litellm "
-            "(or pip install 'agent-sandbox-runner[litellm]')"
+            f"(or pip install '{DISTRIBUTION}[litellm]')"
         )
         raise ImportError(msg) from error
     return litellm

@@ -878,3 +878,149 @@ like, and the task mix keeps it at 18%.
      `jsonschema.validate`, which checks the schema itself on every call. That is most of the
      10–20 s it takes to build a stressed set. A cached validator in the kit would remove it; it
      needs an approved kit change, so it waits.
+
+## Phase 6 — v0.1 release (2026-10-24)
+
+### Approved before coding
+
+150. **The packages are published as `agent-sandbox-bench`**, not `agent-sandbox`: that name on
+     PyPI belongs to an unrelated project (Agent Infra Team's sandbox SDK, checked 2026-10-24), so
+     `pip install agent-sandbox` would install it. The six distributions are `agent-sandbox-bench`
+     and `agent-sandbox-bench-{kit,runner,stress,world-payments,world-security}`. Import names
+     and the `sandbox` command do not change. The name is provisional until the repo owner
+     confirms it, so it lives in one constant, `runner.DISTRIBUTION`; `scripts/rename_distribution.py
+     <new-name>` rewrites every file that uses it (then `uv lock`), and `runner/tests/test_packaging.py`
+     fails if a pyproject, a pin or an install hint disagrees with the constant.
+151. **Version 0.1.0 for all six distributions, pinned to each other (`==0.1.0`)**, with
+     `kit.__version__` the reference. Two tags, both made by the repo owner: `payments-v0.1`
+     (the task set) and `v0.1.0`, which triggers `release.yml`. The security world ships inside
+     0.1.0 as `preview`; it is not part of the release gate.
+152. **`task_hash` leaves out `reviewer_signoff`** (runner change). The agent never sees it, so a
+     model run before a reviewer signs a task off still resumes, verifies and exports afterwards.
+     Real runs can start now, in parallel with the review. The hidden set's `content_hash` is
+     unchanged.
+153. **Hidden tasks follow their base task's sign-off.** A v0.1 hidden task is a seeded variant of
+     a public task under public modifiers (decision 145), so the gate's `signoff` condition checks
+     the public tasks only. Signing the hidden files off would change their published hashes.
+154. **Run directories are never committed.** `release-check --results <dir>` reads them from
+     outside git. What is committed: the exported leaderboard files (`leaderboard/public/data/`)
+     and the calibration report (`docs/calibration/<set>/report.{json,md}`). The full run
+     directories are attached to the GitHub release as one archive by the repo owner
+     (`docs/RELEASING.md`), so anyone can verify the published numbers.
+155. **The gate's thresholds**: 50–80 public tasks; at least 5 real models (no `fake:` id), each
+     with the whole public set, at least 3 runs per task, every run completed and reproduced;
+     a calibration report of at least 2 real models covering every modifier of the world.
+     "Best model under about 50% on the stressed set" is shown, not gated (the prompt does not
+     list it).
+156. **The spot-check tolerance is 30 points** on a 10-task sample: the rerun may score up to 30
+     points below the submission on the same tasks. Invented, not measured, and configurable
+     (`--tolerance`). A model at temperature 0 still varies run to run, and ten tasks is a small
+     sample, so only a large gap is treated as evidence that the actions were not the model's.
+157. **Docs site: `mkdocs-material==9.7.7`** (2026-07-17) in a `docs` dependency group, which
+     brings `mkdocs==1.6.1`. Not 9.8.0, released the day this was decided. A plain `uv sync`
+     and CI's test job do not install it. Material for MkDocs prints a notice about MkDocs 2.0;
+     9.7.7 requires `mkdocs<2`, so the notice does not apply to this build.
+158. **K1, kit change (additive, approved; on the `kit-v0.1` review list)**: the OpenEnv adapter's
+     `reset` observation carries `tools`, the task's allowed tools with their descriptions and
+     input schemas, read from the episode's tool router in the same order the MCP bridge serves
+     them (`kit.openenv_adapter.task_tools`). Without it an OpenEnv client could not discover
+     what it may call. Later observations carry an empty list.
+159. **No Prime Intellect verifiers wrapper in v0.1** (repo owner's decision). It is feasible in
+     principle (a `MultiTurnEnv` whose dataset is the tasks, `tool_defs` the MCP schemas, each
+     rollout a kit episode and the grader's score the reward), but: verifiers 0.4.x pins
+     `mcp==2.0.0` while the kit pins `mcp==1.30.0`; and verifiers 0.3.0, the last with `mcp<2`,
+     needs `openai>=2.9`, which the lock's litellm 1.104.2 does not allow. It would have to be a
+     separate package that cannot share an environment with the litellm extra. Follow-up: build
+     it once the kit moves to mcp 2.x.
+160. **New workflows**: `release.yml` (version tag → build, PyPI trusted publishing in the
+     `pypi` environment, GHCR image), `docs.yml` (strict build on every pull request, Pages
+     deploy from main), `results-submission.yml` (below), and a `package` job in `ci.yml` that
+     installs the built wheels into a clean virtualenv and runs the quickstart with the fake
+     model. Actions pinned to tags current on 2026-10-24: `pypa/gh-action-pypi-publish@v1.14.3`,
+     `docker/build-push-action@v7.4.0`, `docker/login-action@v4.6.0` (v4.7.0 was a day old),
+     `docker/setup-buildx-action@v4.4.1`, `actions/upload-pages-artifact@v5.0.0`,
+     `actions/deploy-pages@v5.0.1`, `actions/upload-artifact@v7.0.2`,
+     `actions/download-artifact@v8.0.2`.
+161. **Quickstart**: `sandbox quickstart --model <id>` runs 10 public tasks sampled with seed 0,
+     one run each, world `payments` by default, into `runs/quickstart/<model-slug>/`
+     (resumable), and prints the score with its interval. A real model without the litellm
+     extra exits 2 with the install command, before any run starts.
+162. **Docker image `ghcr.io/prarabdha-soni/agent-sandbox`** (name to be confirmed by the repo
+     owner), with the litellm extra, built from `uv.lock` (`uv sync --frozen --no-dev
+     --all-packages --extra litellm --no-editable`) on `ghcr.io/astral-sh/uv:0.12.20-python3.12-trixie-slim`,
+     run on `python:3.12-slim-trixie`. Entrypoint `sandbox`. 625 MB locally.
+
+### Decided while building
+
+163. **The release gate is nine named conditions** (`runner/release.py`): `public-tasks`,
+     `hidden-set`, `signoff`, `grader-runs`, `frozen`, `calibration`, `results`, `published`,
+     `no-hidden`. Every one is checked even after a failure, and each failing line names what it
+     waits on (`reviewer`, `real model runs`, `HIDDEN_TASKS_DIR`, `maintainer`, `code`).
+     `grader-runs` plays the golden and wrong runs of the public tasks and of the stressed set
+     (189 runs for payments). `hidden-set` reuses `sandbox hidden check` and prints counts only;
+     if a hidden task fails validation it names only the error's type and sends the reader to
+     `sandbox hidden check` privately, because a validation message can quote the task.
+164. **`published`**: the committed `<data>/<world>/results.json` must equal what the passing
+     result directories (and any hidden-set run directories under `--results`, verified first)
+     export, apart from `updated`. So the leaderboard can only show verified numbers.
+165. **Task content is frozen with `sandbox freeze <set>`**, which writes
+     `<tasks_dir>/frozen-<version>.json` (`frozen-tasks-v1`: each public task's `task_hash`). A test
+     fails if a packaged payments task differs from it, so a released task cannot change without
+     a new version. Signing off does not change it (decision 152). If the reviewer asks for a task
+     change, it means refreezing before `v0.1.0` is tagged.
+166. **A submission is a file, not a directory**: `submissions/<set>/<model-slug>.json`
+     (`submission-v1`: task set, model id, name, provider, open weight, an https `archive_url`, its
+     `archive_sha256`, contact). `sandbox submission fetch` downloads at most 500 MiB, checks the
+     hash, unpacks with Python's `data` tar filter (no absolute paths, no `..`, no links out),
+     requires exactly one run directory, and requires its manifest to record the same set, model,
+     name and provider. `sandbox submission check` then refuses: a non-`sandbox-run-v1` directory,
+     another set or a sample, a fake model, another system prompt, fewer runs than asked, missing,
+     extra or errored runs, hidden records, any canary in any file, a run `verify` cannot replay or
+     that differs, and leaderboard files that would be invalid.
+167. **The results PR job never has secrets and never runs a model.** It fails if the pull request
+     changes anything outside `submissions/*/*.json`. The spot-check is a separate
+     `workflow_dispatch` job: it checks out main's code, takes only the submission file from the
+     pull request (`git show`), runs in the `spot-check` environment that holds the provider
+     keys, and samples with the workflow's run id as the seed, so the sample is unknown when the
+     submission is made.
+168. **Shared checks moved, not copied**: `runner/validate.py` now holds the task-file checks
+     (from `cli.py`) and the golden/wrong run player (from `hidden.check_set`), used by
+     `sandbox tasks validate`, `sandbox hidden check` and the gate.
+169. **The tool reference is generated** (`sandbox tools --world <name>`, `runner/reference.py`)
+     from an episode's tool router, the list the agent is served. `docs/site/tools/<world>.md`
+     are its output, checked by a test and in `docs.yml`. A test also checks the payments output
+     against the reviewed `tools/schemas.json`.
+170. **The OpenEnv Space bundle is `worlds/payments/openenv/`**, laid out as `openenv init`
+     (openenv 0.9.0) scaffolds it: `openenv.yaml` (`spec_version: 1`, `type: space`, `runtime:
+     fastapi`, `app: server.app:app`, reward range [0, 1]), `pyproject.toml`, `client.py`,
+     `models.py`, `server/app.py` (`create_app`), `server/Dockerfile` on `openenv-base`, and a
+     README that is the Space card. It installs `agent-sandbox-bench[openenv]==0.1.0` and reaches
+     the world through the registry. `openenv validate --level static` and `openenv validate
+     --url` against a local server both pass. Its `uv.lock` can only be made once the package is
+     on PyPI.
+171. **The Space adds a `finish_episode` action** (no arguments). Most payments tasks end when
+     the agent simply stops, which an OpenEnv client cannot say with a world tool, so without it
+     an episode would end only at the step cap. It grades the episode and returns the score as
+     the reward; `reset` lists it after the task's tools; a step after it is refused. It lives in
+     the Space, not the kit. **Proposed for `kit-v0.1` (K2, not made)**: move it into
+     `kit.openenv_adapter`, since every world has the same gap.
+172. **The Space's Python**: `openenv-base:latest` ships Python 3.11.17, and the packages need
+     3.12. The Space's `requires-python = ">=3.12,<3.13"` makes uv install 3.12 (left alone, it
+     picked 3.13). The template's Dockerfile installs it into the builder stage only, so the one
+     change to the template is `UV_PYTHON_INSTALL_DIR=/opt/uv-python`, with that folder copied
+     into the runtime stage. Checked with a local Docker build against the locally built wheels:
+     Python 3.12.8, healthy, `openenv validate --url` passes.
+173. **The umbrella package's sdist holds only its metadata** (`only-include`: pyproject,
+     README, LICENSE, CHANGELOG). Without it hatch packed every file in the checkout, tracked or
+     not. `test_packaging.py` builds all six distributions and fails if any sdist holds a file git
+     ignores (anything outside `git ls-files --cached --others --exclude-standard`) or a dot
+     directory, the umbrella sdist holds more than its four files, any wheel holds anything but its
+     package and metadata, or an internal requirement is not pinned. It names no file.
+174. **The runner declares `httpx>=0.28`** (already locked through the kit), now that
+     `submission.download` uses it directly.
+175. **The write-up (`docs/blog/v0.1.md`) states only what is built and measured.** Its findings
+     section says plainly that no real model has been run yet; the numbers come after the runs.
+176. **The leaderboard's `stress` category is not built in Phase 6.** Decision 133 left it to this
+     phase, but the Phase 6 prompt does not ask for it, it needs a change to the `results-v0.1`
+     schemas the leaderboard reads, and it has nothing to show until stressed runs of real models
+     exist. Kept as an open issue.

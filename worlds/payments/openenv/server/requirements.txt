@@ -1,0 +1,3 @@
+agent-sandbox-bench[openenv]==0.1.0
+fastapi>=0.116
+uvicorn>=0.34

@@ -8,7 +8,7 @@ optional ``TaskProvider`` methods are discovered structurally — which is how a
 world's task sets become selectable splits.
 
 OpenEnv is experimental upstream and pulls a large dependency tree, so it is an
-extra: ``pip install 'agent-sandbox[openenv]'``. The import happens inside
+extra: ``pip install 'agent-sandbox-bench[openenv]'``. The import happens inside
 :func:`environment_class`, which is why the class is built by a factory rather
 than declared at module level.
 """
@@ -28,7 +28,7 @@ from kit.types import GradeResult, TaskSpec, ToolCall
 from kit.world import WorldSpec, load_grader, worlds
 
 OPENENV_VERSION = "0.9.0"
-INSTALL_HINT = "pip install 'agent-sandbox[openenv]'"
+INSTALL_HINT = "pip install 'agent-sandbox-bench[openenv]'"
 
 
 def _import_openenv() -> tuple[Any, Any, Any, Any]:
@@ -59,6 +59,8 @@ def environment_class() -> type[Any]:
         data: dict[str, Any] = Field(default_factory=dict)
         error_code: str | None = None
         sim_time: str = ""
+        tools: list[dict[str, Any]] = Field(default_factory=list)
+        """On reset: the tools this task allows (name, description, input_schema)."""
 
     class SandboxState(base_state):  # type: ignore[misc, valid-type]
         """Episode bookkeeping OpenEnv clients can read."""
@@ -123,6 +125,7 @@ def environment_class() -> type[Any]:
                 text=observation.text,
                 data=observation.data,
                 sim_time=observation.sim_time.isoformat(),
+                tools=task_tools(self._episode, task),
                 done=False,
                 reward=None,
                 metadata={"task_id": task.id, "world": task.world, "version": task.version},
@@ -270,6 +273,23 @@ def environment_class() -> type[Any]:
     return SandboxEnvironment
 
 
+def task_tools(episode: Any, task: TaskSpec) -> list[dict[str, Any]]:
+    """The tools a task allows, as a client needs them to call any: all of them if none listed.
+
+    Read from the episode's tool router when it has one (every :class:`kit.episode.BaseEpisode`
+    does), in the router's order, the same list :class:`kit.mcp_bridge.McpBridge` serves.
+    """
+    router = getattr(episode, "router", None)
+    if router is None:
+        return []
+    allowed = set(task.allowed_tools)
+    return [
+        {"name": tool.name, "description": tool.description, "input_schema": tool.input_schema}
+        for tool in (router.get(name) for name in router.names)
+        if not allowed or tool.name in allowed
+    ]
+
+
 def action_class() -> type[Any]:
     """The action type OpenEnv clients send: ``ToolCallAction(tool=..., args=...)``."""
     action: type[Any] = environment_class().Action
@@ -297,4 +317,5 @@ __all__ = [
     "environment_class",
     "make_environment",
     "openenv_available",
+    "task_tools",
 ]

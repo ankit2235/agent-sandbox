@@ -7,7 +7,11 @@
 - ``verify``: replay a run directory's recorded actions and confirm its grades;
 - ``export``: write leaderboard files from one or more run directories;
 - ``stress list | calibrate | report``: the stress modifiers and their calibration;
-- ``hidden generate | hashes | check | scan | leaks``: the hidden set (:mod:`runner.hidden`).
+- ``hidden generate | hashes | check | scan | leaks``: the hidden set (:mod:`runner.hidden`);
+- ``quickstart``: ten tasks with one model, and a score;
+- ``release-check`` and ``freeze``: the release gate (:mod:`runner.release`);
+- ``submission fetch | check | spot-check``: submitted results (:mod:`runner.submission`);
+- ``tools``: a world's tool reference (:mod:`runner.reference`).
 """
 
 from __future__ import annotations
@@ -20,26 +24,26 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from kit import __version__, worlds
 from kit.scripted import run_script
-from kit.tasks import TaskSource, hidden_tasks_dir, load_task, load_tasks
-from kit.types import TaskSpec, ToolCall
+from kit.tasks import TaskSource, hidden_tasks_dir, load_tasks
+from kit.types import ToolCall
 from kit.world import WorldSpec, load_grader
 from stress.core import GENERIC, registry
 
-from . import hidden
+from . import DISTRIBUTION, hidden, reference, release, submission
 from .calibrate import calibrate, write_report
 from .calibrate import markdown as calibration_markdown
 from .export import export
-from .runs import RunConfig, RunRecord, execute, load_records
-from .score import summary_lines
+from .models import model_factory
+from .runs import RunConfig, RunRecord, execute, load_records, slug, task_set_version
+from .score import score, summary_lines
+from .validate import task_files, validate_file
 from .verify import verify
 
 DEFAULT_POLICY = "kit.examples.hello_world.scripted:golden_run"
-TASK_FILE_SCHEMA = "schema.json"
-"""A world may ship a JSON Schema for whole task files beside its tasks."""
+QUICKSTART_WORLD = "payments"
+QUICKSTART_TASKS = 10
 
 
 def _print(line: str = "") -> None:
@@ -77,43 +81,6 @@ def _resolve_tasks(spec: WorldSpec, directory: str | None) -> TaskSource:
     return spec.task_source()
 
 
-def _task_files(directory: Path) -> list[Path]:
-    return sorted(directory.glob("**/*.y*ml"))
-
-
-def _world_schema(spec: WorldSpec) -> dict[str, Any] | None:
-    """A world's whole-file task schema, if it ships one as ``<tasks_dir>/schema.json``."""
-    if spec.tasks_dir is None:
-        return None
-    path = spec.tasks_dir / TASK_FILE_SCHEMA
-    if not path.exists():
-        return None
-    schema: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
-    return schema
-
-
-def _validate_file(path: Path, root: Path) -> TaskSpec:
-    """Every check one task file must pass. Raises on the first problem."""
-    import jsonschema
-
-    task = load_task(path)
-    spec = worlds.get(task.world)
-    spec.validate_task(task)
-    load_grader(task.grader)
-    schema = _world_schema(spec)
-    if schema is not None:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-        # Validate the file as JSON sees it: YAML turns 2026-10-18 into a date object.
-        jsonschema.validate(json.loads(json.dumps(raw, default=str)), schema)
-    if path.stem != task.id:
-        msg = f"file name {path.name} does not match the task id {task.id!r}"
-        raise ValueError(msg)
-    if path.parent != root and path.parent.name != task.category:
-        msg = f"a {task.category!r} task must live in a {task.category}/ directory"
-        raise ValueError(msg)
-    return task
-
-
 def cmd_tasks_validate(args: argparse.Namespace) -> int:
     """Validate task files: the kit's checks, the world's file schema, names and ids."""
     roots = [Path(path) for path in args.paths or []]
@@ -122,7 +89,7 @@ def cmd_tasks_validate(args: argparse.Namespace) -> int:
             tasks_dir = worlds.get(name).tasks_dir
             if tasks_dir is not None:
                 roots.append(tasks_dir)
-    files = [(path, root) for root in roots for path in _task_files(root)]
+    files = [(path, root) for root in roots for path in task_files(root)]
     if not files:
         _print("No task files found.")
         return 1
@@ -131,7 +98,7 @@ def cmd_tasks_validate(args: argparse.Namespace) -> int:
     seen: dict[str, Path] = {}
     for path, root in files:
         try:
-            task = _validate_file(path, root)
+            task = validate_file(path, root)
             if task.run_key in seen:
                 msg = f"duplicate task id; also in {seen[task.run_key]}"
                 raise ValueError(msg)
@@ -207,9 +174,13 @@ def _report(record: RunRecord) -> None:
     )
 
 
+def _provider(model: str, given: str | None) -> str:
+    return given or (model.split("/", 1)[0] if "/" in model else "unknown")
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     """Run a model over a task set; resumable. Exit 1 if any run errored."""
-    provider = args.provider or (args.model.split("/", 1)[0] if "/" in args.model else "unknown")
+    provider = _provider(args.model, args.provider)
     config = RunConfig(
         world=args.world,
         tasks=args.tasks,
@@ -242,6 +213,126 @@ def cmd_run(args: argparse.Namespace) -> int:
         written = export([out], out / "export", args.updated)
         _print(f"leaderboard files: {len(written)} written under {out / 'export'}")
     return 1 if status.errored or status.pending else 0
+
+
+def cmd_quickstart(args: argparse.Namespace) -> int:
+    """Ten seeded public tasks, one run each, and the score. Resumable, like ``run``."""
+    spec = worlds.get(args.world)
+    try:
+        model_factory(args.model)
+    except ImportError as error:
+        _print(f"cannot run {args.model}: {error}")
+        return 2
+    out = Path(args.out) if args.out else Path("runs") / "quickstart" / slug(args.model)
+    config = RunConfig(
+        world=spec.name,
+        tasks=task_set_version(spec),
+        model=args.model,
+        model_name=args.model,
+        provider=_provider(args.model, args.provider),
+        sample=QUICKSTART_TASKS,
+        sample_seed=0,
+        max_cost=args.max_cost,
+    )
+    _print(f"{QUICKSTART_TASKS} tasks of {task_set_version(spec)} with {args.model}, into {out}")
+    manifest = execute(config, out, concurrency=args.concurrency, report=_report)
+    records = load_records(out)
+    completed = [record for record in records if record.status == "completed"]
+    _print()
+    if completed:
+        for line in summary_lines(spec, records):
+            _print(line)
+        overall = score(spec, completed).metrics["overall"]
+        _print()
+        _print(
+            f"score: {overall['value']}% ± {overall['ci']} on {len(completed)} tasks "
+            f"of {task_set_version(spec)} ({args.model})"
+        )
+    _print(f"check it: sandbox verify --run {out}")
+    _print(
+        f"the whole set: sandbox run --world {spec.name} --tasks {task_set_version(spec)} "
+        f"--model {args.model} --runs 3 --out runs/<name>"
+    )
+    status = manifest.status
+    return 1 if status.errored or status.pending else 0
+
+
+def cmd_release_check(args: argparse.Namespace) -> int:
+    """Every release condition, by name; exit 1 unless all pass."""
+    report = release.release_check(
+        args.task_set,
+        repo=Path(args.repo),
+        results=Path(args.results) if args.results else None,
+        calibration=Path(args.calibration) if args.calibration else None,
+        published=Path(args.published) if args.published else None,
+        min_models=args.min_models,
+        min_runs=args.min_runs,
+    )
+    for line in release.report_lines(report):
+        _print(line)
+    return 0 if report.ok else 1
+
+
+def cmd_freeze(args: argparse.Namespace) -> int:
+    """Write the task set's freeze file from the public tasks as they are now."""
+    spec = release.world_of(args.task_set)
+    path = release.write_freeze(spec)
+    _print(f"{release.frozen_list(spec)['count']} tasks of {args.task_set} frozen in {path}")
+    return 0
+
+
+def cmd_submission_check(args: argparse.Namespace) -> int:
+    """Check submitted run directories; exit 1 if any fails."""
+    failed = 0
+    for path in args.runs:
+        checked = submission.check(Path(path), allow_fake=args.allow_fake, min_runs=args.min_runs)
+        if checked.ok:
+            _print(f"ok   {path}: {checked.model}, {checked.runs_verified} runs reproduced")
+            continue
+        failed += 1
+        for problem in checked.problems:
+            _print(f"FAIL {path}: {problem}")
+    _print()
+    _print(f"{len(args.runs) - failed}/{len(args.runs)} submission(s) pass")
+    return 1 if failed else 0
+
+
+def cmd_submission_fetch(args: argparse.Namespace) -> int:
+    """Download and unpack a submission's archive; print its run directory alone, last."""
+    try:
+        run_dir = submission.fetch(Path(args.file), Path(args.out))
+    except submission.SubmissionError as error:
+        sys.stderr.write(f"FAIL {args.file}: {error}\n")
+        return 1
+    _print(str(run_dir))
+    return 0
+
+
+def cmd_submission_spot_check(args: argparse.Namespace) -> int:
+    """Rerun a seeded sample of a submission's tasks and compare the pass rates."""
+    run = Path(args.run)
+    out = Path(args.out) if args.out else run.parent / f"{run.name}-spot-check-{args.seed}"
+    result = submission.spot_check(
+        run,
+        out,
+        sample=args.sample,
+        seed=args.seed,
+        tolerance=args.tolerance,
+        concurrency=args.concurrency,
+    )
+    verdict = "ok" if result.ok else "FAIL"
+    _print(
+        f"{verdict} {run}: {len(result.tasks)} tasks (seed {args.seed}); submitted "
+        f"{result.submitted}% on them, rerun {result.rerun}%, a drop of {result.drop} points "
+        f"(tolerance {result.tolerance:g}); {result.errored} rerun(s) errored; reruns in {out}"
+    )
+    return 0 if result.ok else 1
+
+
+def cmd_tools(args: argparse.Namespace) -> int:
+    """Print a world's tool reference as Markdown."""
+    sys.stdout.write(reference.markdown(worlds.get(args.world)))
+    return 0
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
@@ -388,7 +479,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="sandbox",
         description="Agent sandbox: run and inspect simulated worlds.",
     )
-    parser.add_argument("--version", action="version", version=f"agent-sandbox {__version__}")
+    parser.add_argument("--version", action="version", version=f"{DISTRIBUTION} {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     worlds_parser = subparsers.add_parser("worlds", help="list installed worlds")
@@ -486,6 +577,59 @@ def build_parser() -> argparse.ArgumentParser:
     leaks_parser = hidden_sub.add_parser("leaks", help="no hidden task in these paths")
     leaks_parser.add_argument("paths", nargs="+", help="files or directories")
     leaks_parser.set_defaults(func=cmd_hidden_leaks)
+
+    quick_parser = subparsers.add_parser("quickstart", help="ten tasks, one model, a score")
+    quick_parser.add_argument("--model", required=True, help="a LiteLLM model id or fake:golden")
+    quick_parser.add_argument("--world", default=QUICKSTART_WORLD)
+    quick_parser.add_argument("--out", default=None, help="default: runs/quickstart/<model>")
+    quick_parser.add_argument("--provider", default=None, help="default: the id's prefix")
+    quick_parser.add_argument("--max-cost", type=float, default=None, help="USD per run")
+    quick_parser.add_argument("--concurrency", type=int, default=1)
+    quick_parser.set_defaults(func=cmd_quickstart)
+
+    gate_parser = subparsers.add_parser("release-check", help="may this task set be released?")
+    gate_parser.add_argument("task_set", help="e.g. payments-v0.1")
+    gate_parser.add_argument(
+        "--results", default=None, help="run directories of the models (outside git)"
+    )
+    gate_parser.add_argument(
+        "--calibration", default=None, help="default: docs/calibration/<set>/report.json"
+    )
+    gate_parser.add_argument(
+        "--published", default=None, help="leaderboard data; default: leaderboard/public/data"
+    )
+    gate_parser.add_argument("--repo", default=".", help="the repository checkout")
+    gate_parser.add_argument("--min-models", type=int, default=release.MIN_MODELS)
+    gate_parser.add_argument("--min-runs", type=int, default=release.MIN_RUNS)
+    gate_parser.set_defaults(func=cmd_release_check)
+
+    freeze_parser = subparsers.add_parser("freeze", help="freeze a task set's task content")
+    freeze_parser.add_argument("task_set", help="e.g. payments-v0.1")
+    freeze_parser.set_defaults(func=cmd_freeze)
+
+    sub_parser = subparsers.add_parser("submission", help="submitted results")
+    sub_sub = sub_parser.add_subparsers(dest="submission_command", required=True)
+    sub_check = sub_sub.add_parser("check", help="validate and replay run directories")
+    sub_check.add_argument("runs", nargs="+", help="submitted run directories")
+    sub_check.add_argument("--min-runs", type=int, default=1, help="runs per task")
+    sub_check.add_argument("--allow-fake", action="store_true", help="accept fake models")
+    sub_check.set_defaults(func=cmd_submission_check)
+    fetch_parser = sub_sub.add_parser("fetch", help="download a submission's run directory")
+    fetch_parser.add_argument("file", help="submissions/<set>/<model>.json")
+    fetch_parser.add_argument("--out", required=True, help="where to unpack it")
+    fetch_parser.set_defaults(func=cmd_submission_fetch)
+    spot_parser = sub_sub.add_parser("spot-check", help="rerun a sample with the same model")
+    spot_parser.add_argument("run", help="a submitted run directory")
+    spot_parser.add_argument("--sample", type=int, default=submission.SPOT_SAMPLE)
+    spot_parser.add_argument("--seed", type=int, default=0, help="which tasks are sampled")
+    spot_parser.add_argument("--tolerance", type=float, default=submission.SPOT_TOLERANCE)
+    spot_parser.add_argument("--out", default=None, help="where the reruns go")
+    spot_parser.add_argument("--concurrency", type=int, default=1)
+    spot_parser.set_defaults(func=cmd_submission_spot_check)
+
+    tools_parser = subparsers.add_parser("tools", help="a world's tool reference (Markdown)")
+    tools_parser.add_argument("--world", required=True)
+    tools_parser.set_defaults(func=cmd_tools)
 
     return parser
 

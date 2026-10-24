@@ -6,6 +6,12 @@ with graders (Phase 3), and seven stress modifiers (Phase 5) built. **Version:**
 they wait for review.
 **Domain reviewer:** to be confirmed (payments operations / risk). No grader is signed off yet:
 `reviewer_signoff` is `null` on all 50 tasks.
+**Release (Phase 6):** `payments-v0.1` is the v0.1 release candidate, packaged as
+`agent-sandbox-bench-world-payments` 0.1.0. Its task content is frozen in
+`src/worlds/payments/tasks/frozen-v0.1.json` (sign-off does not change it). `sandbox release-check
+payments-v0.1` waits on the reviewer's sign-off, real model results and the real calibration
+report (`docs/RELEASING.md`). Also packaged as an OpenEnv / Hugging Face Space environment in
+`openenv/` (one action, a tool call, plus `finish_episode`; the grader's score is the reward).
 
 ## What it simulates
 

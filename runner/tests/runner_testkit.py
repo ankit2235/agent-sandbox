@@ -8,7 +8,7 @@ import yaml
 
 from kit.world import worlds
 from runner.models import FakeModel, ModelReply, ToolRequest
-from runner.runs import RunConfig
+from runner.runs import RunConfig, execute
 
 HELLO_TASKS = Path(__file__).parents[2] / "kit/src/kit/examples/hello_world/tasks"
 
@@ -80,3 +80,33 @@ def write_hidden_set(root: Path, world: str, count: int, monkeypatch) -> Path:
         hidden, "hash_file", lambda s: published if s.name == world else original(s)
     )
     return root / "hidden-repo"
+
+
+HELLO_SET = "hello_world-v0.1"
+
+
+def by_policy(policy: Callable) -> Callable[..., FakeModel]:
+    """A model factory that plays a scripted policy (kit.examples.hello_world.scripted) per task."""
+
+    def build(spec, task) -> FakeModel:
+        turns = [turn(call(step.tool, step.args)) for step in policy(task)]
+        return FakeModel(turns, model_id="test/model")
+
+    return build
+
+
+def hello_result(out: Path, model: str = "test/model-a", runs: int = 1, policy=None, **kw) -> Path:
+    """A whole-set result for hello_world (two tasks), made by a scripted policy."""
+    from kit.examples.hello_world.scripted import golden_run
+
+    config = RunConfig(
+        world="hello_world",
+        tasks=HELLO_SET,
+        model=model,
+        model_name=model,
+        provider="test",
+        runs=runs,
+        **kw,
+    )
+    execute(config, out, factory=by_policy(policy or golden_run))
+    return out

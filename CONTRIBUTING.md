@@ -60,6 +60,13 @@ types namespaced with the world's name, and a `WORLD.md` stating what it does **
 needs a committed domain reviewer before it starts. If you find yourself needing a change to the
 kit, stop and propose it — a world-shaped kit is a kit bug.
 
+## Submitting results
+
+A model's results come in as one small file, `submissions/<set>/<model>.json`, naming an archive of
+its `sandbox run` directory; never commit the run directory itself. Use the results pull request
+template and see `docs/site/submit-results.md`. CI fails a results pull request that changes
+anything else.
+
 ## Pull requests
 
 Small, with tests, and with a line in `docs/DECISIONS.md` for any design decision. Update

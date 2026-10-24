@@ -1,0 +1,97 @@
+name: results-submission
+
+# A results pull request adds submissions/<task-set>/<model-slug>.json, which names an archive of
+# the model's run directory and its sha256 (docs/site/submit-results.md).
+#
+# - check (every such pull request, no secrets): only submission files change; each archive is
+#   downloaded, hash-checked and unpacked safely, and `sandbox submission check` replays every run.
+# - spot-check (a maintainer starts it by hand): main's code, never the pull request's, reruns a
+#   seeded sample of ten tasks with the submitted model, using the provider keys stored in the
+#   `spot-check` environment, and compares the pass rates.
+on:
+  pull_request:
+    paths: ["submissions/**"]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Number of the results pull request"
+        required: true
+      file:
+        description: "Submission file in it, e.g. submissions/payments-v0.1/openai-gpt-4-1-mini.json"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: only submission files change
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only "$BASE" "$HEAD" > "$RUNNER_TEMP/changed.txt"
+          bad=$(grep -v -E '^submissions/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\.json$' "$RUNNER_TEMP/changed.txt" || true)
+          if [ -n "$bad" ]; then
+            echo "A results pull request may only add or change submissions/<task-set>/<model>.json:"
+            echo "$bad"
+            exit 1
+          fi
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-packages
+      - name: fetch and check every submission
+        run: |
+          set -o pipefail
+          status=0
+          while read -r file; do
+            [ -f "$file" ] || continue   # a deleted submission
+            out="$RUNNER_TEMP/$(basename "$file" .json)"
+            if dir=$(uv run sandbox submission fetch "$file" --out "$out" | tail -n 1); then
+              uv run sandbox submission check "$dir" --min-runs 3 || status=1
+            else
+              status=1
+            fi
+          done < "$RUNNER_TEMP/changed.txt"
+          exit $status
+
+  spot-check:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: spot-check
+    steps:
+      - uses: actions/checkout@v7
+      - name: the submission file from the pull request (data only)
+        env:
+          PR: ${{ inputs.pr }}
+          FILE: ${{ inputs.file }}
+        run: |
+          [[ "$PR" =~ ^[0-9]+$ ]] || { echo "pr must be a number"; exit 1; }
+          [[ "$FILE" =~ ^submissions/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\.json$ ]] || { echo "bad file"; exit 1; }
+          git fetch --depth 1 origin "pull/$PR/head"
+          git show "FETCH_HEAD:$FILE" > "$RUNNER_TEMP/submission.json"
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-packages --extra litellm
+      - name: fetch, check, and rerun ten seeded tasks
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SEED: ${{ github.run_id }}
+        run: |
+          set -o pipefail
+          dir=$(uv run sandbox submission fetch "$RUNNER_TEMP/submission.json" --out "$RUNNER_TEMP/sub" | tail -n 1)
+          uv run sandbox submission check "$dir" --min-runs 3
+          uv run sandbox submission spot-check "$dir" --sample 10 --seed "$SEED" --out "$RUNNER_TEMP/rerun"

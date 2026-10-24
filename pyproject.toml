@@ -1,6 +1,6 @@
 [project]
-name = "agent-sandbox"
-version = "0.0.1.dev0"
+name = "agent-sandbox-bench"
+version = "0.1.0"
 description = "An OpenEnv-compatible sandbox platform that measures how well AI agents do real work inside simulated worlds."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -9,17 +9,17 @@ license-files = ["LICENSE"]
 authors = [{ name = "Prarabdha Soni" }]
 keywords = ["agents", "benchmark", "evaluation", "openenv", "mcp", "reinforcement-learning"]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-  "agent-sandbox-kit",
-  "agent-sandbox-runner",
-  "agent-sandbox-stress",
-  "agent-sandbox-world-payments",
-  "agent-sandbox-world-security",
+  "agent-sandbox-bench-kit==0.1.0",
+  "agent-sandbox-bench-runner==0.1.0",
+  "agent-sandbox-bench-stress==0.1.0",
+  "agent-sandbox-bench-world-payments==0.1.0",
+  "agent-sandbox-bench-world-security==0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -27,12 +27,12 @@ dependencies = [
 # adapter is an extra rather than a hard dependency of the kit. See DECISIONS.md.
 openenv = ["openenv==0.9.0"]
 # Real model calls through LiteLLM, and OTLP span export (Langfuse or a collector).
-litellm = ["agent-sandbox-runner[litellm]"]
-otlp = ["agent-sandbox-runner[otlp]"]
+litellm = ["agent-sandbox-bench-runner[litellm]==0.1.0"]
+otlp = ["agent-sandbox-bench-runner[otlp]==0.1.0"]
 
 [project.urls]
 Homepage = "https://github.com/prarabdha-soni/agent-sandbox"
-Documentation = "https://github.com/prarabdha-soni/agent-sandbox"
+Documentation = "https://prarabdha-soni.github.io/agent-sandbox/"
 Changelog = "https://github.com/prarabdha-soni/agent-sandbox/blob/main/CHANGELOG.md"
 
 [build-system]
@@ -42,17 +42,24 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 bypass-selection = true
 
+[tool.hatch.build.targets.sdist]
+# The umbrella package holds no code: its sdist carries only its metadata. Without this
+# list hatch would pack every file in the checkout, tracked or not.
+only-include = ["pyproject.toml", "README.md", "LICENSE", "CHANGELOG.md"]
+
 [tool.uv.workspace]
 members = ["kit", "stress", "runner", "worlds/payments", "worlds/security"]
 
 [tool.uv.sources]
-agent-sandbox-kit = { workspace = true }
-agent-sandbox-runner = { workspace = true }
-agent-sandbox-stress = { workspace = true }
-agent-sandbox-world-payments = { workspace = true }
-agent-sandbox-world-security = { workspace = true }
+agent-sandbox-bench-kit = { workspace = true }
+agent-sandbox-bench-runner = { workspace = true }
+agent-sandbox-bench-stress = { workspace = true }
+agent-sandbox-bench-world-payments = { workspace = true }
+agent-sandbox-bench-world-security = { workspace = true }
 
 [dependency-groups]
+# The docs site (mkdocs.yml); not installed by a plain `uv sync`.
+docs = ["mkdocs-material==9.7.7"]
 dev = [
   "pytest>=8.3",
   "pytest-cov>=6.0",

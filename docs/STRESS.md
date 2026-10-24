@@ -143,5 +143,9 @@ public tasks only.
 A modifier marked `too_easy` or `too_hard` is to be fixed or dropped before it goes into a release
 (decision 141).
 
+For a release, commit only the report, as `docs/calibration/<world>-<version>/report.json` and
+`report.md`; the run directories stay outside git. `sandbox release-check` requires it: at least
+two real models, and a row for every one of the world's modifiers.
+
 The fake models are what CI uses: `fake:golden` replays each stressed task's adjusted golden run
 and passes every one, and `fake:wrong` replays its first trap run and fails every one.

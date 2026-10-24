@@ -8,11 +8,22 @@ An agent receives a task, acts **only** through that world's tools, and is score
 graders that read the world's final state and the trace of what the agent did.
 
 ```bash
+pip install agent-sandbox-bench                # once 0.1.0 is published (pending)
+sandbox quickstart --model fake:golden         # ten payments tasks, a score, no key needed
+```
+
+From a checkout:
+
+```bash
 just setup          # uv sync: Python 3.12 + the workspace
 just test           # the whole suite
-just run-example    # one scripted episode in the hello-world world, graded
+just quickstart     # ten payments tasks with the fake model, and a score
 just worlds         # what is installed
 ```
+
+Docs: <https://prarabdha-soni.github.io/agent-sandbox/>, once GitHub Pages is enabled (sources in
+`docs/site/`; `just docs` builds them). The packages are published as **`agent-sandbox-bench`**: the name `agent-sandbox` on
+PyPI belongs to an unrelated project.
 
 ## What this is
 
@@ -42,8 +53,8 @@ just worlds         # what is installed
 | World | Status | What the agent does |
 | --- | --- | --- |
 | `hello_world` | shipped (example) | Counts to a target. Exists to prove the kit's interfaces. |
-| `payments` | Phase 1–3 | Pays through simulated UPI-inspired rails, buys from unreliable merchants, chases refunds and disputes. |
-| `security` | Phase 3S | Works an alert queue as a SOC analyst: triage, investigate, contain, escalate, report. Defensive only. |
+| `payments` | `payments-v0.1`, release candidate (preview) | Pays through simulated UPI-inspired rails, buys from unreliable merchants, chases refunds and disputes. |
+| `security` | `security-v0.1`, preview | Works an alert queue as a SOC analyst: triage, investigate, contain, escalate, report. Defensive only. |
 | `drug_safety` | Phase 3P, gated | Processes synthetic adverse-event reports: validity, duplicates, coding, seriousness, deadlines. Starts only once a pharmacovigilance physician has committed as reviewer. |
 
 ## Running a model
@@ -98,6 +109,17 @@ over tasks; `task_success_rate` is the share of tasks passed in every run; `safe
 is the share of runs with no unsafe mistake (in payments a money mistake, in security a
 disruption of a healthy asset or destroyed evidence).
 
+## Releasing and submitting results
+
+- `sandbox release-check payments-v0.1 --results <run dirs outside git>` is the release gate: nine
+  named conditions, each saying what it waits on (a reviewer, real model runs, the hidden set).
+  The owner's steps are in [docs/RELEASING.md](docs/RELEASING.md).
+- Results are submitted as `submissions/<set>/<model>.json`, naming an archive of the run
+  directory; CI fetches it and `sandbox submission check` replays every run
+  ([docs/site/submit-results.md](docs/site/submit-results.md)).
+- The payments world is also packaged as an OpenEnv / Hugging Face Space environment in
+  `worlds/payments/openenv/`, and as a Docker image (`Dockerfile`).
+
 ## Layout
 
 ```
@@ -105,17 +127,18 @@ kit/          core types, episode loop, trace, clock, rng, world registry, OpenE
 worlds/       one directory per domain; nothing outside worlds/ imports them
 stress/       generic, seeded modifiers that make any task harder
 runner/       the `sandbox` CLI: agent loop, runs, traces, scoring, export, verify
-docs/         DECISIONS.md, PROGRESS.md, and the docs site
+docs/         DECISIONS.md, PROGRESS.md, RELEASING.md, the docs site (site/) and the write-up (blog/)
+submissions/  results submissions: one small file per model, never the run directories
 ```
 
 ## Status
 
-Phases 0–5 of the build plan: the core kit, the payments and security worlds with 50 tasks each,
-the runner that scores models on them and exports leaderboard files, and the stress library and
-hidden-set tooling. No grader is signed off
-by a domain reviewer yet, so both worlds are listed as `preview`. The interfaces are tagged
-`kit-v0.1` once the pair leads have reviewed them; see [docs/PROGRESS.md](docs/PROGRESS.md) for
-what exists today and [docs/DECISIONS.md](docs/DECISIONS.md) for why.
+Phases 0–6 of the build plan: the core kit, the payments and security worlds with 50 tasks each,
+the runner, the stress library and hidden sets, and the v0.1 release tooling (packages, Docker
+image, docs site, release gate, results submission, OpenEnv packaging). The release gate does not
+pass yet: no grader is signed off by a domain reviewer, so both worlds are listed as `preview`,
+and no real model has been run. See [docs/PROGRESS.md](docs/PROGRESS.md) for what exists and what
+waits on whom, and [docs/DECISIONS.md](docs/DECISIONS.md) for why.
 
 ## License
 

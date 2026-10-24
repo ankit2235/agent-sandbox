@@ -102,11 +102,40 @@ change.** Of its "Done when" list:
   `no-hidden-leak` workflow runs `scripts/check_no_hidden.py` over every tracked file and
   `sandbox hidden leaks`. `runner/tests/test_hidden.py` covers generation, hashes, loading, bad
   canaries, tampering, runs, the canary scan and the leak checks, on sets built in `tmp_path`.
-- [ ] **Pending, needs the repo owner:** generate the two hidden sets of 17 tasks with a secret
-  seed into `/home/ankit-kumar/Desktop/101/agent-sandbox-hidden` (created, `git init`ed,
-  empty), publish their hashes, and commit the two `hidden-v0.1.json` files. Commands are in
-  `docs/HIDDEN_SETS.md`. A throwaway run with a test seed made 17 per world, every modifier
-  used, and was deleted.
+- [x] The hidden sets exist. The repo owner generated both (17 tasks each, payments and
+  security) with a secret seed in the private repository
+  (`/home/ankit-kumar/Desktop/101/agent-sandbox-hidden`); `sandbox hidden check` passed for both
+  worlds (every hidden task's golden and trap runs played, 0 problems, hashes match), and the two
+  published hash lists (`tasks/hidden-v0.1.json` in each world) are committed in 9cc5f84.
+
+**Phase 6 — v0.1 release: built and green; the release itself waits on people and real model
+runs.** One kit change, approved (K1, decision 158). Of its "Done when" list:
+
+- [ ] **Pending, needs a reviewer and real models:** `sandbox release-check payments-v0.1`
+  passes. The gate is built (`runner/release.py`) and names each of its nine conditions. Today,
+  with `HIDDEN_TASKS_DIR` set, 5 of 9 pass (`public-tasks`, `hidden-set` with 17 tasks and 41
+  runs, `grader-runs` with 189 runs, `frozen`, `no-hidden`); the four that fail wait on people
+  and models: `signoff` (the payments reviewer, 0 of 50 signed), `calibration` (no real
+  report), `results` (no real model has run; at least 5 needed, 3 runs each) and `published`
+  (no leaderboard files exported from real results). Every condition is also tested passing
+  and failing (`runner/tests/test_release.py`).
+- [ ] **Pending, needs the repo owner and an outside tester:** someone outside the team installs
+  the package from PyPI and reproduces one model's score. Built and tested: the six wheels at
+  0.1.0, installed from the local build into a clean virtualenv, run `sandbox tasks validate`
+  (102/102) and the quickstart, and `verify` reproduces 10/10 runs (also a CI job). The Docker
+  image builds and runs the quickstart. Publishing (PyPI trusted publishers, the `v0.1.0` tag,
+  GHCR) is the owner's: `docs/RELEASING.md`.
+- [ ] **Pending, needs real results and the Lovable site:** the leaderboard goes live with real
+  results. No placeholder data is committed; `leaderboard/public/data/` is created only by
+  `sandbox export` from verified real runs, and the gate's `published` condition fails unless
+  it matches them.
+
+Also built: the docs site (12 pages, `mkdocs build --strict` passes; Pages deploy pending the
+owner), the results submission flow (submission file, `sandbox submission fetch | check |
+spot-check`, template and workflow), the OpenEnv / Hugging Face Space bundle for payments
+(`openenv validate` static and runtime pass; push pending the owner), and the write-up
+(`docs/blog/v0.1.md`, findings pending real runs). The Prime Intellect verifiers wrapper is not
+built, by the repo owner's decision (decision 159).
 
 ## What exists
 
@@ -121,13 +150,13 @@ change.** Of its "Done when" list:
 | Scripted runs | `kit.scripted`: `run_script`, and the YAML run player both worlds use (`RunFile`, `load_runs`, `resolve_refs`, `play`) |
 | Services | `JsonStore`, `SqliteStore` (exact snapshots, usable from a worker thread), `AsgiService` with the `X-Sim-Time` header |
 | MCP | `kit.mcp_bridge.McpBridge` (extra `[mcp]`, `mcp==1.30.0`): any episode's tools over MCP, filtered by `allowed_tools`, calls serialised |
-| OpenEnv | Adapter against `openenv==0.9.0`; task sets exposed as splits; optional extra |
+| OpenEnv | Adapter against `openenv==0.9.0`; task sets exposed as splits; `reset` lists the task's tools; optional extra. Payments Space bundle in `worlds/payments/openenv/` (`openenv.yaml`, server, client, `finish_episode`) |
 | Example world | `hello_world`: one service, three tools, one grader, two tasks, golden + two wrong runs |
-| CLI | `sandbox worlds`, `sandbox tasks validate`, `sandbox example`, `sandbox run`, `sandbox verify`, `sandbox export`, `sandbox stress list/calibrate/report`, `sandbox hidden generate/hashes/check/scan/leaks` |
+| CLI | `sandbox worlds`, `sandbox tasks validate`, `sandbox example`, `sandbox run`, `sandbox verify`, `sandbox export`, `sandbox stress list/calibrate/report`, `sandbox hidden generate/hashes/check/scan/leaks`, `sandbox quickstart`, `sandbox release-check`, `sandbox freeze`, `sandbox submission fetch/check/spot-check`, `sandbox tools` |
 | Stress library | `stress/core`: generic contracts (`catalogue.py`), seeded wording (`wording.py`), `Modifier`/`WorldStress` (`model.py`), `apply`, `stressed_set`, `per_modifier`, `scripted_runs` and the `agent_sandbox.stress` registry (`apply.py`) |
 | Stressed and hidden sets | `<world>-<version>-stressed` (33 payments, 50 security tasks, in memory, seed 0); `<world>-<version>-hidden` from `HIDDEN_TASKS_DIR` with canaries and published hashes (`runner/hidden.py`); calibration (`runner/calibrate.py`); `docs/STRESS.md`, `docs/HIDDEN_SETS.md` |
 | Runner | `agent.py` (agent loop over MCP, caps, versioned prompts in `prompts/`), `models.py` (LiteLLM adapter, `fake:golden`/`fake:wrong`/`fake:idle`), `runs.py` (run directory, resume, retries, concurrency), `tracing.py` (OpenTelemetry), `score.py` (bootstrap intervals), `export.py` + `schemas/` (`results-v0.1`), `verify.py` |
-| CI | `ci.yml` (lint, strict types on the kit, types on `worlds.payments` and `worlds.security`, tests), `core-isolation.yml` (purity + no world imports) and `no-hidden-leak.yml` (no canary or hidden task in any tracked file, no copy of a published hidden task) |
+| CI | `ci.yml` (lint, strict types on the kit, types on `worlds.payments` and `worlds.security`, tests; `package`: the built wheels in a clean virtualenv, quickstart), `core-isolation.yml` (purity + no world imports), `no-hidden-leak.yml` (no canary or hidden task in any tracked file, no copy of a published hidden task), `docs.yml` (strict site build; Pages from main), `results-submission.yml` (results pull requests; maintainer spot-check) and `release.yml` (version tag: PyPI trusted publishing, GHCR image) |
 | Payments services | `services/rails` (Phase 1 + mandate creation, statement), `services/commerce`, `services/disputes` (with `reconcile.py`), shared `services/common.py` |
 | Payments world | `merchants.py` (profiles), `state.py` (`initial_state` model with `history`, and schema), `links.py` (the only cross-service code), `episode.py` (`PaymentsEpisode`, `wait`, history replay), `tools/` (25 tools with `ask_user`, `schemas.json`, stdio server), `task_format.py` (task file schema), `stress/` (7 modifiers, `initial_state.stress_checks`); registered as world `payments` with `tasks_dir` set |
 | Payments tasks | 50 in `tasks/<category>/` (15 rails, 15 commerce, 12 disputes, 8 multi; 15 easy, 20 medium, 15 hard), `tasks/schema.json` |
@@ -136,11 +165,29 @@ change.** Of its "Done when" list:
 | Security world | `vocab.py` (id patterns, enums, weights, RFC 5737/2606 checks), `scenarios/` (story format with ground truth, default company, seeded noise, 21 stories), `state.py`, `episode.py` (one simulated minute per call), `tools/` (17 tools, `schemas.json`, stdio server), `task_format.py`, `stress/` (5 modifiers, with runs and three guards in `grade()`) |
 | Security tasks | 50 in `tasks/<category>/` (12 triage, 10 investigation, 10 containment, 8 reporting, 10 multi; 15 easy, 20 medium, 15 hard; 35 malicious, 15 benign), `tasks/schema.json` |
 | Security graders | `graders/common.py` (goal checks and guards, `grade()` with impact penalty), one grader per task in `graders/{triage,investigation,containment,reporting,multi}.py`, 147 runs in `graders/runs/` |
-| Tests | 2,405 in all (2,404 pass, 1 skipped without the openenv extra), 700 more than Phase 4. New in Phase 5: `test_payments_stress.py` (381: every task × modifier, plus each modifier's content and edge cases), `test_security_stress_runs.py` (257), `test_hidden.py` (27), `stress/tests/test_stress_core.py` (15), `test_calibrate.py` (7). Before Phase 5: 1,705 (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
+| Packaging | Six distributions at 0.1.0 as `agent-sandbox-bench[-kit,-runner,-stress,-world-payments,-world-security]`, pinned to each other; the name in `runner.DISTRIBUTION`, `scripts/rename_distribution.py`; `Dockerfile` and `.dockerignore` (image with LiteLLM) |
+| Release | `runner/release.py` (nine named conditions), `sandbox freeze` and `payments/tasks/frozen-v0.1.json`, `runner/validate.py` (shared task-file and run checks), `docs/RELEASING.md` |
+| Submissions | `runner/submission.py` (`submission-v1` files, safe fetch, check, spot-check), `submissions/`, `.github/PULL_REQUEST_TEMPLATE/results_submission.md` |
+| Docs | `mkdocs.yml`, `docs/site/` (quickstart, concepts, task format, graders, generated tool reference for both worlds, scoring, limitations, submitting results, contributing tasks, citation), `runner/reference.py`, `docs/blog/v0.1.md`, `docs/calibration/` |
+| Tests | 2,477 in all, all passing with the openenv extra installed (CI, without it, skips the 7 OpenEnv adapter and 5 Space tests), 72 more than Phase 5. New in Phase 6: `test_release.py` (20: every gate condition passing and failing, freeze, quickstart, spot-check CLI), `test_submission.py` (20: every way of tampering with a submission, safe fetch, size cap, spot-check), `test_packaging.py` (6: names, versions, pins, what each built archive holds), `test_reference.py` (6), `test_openenv_space.py` (5), 2 in `test_openenv_adapter.py` (K1), 1 in `test_verify.py` (a run made before sign-off still verifies). Before Phase 6: 2,405 (2,404 pass, 1 skipped without the openenv extra), 700 more than Phase 4. New in Phase 5: `test_payments_stress.py` (381: every task × modifier, plus each modifier's content and edge cases), `test_security_stress_runs.py` (257), `test_hidden.py` (27), `stress/tests/test_stress_core.py` (15), `test_calibrate.py` (7). Before Phase 5: 1,705 (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
 
 ## Decisions made
 
-See `docs/DECISIONS.md`, entries 1–149 and the two reward-hacking reviews. Phase 5's that later
+See `docs/DECISIONS.md`, entries 1–176 and the two reward-hacking reviews. Phase 6's that later
+phases depend on:
+
+- Published as `agent-sandbox-bench` (provisional, one constant, a rename script), 0.1.0, pinned;
+  tags `payments-v0.1` and `v0.1.0` (150, 151).
+- `task_hash` leaves out `reviewer_signoff`; hidden tasks follow their base task's sign-off
+  (152, 153).
+- Run directories are never committed; results come in as submission files, the leaderboard data
+  is exported from verified runs only, and the archive goes on the GitHub release (154, 164, 166).
+- The gate's nine conditions and thresholds (155, 163); the spot-check's invented 30-point
+  tolerance (156); task content frozen by hash (165).
+- K1: the OpenEnv reset lists the task's tools (158). K2 proposed: `finish_episode` in the kit
+  adapter (171).
+
+Phase 5's that later
 phases depend on:
 
 - Modifiers are `(task, seed) -> TaskSpec` with an `adjust` and a `trap`, registered per world
@@ -237,8 +284,9 @@ Phase 2's that later phases depend on:
    `CODE_OF_CONDUCT.md` and `security@example.invalid` in `SECURITY.md`.
 8. **`uv.lock` is written by uv 0.12.20** (`revision = 3`), so contributors on other uv versions
    may see that line flip. Phase 2 added `mcp` and its dependencies to the lock.
-9. **Not yet built, by design**: `release-check` (Phase 6) and the leaderboard's `stress`
-   category (Phase 6, decision 133).
+9. **The leaderboard's `stress` category is not built** (decision 133 had left it to Phase 6;
+   the Phase 6 prompt does not ask for it, decision 176). It needs a `results-v0.1` schema change
+   and real stressed results. `release-check` is built (Phase 6).
 10. **The content of a question to the user is not graded** (accepted residual risk in the
     reward-hacking review): only that the agent asked, after looking at the right thing.
 11. **Security world: no named SOC reviewer.** No grader or benign look-alike story is signed off;
@@ -256,14 +304,14 @@ Phase 2's that later phases depend on:
 15. **The export is not yet loaded in the Lovable leaderboard.** It is validated against schemas
     that accept the leaderboard prompt's own example; the leaderboard itself must still load it.
 16. **The lock moved `openai`, `huggingface-hub` and `filelock` to older majors** because of
-    litellm's caps (decision 114). They are only reached through the `openenv` extra (and
-    `filelock` through dev tools); the OpenEnv adapter test is still skipped without that extra,
-    so whether `openenv==0.9.0` works on huggingface-hub 1.x is untested.
+    litellm's caps (decision 114). With the `openenv` extra installed from this lock, the OpenEnv
+    adapter tests and the Space tests pass (Phase 6), so `openenv==0.9.0` works on it. CI still
+    does not install the extra, so CI skips those 12 tests.
 17. **Both worlds are `preview` on the leaderboard** until their reviewers sign off the graders.
     Security's `scope_recall` metric from the leaderboard sample is not computed (decision 111).
-18. **The hidden sets do not exist yet.** The repo owner generates them with a secret seed
-    (`docs/HIDDEN_SETS.md`) and commits the two published hash lists. Until then
-    `--tasks <world>-v0.1-hidden` refuses to run ("no published hash list").
+18. **Resolved: the hidden sets exist.** The repo owner generated both (17 tasks each) with a
+    secret seed in the private repository, `sandbox hidden check` passed for both worlds, and the
+    two published hash lists are committed (9cc5f84). They must never be regenerated for v0.1.
 19. **The v0.1 hidden set is weak by construction**: seeded variants of public tasks under public
     modifiers (stated in `docs/HIDDEN_SETS.md`). It catches copied answers and leaks, not transfer
     to unseen jobs. Tasks written from scratch, signed off by reviewers, should replace it at the
@@ -278,19 +326,40 @@ Phase 2's that later phases depend on:
     re-checks the JSON schema on every call. A cached validator needs an approved kit change
     (decision 149).
 
+23. **The package name is provisional.** `agent-sandbox-bench` waits for the repo owner's
+    confirmation (`scripts/rename_distribution.py` changes it); so does the image name
+    `ghcr.io/prarabdha-soni/agent-sandbox` and the citation's author list.
+24. **Nothing is published yet**, by rule: the PyPI trusted publishers, the `pypi` and
+    `spot-check` environments, GitHub Pages, GHCR visibility, the `v0.1.0` tag, the release
+    archive and the Hugging Face Space are the owner's steps (`docs/RELEASING.md`). The Space's
+    `uv.lock` can only be made after PyPI.
+25. **The Space's base image is `openenv-base:latest`**, as the OpenEnv template has it; not pinned
+    to a digest. It ships Python 3.11; the Space installs 3.12 itself (decision 172).
+26. **K2 proposed for `kit-v0.1`**: a `finish_episode` action in `kit.openenv_adapter`, which now
+    lives in the payments Space only (decision 171). Add K1 (decision 158) to the review list.
+27. **No verifiers wrapper** (decision 159): blocked by `mcp==2.0.0` in verifiers 0.4.x and the
+    litellm/openai conflict with 0.3.0. Revisit when the kit moves to mcp 2.x.
+28. **The spot-check's 30-point tolerance is invented** (decision 156), and a replay cannot tell a
+    model's actions from hand-written ones; only the spot-check rerun can, and only on a sample.
+29. **The `just` recipes added in Phase 6 were not run** (`just` is not installed on the build
+    machine); each one is a single command that was run directly.
+
 ## Next step
 
-The pending real-model items, all the user's to run:
+Everything left for v0.1 is people's, models' or the owner's (`docs/RELEASING.md`, in order):
 
-- Phase 4's 50 × 3 run, killed and resumed (README).
-- Phase 5's calibration for both worlds with 2–3 cheap models (`docs/STRESS.md`). Then fix or
-  drop any modifier marked `too_easy` or `too_hard`, and check that the best model scores under
-  about 50% on each stressed set.
-
-Generate the two hidden sets and commit their hash lists (`docs/HIDDEN_SETS.md`). Load the
-export in the leaderboard.
+- A payments reviewer signs off the 50 graders (and the stress modifiers and their checks), and
+  freezes `tools-payments-v0.1`; refreeze the tasks if any change.
+- Real model runs: 5–6 models × 50 tasks × 3 runs on `payments-v0.1` and on
+  `payments-v0.1-hidden`, kept outside git; the calibration with 2–3 cheap models, its report
+  committed in `docs/calibration/payments-v0.1/`; fix or drop any modifier marked `too_easy` or
+  `too_hard`. The Phase 4 run (killed and resumed) is covered by these.
+- Export the leaderboard files, run `sandbox release-check payments-v0.1 --results <dir>` until
+  all nine conditions pass, confirm the package name, set up PyPI, Pages and the environments,
+  tag `payments-v0.1` and `v0.1.0`, attach the public run archive, push the Space.
+- Then: an outside tester installs from PyPI and reproduces one model's score; the leaderboard
+  goes live with real results; the write-up's findings are filled in from the measured numbers.
 
 Phase 3P (drug safety) still starts only once the repo owner confirms a drug-safety physician as
-reviewer. Otherwise Phase 6. In parallel, a payments reviewer and a SOC reviewer should sign off
-their 50 graders each (and now the stress modifiers and their checks), and freeze
-`tools-payments-v0.1` and `tools-security-v0.1`.
+reviewer. Otherwise Phase 7. In parallel, a SOC reviewer should sign off the security world's 50
+graders and freeze `tools-security-v0.1`.

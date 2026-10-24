@@ -22,3 +22,5 @@ hidden/
 .DS_Store
 .idea/
 .vscode/
+# Docs site build output (mkdocs build)
+/site/

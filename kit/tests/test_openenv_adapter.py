@@ -7,6 +7,7 @@ from kit.openenv_adapter import (
     make_environment,
     openenv_available,
 )
+from kit.tasks import TaskSource
 
 pytestmark = pytest.mark.openenv
 
@@ -69,3 +70,25 @@ def test_metadata_names_the_world_and_version() -> None:
     metadata = build_env().get_metadata()
     assert metadata.name == "hello_world"
     assert metadata.version == "v0.1"
+
+
+def test_reset_lists_the_tools_the_task_allows() -> None:
+    env = build_env()
+    observation = env.reset(task_id="hello-count-to-three")
+    names = [tool["name"] for tool in observation.tools]
+    assert names == ["get_count", "increment", "finish"]
+    assert all(set(tool) == {"name", "description", "input_schema"} for tool in observation.tools)
+    assert observation.tools[1]["input_schema"]["properties"]["by"]["type"] == "integer"
+    after = env.step(action("get_count"))
+    assert after.tools == []
+    env.close()
+
+
+def test_a_task_naming_some_tools_lists_only_those() -> None:
+    spec = world_spec()
+    task = task_source().get("hello-count-to-three")
+    narrowed = task.model_copy(update={"allowed_tools": ["get_count", "finish"]})
+    env = make_environment(spec, TaskSource([narrowed]))
+    observation = env.reset(task_id=narrowed.id)
+    assert [tool["name"] for tool in observation.tools] == ["get_count", "finish"]
+    env.close()

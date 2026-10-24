@@ -166,8 +166,13 @@ def slug(value: str) -> str:
 
 
 def task_hash(task: TaskSpec) -> str:
-    """A fingerprint of a task, so a resumed or verified run knows the task did not change."""
-    return hashlib.sha256(task.model_dump_json().encode()).hexdigest()
+    """A fingerprint of a task, so a resumed or verified run knows the task did not change.
+
+    ``reviewer_signoff`` is left out: the agent never sees it, so a run made before a
+    reviewer signed the task off still reproduces afterwards.
+    """
+    payload = task.model_dump_json(exclude={"reviewer_signoff"})
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def task_set_version(spec: WorldSpec) -> str:
