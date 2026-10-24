@@ -132,7 +132,9 @@ def test_stale_traces_are_removed_on_re_export(tmp_path) -> None:
 
 
 def test_hidden_runs_only_reach_the_hidden_aggregate(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("HIDDEN_TASKS_DIR", str(write_hidden_set(tmp_path, "payments", count=3)))
+    monkeypatch.setenv(
+        "HIDDEN_TASKS_DIR", str(write_hidden_set(tmp_path, "payments", 3, monkeypatch))
+    )
     public, hidden = tmp_path / "public", tmp_path / "hidden"
     # Hidden tasks have no run files in the public repo, so both runs use fake:idle.
     execute(world_config("payments", model="fake:idle", sample=3), public)
@@ -158,7 +160,9 @@ def test_a_world_without_a_listing_is_not_exported(tmp_path, hello_config) -> No
 
 
 def test_hidden_only_runs_cannot_make_a_public_entry(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("HIDDEN_TASKS_DIR", str(write_hidden_set(tmp_path, "security", count=1)))
+    monkeypatch.setenv(
+        "HIDDEN_TASKS_DIR", str(write_hidden_set(tmp_path, "security", 1, monkeypatch))
+    )
     run = tmp_path / "hidden"
     execute(world_config("security", model="fake:idle", tasks="security-v0.1-hidden"), run)
     with pytest.raises(ValueError, match="no completed public runs"):

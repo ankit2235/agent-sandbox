@@ -104,10 +104,23 @@ Every task has a golden run and at least one plausible wrong run (147 runs) in `
 
 ## Stress modifiers
 
-`src/worlds/security/stress/`: `alert_flood`, `decoy_anomaly`, `misleading_note`,
-`partial_telemetry`, `time_pressure`. Each is a seeded function from a task to a harder task. Each
-keeps the ground truth consistent with what it changed (decision 102). There is no stressed task set
-yet; that comes with Phase 5.
+`src/worlds/security/stress/`: `alert_flood`, `decoy_anomaly`, `misleading_note` (also reachable
+as the generic `conflicting_instructions`), `partial_telemetry` and `time_pressure`. Each is a
+seeded function from a task to a harder task. Each keeps the ground truth consistent with what it
+changed (decision 102). Registered with the stress library as `STRESS`, each with its golden-run
+adjustment and its trap run. Three guards in `grade()` go with them:
+
+- `left_stress_noise_alone` (flood and decoy);
+- `verdicts_held` (missing telemetry);
+- `escalated_in_time` (time pressure).
+
+The stressed set `security-v0.1-stressed` has 50 tasks, one modifier each. The world does not
+implement `misleading_content`, `pressure`, `flaky_service` or `shifted_constraint`. See
+[docs/STRESS.md](../../docs/STRESS.md).
+
+**Hidden set:** `security-v0.1-hidden`, 17 tasks in the private repository (pending: the repo
+owner generates it), hashes in `src/worlds/security/tasks/hidden-v0.1.json` once published. See
+[docs/HIDDEN_SETS.md](../../docs/HIDDEN_SETS.md).
 
 ## What it does **not** test, and hard limits
 

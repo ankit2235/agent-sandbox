@@ -5,7 +5,9 @@
 - ``example``: run one scripted episode;
 - ``run``: run a model over a task set (:mod:`runner.runs`), resumable;
 - ``verify``: replay a run directory's recorded actions and confirm its grades;
-- ``export``: write leaderboard files from one or more run directories.
+- ``export``: write leaderboard files from one or more run directories;
+- ``stress list | calibrate | report``: the stress modifiers and their calibration;
+- ``hidden generate | hashes | check | scan | leaks``: the hidden set (:mod:`runner.hidden`).
 """
 
 from __future__ import annotations
@@ -22,10 +24,14 @@ import yaml
 
 from kit import __version__, worlds
 from kit.scripted import run_script
-from kit.tasks import TaskSource, load_task, load_tasks
+from kit.tasks import TaskSource, hidden_tasks_dir, load_task, load_tasks
 from kit.types import TaskSpec, ToolCall
 from kit.world import WorldSpec, load_grader
+from stress.core import GENERIC, registry
 
+from . import hidden
+from .calibrate import calibrate, write_report
+from .calibrate import markdown as calibration_markdown
 from .export import export
 from .runs import RunConfig, RunRecord, execute, load_records
 from .score import summary_lines
@@ -262,6 +268,120 @@ def cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_stress_list(args: argparse.Namespace) -> int:
+    """List each world's modifiers, which generic contract they implement, and aliases."""
+    for name in [args.world] if args.world else registry.names():
+        stress = registry.get(name)
+        _print(f"{name}")
+        for modifier in stress.modifiers.values():
+            aliases = [a for a, target in stress.aliases.items() if target == modifier.name]
+            kind = "generic" if modifier.generic else "world"
+            also = f" (also: {', '.join(sorted(aliases))})" if aliases else ""
+            _print(f"  {modifier.name:<26} {kind:<8} {modifier.summary}{also}")
+        missing = sorted(set(GENERIC) - set(stress.modifiers) - set(stress.aliases))
+        if missing:
+            _print(f"  not implemented here: {', '.join(missing)}")
+        _print()
+    return 0
+
+
+def cmd_stress_calibrate(args: argparse.Namespace) -> int:
+    """Run base and stressed tasks for each model and write the calibration report."""
+    settings = {
+        key: getattr(args, key)
+        for key in ("max_steps", "max_tokens", "max_cost", "temperature", "retries")
+    }
+    report = calibrate(
+        args.world,
+        args.model,
+        Path(args.out),
+        modifiers=args.modifier or (),
+        per_modifier_count=args.per_modifier,
+        seed=args.seed,
+        runs=args.runs,
+        concurrency=args.concurrency,
+        settings=settings,
+        report=_report,
+    )
+    _print()
+    _print(calibration_markdown(report))
+    _print(f"report written to {Path(args.out) / 'report.md'} and report.json")
+    return 0
+
+
+def cmd_stress_report(args: argparse.Namespace) -> int:
+    """Rebuild the calibration report from its run directories."""
+    report = write_report(Path(args.out))
+    _print(calibration_markdown(report))
+    return 0
+
+
+def cmd_hidden_generate(args: argparse.Namespace) -> int:
+    """Generate a hidden set, with its runs, into the private repository."""
+    spec = worlds.get(args.world)
+    root = Path(args.dir) if args.dir else hidden.private_root()
+    made = hidden.generate(spec, args.count, args.seed, root)
+    _print(
+        f"{len(made.tasks)} hidden tasks written under {hidden.tasks_dir(spec, root)} "
+        f"({made.skipped} candidates skipped); runs under {hidden.runs_dir(spec, root)}"
+    )
+    _print("Next: sandbox hidden hashes, then sandbox hidden check, then commit the hash list.")
+    return 0
+
+
+def cmd_hidden_hashes(args: argparse.Namespace) -> int:
+    """Write the public hash list for the private set."""
+    spec = worlds.get(args.world)
+    path = hidden.write_hashes(spec, hidden.private_root())
+    data = hidden.published(spec)
+    _print(f"{data['count']} task hashes for {data['set']} written to {path}")
+    _print(f"set hash {data['set_hash']}")
+    return 0
+
+
+def cmd_hidden_check(args: argparse.Namespace) -> int:
+    """Check the private set: files, canaries, published hashes, and every run."""
+    spec = worlds.get(args.world)
+    report = hidden.check_set(spec)
+    for problem in report.problems:
+        _print(f"FAIL {problem}")
+    _print(
+        f"{hidden.set_name(spec)}: {report.tasks} tasks, {report.runs} runs played, "
+        f"{len(report.problems)} problem(s); hashes match the published list"
+    )
+    return 1 if report.problems else 0
+
+
+def cmd_hidden_scan(args: argparse.Namespace) -> int:
+    """Search model output (files or run directories) for hidden-set canaries."""
+    specs = [worlds.get(name) for name in worlds.names()]
+    known = hidden.known_canaries(specs, hidden_tasks_dir())
+    sightings = hidden.scan([Path(path) for path in args.paths], known)
+    for found in sightings:
+        where = found.hidden_set or "an unknown or retired set"
+        _print(f"CANARY {found.path}:{found.line}: from {where}")
+    _print(f"{len(sightings)} canary sighting(s)")
+    return 1 if sightings else 0
+
+
+def cmd_hidden_leaks(args: argparse.Namespace) -> int:
+    """Fail if a task file under the paths is one of a published hidden set's tasks."""
+    specs = [worlds.get(name) for name in worlds.names()]
+    leaks = hidden.public_leaks(specs, [Path(path) for path in args.paths])
+    for leak in leaks:
+        _print(f"LEAK {leak}")
+    _print(f"{len(leaks)} hidden task(s) found in the given paths")
+    return 1 if leaks else 0
+
+
+def _run_caps(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--max-steps", type=int, default=None, help="below the task's cap")
+    parser.add_argument("--max-tokens", type=int, default=None, help="per run")
+    parser.add_argument("--max-cost", type=float, default=None, help="USD per run")
+    parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument("--retries", type=int, default=5, help="per model call")
+
+
 def build_parser() -> argparse.ArgumentParser:
     """The ``sandbox`` argument parser."""
     parser = argparse.ArgumentParser(
@@ -296,18 +416,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--model", required=True, help="a LiteLLM model id, or fake:golden|fake:wrong|fake:idle"
     )
     run_parser.add_argument(
-        "--tasks", required=True, help="payments-v0.1, payments-v0.1-hidden or a task directory"
+        "--tasks",
+        required=True,
+        help="payments-v0.1, payments-v0.1-stressed, payments-v0.1-hidden or a task directory",
     )
     run_parser.add_argument("--out", required=True, help="run directory; rerun to resume")
     run_parser.add_argument("--runs", type=int, default=1, help="runs per task")
     run_parser.add_argument("--concurrency", type=int, default=1)
     run_parser.add_argument("--sample", type=int, default=None, help="run N tasks, seeded")
     run_parser.add_argument("--sample-seed", type=int, default=0)
-    run_parser.add_argument("--max-steps", type=int, default=None, help="below the task's cap")
-    run_parser.add_argument("--max-tokens", type=int, default=None, help="per run")
-    run_parser.add_argument("--max-cost", type=float, default=None, help="USD per run")
-    run_parser.add_argument("--temperature", type=float, default=0.0)
-    run_parser.add_argument("--retries", type=int, default=5, help="per model call")
+    _run_caps(run_parser)
     run_parser.add_argument("--model-name", default=None, help="leaderboard name")
     run_parser.add_argument("--provider", default=None, help="default: the id's prefix")
     run_parser.add_argument("--open-weight", action="store_true")
@@ -325,6 +443,49 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser.add_argument("--out", required=True, help="the leaderboard's data directory")
     export_parser.add_argument("--updated", type=_date, required=True, help="YYYY-MM-DD")
     export_parser.set_defaults(func=cmd_export)
+
+    stress_parser = subparsers.add_parser("stress", help="stress modifiers and calibration")
+    stress_sub = stress_parser.add_subparsers(dest="stress_command", required=True)
+    list_parser = stress_sub.add_parser("list", help="list each world's modifiers")
+    list_parser.add_argument("--world", default=None)
+    list_parser.set_defaults(func=cmd_stress_list)
+    calibrate_parser = stress_sub.add_parser("calibrate", help="score drop per modifier")
+    calibrate_parser.add_argument("--world", required=True)
+    calibrate_parser.add_argument(
+        "--model", required=True, action="append", help="repeat for each model (2-3)"
+    )
+    calibrate_parser.add_argument("--out", required=True, help="calibration directory; resumable")
+    calibrate_parser.add_argument("--modifier", action="append", help="default: all")
+    calibrate_parser.add_argument("--per-modifier", type=int, default=10)
+    calibrate_parser.add_argument("--seed", type=int, default=0)
+    calibrate_parser.add_argument("--runs", type=int, default=1, help="runs per task")
+    calibrate_parser.add_argument("--concurrency", type=int, default=1)
+    _run_caps(calibrate_parser)
+    calibrate_parser.set_defaults(func=cmd_stress_calibrate)
+    report_parser = stress_sub.add_parser("report", help="rebuild a calibration report")
+    report_parser.add_argument("out", help="a calibration directory")
+    report_parser.set_defaults(func=cmd_stress_report)
+
+    hidden_parser = subparsers.add_parser("hidden", help="the hidden task set")
+    hidden_sub = hidden_parser.add_subparsers(dest="hidden_command", required=True)
+    generate_parser = hidden_sub.add_parser("generate", help="write a hidden set, with runs")
+    generate_parser.add_argument("--world", required=True)
+    generate_parser.add_argument("--count", type=int, required=True)
+    generate_parser.add_argument("--seed", type=int, required=True, help="the set's secret seed")
+    generate_parser.add_argument("--dir", default=None, help="default: HIDDEN_TASKS_DIR")
+    generate_parser.set_defaults(func=cmd_hidden_generate)
+    hashes_parser = hidden_sub.add_parser("hashes", help="publish the set's task hashes")
+    hashes_parser.add_argument("--world", required=True)
+    hashes_parser.set_defaults(func=cmd_hidden_hashes)
+    check_parser = hidden_sub.add_parser("check", help="check the private set and its runs")
+    check_parser.add_argument("--world", required=True)
+    check_parser.set_defaults(func=cmd_hidden_check)
+    scan_parser = hidden_sub.add_parser("scan", help="search model output for canaries")
+    scan_parser.add_argument("paths", nargs="+", help="files or run directories")
+    scan_parser.set_defaults(func=cmd_hidden_scan)
+    leaks_parser = hidden_sub.add_parser("leaks", help="no hidden task in these paths")
+    leaks_parser.add_argument("paths", nargs="+", help="files or directories")
+    leaks_parser.set_defaults(func=cmd_hidden_leaks)
 
     return parser
 

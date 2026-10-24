@@ -48,13 +48,35 @@ def read_json(path: Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def write_hidden_set(root: Path, world: str, count: int) -> Path:
-    """A private task set built at test time from public tasks; never written to the repo."""
+def write_hidden_set(root: Path, world: str, count: int, monkeypatch) -> Path:
+    """A private task set built at test time from public tasks; never written to the repo.
+
+    Each task gets a canary, and the set's hash list is "published" to a file under
+    ``root`` that :func:`runner.hidden.hash_file` is pointed at for the test.
+    """
+    from runner import hidden
+
     spec = worlds.get(world)
     folder = root / "hidden-repo" / world / spec.version
-    folder.mkdir(parents=True)
+    tasks = []
     for task in spec.task_source().tasks[:count]:
-        payload = task.model_dump(mode="json")
-        payload.update({"id": f"secret-{task.id}", "visibility": "hidden"})
-        (folder / f"secret-{task.id}.yaml").write_text(yaml.safe_dump(payload))
+        hidden_id = f"secret-{task.id}"
+        secret = task.model_copy(
+            update={
+                "id": hidden_id,
+                "visibility": "hidden",
+                "tags": [*task.tags, hidden.canary(7, hidden_id)],
+            }
+        )
+        tasks.append(secret)
+        path = folder / secret.category / f"{hidden_id}.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(yaml.safe_dump(secret.model_dump(mode="json")))
+    published = root / "published" / f"hidden-{spec.version}.json"
+    published.parent.mkdir(parents=True, exist_ok=True)
+    published.write_text(json.dumps(hidden.hash_list(spec, tasks)))
+    original = hidden.hash_file
+    monkeypatch.setattr(
+        hidden, "hash_file", lambda s: published if s.name == world else original(s)
+    )
     return root / "hidden-repo"

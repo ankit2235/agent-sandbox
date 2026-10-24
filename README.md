@@ -77,8 +77,13 @@ uv run sandbox run --world security --model ollama/llama3.2 --tasks security-v0.
   steps, stop reason), plus OpenTelemetry spans in `spans.jsonl`. Set
   `OTEL_EXPORTER_OTLP_ENDPOINT`, or `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` and
   `LANGFUSE_HOST`, to send spans on as well (`uv sync --all-packages --extra otlp`).
-- **Hidden tasks**: `--tasks payments-v0.1-hidden` reads `$HIDDEN_TASKS_DIR/payments/v0.1/`.
-  Hidden results are only ever published as aggregates.
+- **Stressed tasks**: `--tasks payments-v0.1-stressed` runs every public task that a stress
+  modifier applies to, one modifier each ([docs/STRESS.md](docs/STRESS.md)).
+  `sandbox stress calibrate` measures each modifier's score drop over 2–3 models.
+- **Hidden tasks**: `--tasks payments-v0.1-hidden` reads `$HIDDEN_TASKS_DIR/payments/v0.1/`, and
+  only if it matches the hashes published in the repository
+  ([docs/HIDDEN_SETS.md](docs/HIDDEN_SETS.md)). Hidden results are only ever published as
+  aggregates.
 
 ```bash
 uv run sandbox verify --run runs/2026-10-23-gpt-4.1-mini/     # replay actions, same grades?
@@ -105,8 +110,9 @@ docs/         DECISIONS.md, PROGRESS.md, and the docs site
 
 ## Status
 
-Phases 0–4 of the build plan: the core kit, the payments and security worlds with 50 tasks each,
-and the runner that scores models on them and exports leaderboard files. No grader is signed off
+Phases 0–5 of the build plan: the core kit, the payments and security worlds with 50 tasks each,
+the runner that scores models on them and exports leaderboard files, and the stress library and
+hidden-set tooling. No grader is signed off
 by a domain reviewer yet, so both worlds are listed as `preview`. The interfaces are tagged
 `kit-v0.1` once the pair leads have reviewed them; see [docs/PROGRESS.md](docs/PROGRESS.md) for
 what exists today and [docs/DECISIONS.md](docs/DECISIONS.md) for why.

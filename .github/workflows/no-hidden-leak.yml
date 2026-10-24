@@ -1,0 +1,24 @@
+name: no-hidden-leak
+
+# Hidden tasks live in a separate private repository (HIDDEN_TASKS_DIR). This job
+# fails if a hidden task, a canary or a copy of a published hidden task is in the
+# public repository. It runs in CI, not only as a pre-commit hook.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  no-hidden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: no canary and no task marked hidden in any tracked file
+        run: git ls-files -z | xargs -0 python3 scripts/check_no_hidden.py
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-packages
+      - name: no task file matches a published hidden task's hash
+        run: uv run sandbox hidden leaks kit runner stress worlds scripts docs

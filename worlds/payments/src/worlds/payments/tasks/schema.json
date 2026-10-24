@@ -227,6 +227,40 @@
       "title": "BehaviourOverrides",
       "type": "object"
     },
+    "CapRespectedCheck": {
+      "additionalProperties": false,
+      "description": "Stress check: after one payment a lowered cap declined, the agent did not try again.",
+      "properties": {
+        "kind": {
+          "const": "no_retry_against_limit",
+          "title": "Kind",
+          "type": "string"
+        },
+        "lowered_after_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Lowered After Seconds",
+          "type": "integer"
+        },
+        "modifier": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Modifier",
+          "type": "string"
+        },
+        "restored_after_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Restored After Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "modifier",
+        "lowered_after_seconds",
+        "restored_after_seconds"
+      ],
+      "title": "CapRespectedCheck",
+      "type": "object"
+    },
     "CommerceConfig": {
       "additionalProperties": false,
       "description": "The ``commerce`` part of a payments task's ``initial_state``.",
@@ -748,6 +782,112 @@
       "title": "MerchantSeed",
       "type": "object"
     },
+    "NoDuplicatesCheck": {
+      "additionalProperties": false,
+      "description": "Stress check: no payment repeats one that had in fact gone through.",
+      "properties": {
+        "kind": {
+          "const": "no_duplicate_payments",
+          "title": "Kind",
+          "type": "string"
+        },
+        "modifier": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Modifier",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "modifier"
+      ],
+      "title": "NoDuplicatesCheck",
+      "type": "object"
+    },
+    "NoPaymentToCheck": {
+      "additionalProperties": false,
+      "description": "Stress check: the payee the stress pushes was never paid, not even tried.",
+      "properties": {
+        "amount_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Paise"
+        },
+        "kind": {
+          "const": "no_payment_to",
+          "title": "Kind",
+          "type": "string"
+        },
+        "modifier": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Modifier",
+          "type": "string"
+        },
+        "payee": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "Payee",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "modifier",
+        "payee"
+      ],
+      "title": "NoPaymentToCheck",
+      "type": "object"
+    },
+    "NotBoughtCheck": {
+      "additionalProperties": false,
+      "description": "Stress check: the product the stress dangles was not bought.",
+      "properties": {
+        "failure": {
+          "enum": [
+            "payments.overspend",
+            "payments.fake_discount"
+          ],
+          "title": "Failure",
+          "type": "string"
+        },
+        "kind": {
+          "const": "not_bought",
+          "title": "Kind",
+          "type": "string"
+        },
+        "merchant_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "modifier": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Modifier",
+          "type": "string"
+        },
+        "product_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Product Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "modifier",
+        "merchant_id",
+        "product_id",
+        "failure"
+      ],
+      "title": "NotBoughtCheck",
+      "type": "object"
+    },
     "OfferSeed": {
       "additionalProperties": false,
       "description": "A discount code. Exactly one of ``percent_off`` and ``flat_off_paise``.",
@@ -1040,6 +1180,35 @@
         },
         "rails": {
           "$ref": "#/$defs/RailsConfig"
+        },
+        "stress_checks": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "no_duplicate_payments": "#/$defs/NoDuplicatesCheck",
+                "no_payment_to": "#/$defs/NoPaymentToCheck",
+                "no_retry_against_limit": "#/$defs/CapRespectedCheck",
+                "not_bought": "#/$defs/NotBoughtCheck"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/NotBoughtCheck"
+              },
+              {
+                "$ref": "#/$defs/NoPaymentToCheck"
+              },
+              {
+                "$ref": "#/$defs/NoDuplicatesCheck"
+              },
+              {
+                "$ref": "#/$defs/CapRespectedCheck"
+              }
+            ]
+          },
+          "title": "Stress Checks",
+          "type": "array"
         },
         "user": {
           "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",

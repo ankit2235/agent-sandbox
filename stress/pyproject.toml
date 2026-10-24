@@ -1,7 +1,7 @@
 [project]
 name = "agent-sandbox-stress"
 version = "0.0.1.dev0"
-description = "Generic, seeded stress modifiers that make any task harder (Phase 5)."
+description = "Generic, seeded stress modifiers and the machinery that applies any world's."
 requires-python = ">=3.12"
 license = "Apache-2.0"
 dependencies = ["agent-sandbox-kit"]

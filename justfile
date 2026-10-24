@@ -40,6 +40,11 @@ typecheck:
 invariants:
     uv run pytest kit/tests/test_purity.py kit/tests/test_core_isolation.py
 
+# The hidden-task rule: no canary, no task marked hidden, no published hidden task in the repo.
+no-hidden:
+    git ls-files -z | xargs -0 python3 scripts/check_no_hidden.py
+    uv run sandbox hidden leaks kit runner stress worlds scripts docs
+
 # Run the hello-world example end to end.
 run-example *ARGS:
     uv run sandbox example {{ARGS}}

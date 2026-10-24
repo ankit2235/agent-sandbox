@@ -6,6 +6,37 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added — Phase 5: stress library and hidden set
+
+- `stress/core`: the five generic modifier contracts, shared seeded wording, the `Modifier` and
+  `WorldStress` types, `apply(task, [modifiers], seed)` with aliases, `stressed_set`,
+  `per_modifier`, and `scripted_runs` (a stressed task's golden and trap runs from its base
+  task's). Worlds register their modifiers through the `agent_sandbox.stress` entry point.
+- Payments stress modifiers: `misleading_content`, `conflicting_instructions`, `pressure`,
+  `flaky_service` (alias `flaky_rails`), `shifted_constraint` (alias `limit_shift`),
+  `fake_offer` and `lookalike_payee`, with their checks in `initial_state.stress_checks`.
+- Security: its five modifiers registered with runs, the alias `conflicting_instructions`, and
+  the guards `left_stress_noise_alone`, `verdicts_held` and `escalated_in_time`.
+- Task sets `<world>-<version>-stressed` (33 payments, 50 security tasks).
+- `sandbox stress list | calibrate | report`: the calibration report (`report.md`, `report.json`)
+  with the score drop per modifier and model, and a verdict per modifier.
+- `sandbox hidden generate | hashes | check | scan | leaks`: the hidden set in a private
+  repository (`HIDDEN_TASKS_DIR`), one seeded canary per task, a golden and a trap run per task,
+  a published sha256 list per world (`tasks/hidden-<version>.json`), and a canary search over
+  model output.
+- `.github/workflows/no-hidden-leak.yml`: no canary, no task marked hidden and no copy of a
+  published hidden task in the public repository, checked in CI.
+- `docs/STRESS.md` and `docs/HIDDEN_SETS.md` (with the rotation policy).
+
+### Changed — Phase 5
+
+- Payments `grade()` runs a stressed task's checks first, and reports the first failed one as
+  the failure type.
+- The runner loads a hidden set only from `HIDDEN_TASKS_DIR` and only if it matches its
+  published hashes and carries valid canaries; a task marked hidden is refused from any other
+  directory. `fake:golden` and `fake:wrong` replay stressed and hidden tasks' runs.
+- `scripts/check_no_hidden.py` looks for a full canary rather than its prefix.
+
 ### Added — Phase 4: runner, model adapters, tracing, scoring
 
 - `sandbox run --world <w> --model <id> --tasks <set> --runs N --concurrency N --out <dir>`: a

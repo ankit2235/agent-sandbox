@@ -120,6 +120,7 @@ version = "0.0.1.dev0"
 source = { editable = "runner" }
 dependencies = [
     { name = "agent-sandbox-kit", extra = ["mcp"] },
+    { name = "agent-sandbox-stress" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
 ]
@@ -135,6 +136,7 @@ otlp = [
 [package.metadata]
 requires-dist = [
     { name = "agent-sandbox-kit", extras = ["mcp"], editable = "kit" },
+    { name = "agent-sandbox-stress", editable = "stress" },
     { name = "litellm", marker = "extra == 'litellm'", specifier = "==1.104.2" },
     { name = "opentelemetry-api", specifier = "==1.45.1" },
     { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'otlp'", specifier = "==1.45.1" },
@@ -159,12 +161,14 @@ version = "0.0.1.dev0"
 source = { editable = "worlds/payments" }
 dependencies = [
     { name = "agent-sandbox-kit", extra = ["mcp"] },
+    { name = "agent-sandbox-stress" },
     { name = "fastapi" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "agent-sandbox-kit", extras = ["mcp"], editable = "kit" },
+    { name = "agent-sandbox-stress", editable = "stress" },
     { name = "fastapi", specifier = ">=0.116" },
 ]
 
@@ -174,12 +178,14 @@ version = "0.0.1.dev0"
 source = { editable = "worlds/security" }
 dependencies = [
     { name = "agent-sandbox-kit", extra = ["mcp"] },
+    { name = "agent-sandbox-stress" },
     { name = "fastapi" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "agent-sandbox-kit", extras = ["mcp"], editable = "kit" },
+    { name = "agent-sandbox-stress", editable = "stress" },
     { name = "fastapi", specifier = ">=0.116" },
 ]
 

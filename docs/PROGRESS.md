@@ -54,9 +54,9 @@ runs on the kit with no kit changes. Of its "Done when" list:
   byte-identical state in all five services and that `close()` restores them.
 - [ ] **Pending, needs a person:** a SOC analyst signs off every grader and the benign look-alike
   stories. `reviewer_signoff` is `null` on all 50 tasks. No reviewer is named yet.
-- [ ] **Pending, needs Phase 5 and a real model:** the best tested model scores under about 50%
-  on the stressed set. The five modifiers exist and are tested, and the runner exists now; the
-  stressed set and a model run do not.
+- [ ] **Pending, needs a real model:** the best tested model scores under about 50% on the
+  stressed set. The stressed set `security-v0.1-stressed` and the calibration report exist now
+  (Phase 5); a real model run does not.
 
 **Phase 4 — runner, model adapters, tracing, scoring: built and green, for both worlds.** Of its
 "Done when" list:
@@ -79,6 +79,35 @@ runs on the kit with no kit changes. Of its "Done when" list:
 
 Phase 4 made four small, additive kit changes, approved before coding (decisions 107–110).
 
+**Phase 5 — stress library and hidden set: built and green, for both worlds, with no kit
+change.** Of its "Done when" list:
+
+- [x] Every modifier has tests: 7 payments and 5 security modifiers, plus the core machinery.
+  For every public task and every modifier that applies (176 payments and 216 security pairs),
+  the stressed task validates, its adjusted golden run passes, and each trap run fails with the
+  failure type it declares. Tests: `stress/tests/test_stress_core.py`,
+  `worlds/payments/tests/test_payments_stress.py` and
+  `worlds/security/tests/test_security_stress_runs.py`.
+- [ ] **Pending, needs real models:** every modifier appears in the calibration report. The
+  generator (`sandbox stress calibrate`, `sandbox stress report`) is built and tested with the
+  fake models (`runner/tests/test_calibrate.py`); the commands for 2–3 cheap models are in
+  `docs/STRESS.md`.
+- [ ] **Pending, needs real models:** the best tested model scores under about 50% on the
+  stressed set (`payments-v0.1-stressed`, 33 tasks; `security-v0.1-stressed`, 50). The report
+  states it per world.
+- [x] The hidden set is loaded from the private repo only, with a CI check that no hidden task
+  or canary exists in the public repo. The runner reads `<world>-<version>-hidden` only from
+  `HIDDEN_TASKS_DIR`, and only if every task is hidden, carries one valid canary and matches the
+  published hashes; a task marked hidden is refused from any other directory. The new
+  `no-hidden-leak` workflow runs `scripts/check_no_hidden.py` over every tracked file and
+  `sandbox hidden leaks`. `runner/tests/test_hidden.py` covers generation, hashes, loading, bad
+  canaries, tampering, runs, the canary scan and the leak checks, on sets built in `tmp_path`.
+- [ ] **Pending, needs the repo owner:** generate the two hidden sets of 17 tasks with a secret
+  seed into `/home/ankit-kumar/Desktop/101/agent-sandbox-hidden` (created, `git init`ed,
+  empty), publish their hashes, and commit the two `hidden-v0.1.json` files. Commands are in
+  `docs/HIDDEN_SETS.md`. A throwaway run with a test seed made 17 per world, every modifier
+  used, and was deleted.
+
 ## What exists
 
 | Area | State |
@@ -94,22 +123,37 @@ Phase 4 made four small, additive kit changes, approved before coding (decisions
 | MCP | `kit.mcp_bridge.McpBridge` (extra `[mcp]`, `mcp==1.30.0`): any episode's tools over MCP, filtered by `allowed_tools`, calls serialised |
 | OpenEnv | Adapter against `openenv==0.9.0`; task sets exposed as splits; optional extra |
 | Example world | `hello_world`: one service, three tools, one grader, two tasks, golden + two wrong runs |
-| CLI | `sandbox worlds`, `sandbox tasks validate`, `sandbox example`, `sandbox run`, `sandbox verify`, `sandbox export` |
+| CLI | `sandbox worlds`, `sandbox tasks validate`, `sandbox example`, `sandbox run`, `sandbox verify`, `sandbox export`, `sandbox stress list/calibrate/report`, `sandbox hidden generate/hashes/check/scan/leaks` |
+| Stress library | `stress/core`: generic contracts (`catalogue.py`), seeded wording (`wording.py`), `Modifier`/`WorldStress` (`model.py`), `apply`, `stressed_set`, `per_modifier`, `scripted_runs` and the `agent_sandbox.stress` registry (`apply.py`) |
+| Stressed and hidden sets | `<world>-<version>-stressed` (33 payments, 50 security tasks, in memory, seed 0); `<world>-<version>-hidden` from `HIDDEN_TASKS_DIR` with canaries and published hashes (`runner/hidden.py`); calibration (`runner/calibrate.py`); `docs/STRESS.md`, `docs/HIDDEN_SETS.md` |
 | Runner | `agent.py` (agent loop over MCP, caps, versioned prompts in `prompts/`), `models.py` (LiteLLM adapter, `fake:golden`/`fake:wrong`/`fake:idle`), `runs.py` (run directory, resume, retries, concurrency), `tracing.py` (OpenTelemetry), `score.py` (bootstrap intervals), `export.py` + `schemas/` (`results-v0.1`), `verify.py` |
-| CI | `ci.yml` (lint, strict types on the kit, types on `worlds.payments` and `worlds.security`, tests) and `core-isolation.yml` (purity + no world imports) |
+| CI | `ci.yml` (lint, strict types on the kit, types on `worlds.payments` and `worlds.security`, tests), `core-isolation.yml` (purity + no world imports) and `no-hidden-leak.yml` (no canary or hidden task in any tracked file, no copy of a published hidden task) |
 | Payments services | `services/rails` (Phase 1 + mandate creation, statement), `services/commerce`, `services/disputes` (with `reconcile.py`), shared `services/common.py` |
-| Payments world | `merchants.py` (profiles), `state.py` (`initial_state` model with `history`, and schema), `links.py` (the only cross-service code), `episode.py` (`PaymentsEpisode`, `wait`, history replay), `tools/` (25 tools with `ask_user`, `schemas.json`, stdio server), `task_format.py` (task file schema); registered as world `payments` with `tasks_dir` set |
+| Payments world | `merchants.py` (profiles), `state.py` (`initial_state` model with `history`, and schema), `links.py` (the only cross-service code), `episode.py` (`PaymentsEpisode`, `wait`, history replay), `tools/` (25 tools with `ask_user`, `schemas.json`, stdio server), `task_format.py` (task file schema), `stress/` (7 modifiers, `initial_state.stress_checks`); registered as world `payments` with `tasks_dir` set |
 | Payments tasks | 50 in `tasks/<category>/` (15 rails, 15 commerce, 12 disputes, 8 multi; 15 easy, 20 medium, 15 hard), `tasks/schema.json` |
 | Payments graders | `graders/common.py` (18 checks and `grade()`), one grader per task in `graders/{rails,commerce,disputes,multi}.py`, runs in `graders/runs/<id>.yaml` played by `graders/runs.py` |
 | Security services | `services/{org,telemetry,alerts,response,tickets}` over the world's own `services/common.py`; containment logged with actor and impact; SLA timers on the clock |
-| Security world | `vocab.py` (id patterns, enums, weights, RFC 5737/2606 checks), `scenarios/` (story format with ground truth, default company, seeded noise, 21 stories), `state.py`, `episode.py` (one simulated minute per call), `tools/` (17 tools, `schemas.json`, stdio server), `task_format.py`, `stress/` (5 modifiers) |
+| Security world | `vocab.py` (id patterns, enums, weights, RFC 5737/2606 checks), `scenarios/` (story format with ground truth, default company, seeded noise, 21 stories), `state.py`, `episode.py` (one simulated minute per call), `tools/` (17 tools, `schemas.json`, stdio server), `task_format.py`, `stress/` (5 modifiers, with runs and three guards in `grade()`) |
 | Security tasks | 50 in `tasks/<category>/` (12 triage, 10 investigation, 10 containment, 8 reporting, 10 multi; 15 easy, 20 medium, 15 hard; 35 malicious, 15 benign), `tasks/schema.json` |
 | Security graders | `graders/common.py` (goal checks and guards, `grade()` with impact penalty), one grader per task in `graders/{triage,investigation,containment,reporting,multi}.py`, 147 runs in `graders/runs/` |
-| Tests | 1,705 in all (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
+| Tests | 2,405 in all (2,404 pass, 1 skipped without the openenv extra), 700 more than Phase 4. New in Phase 5: `test_payments_stress.py` (381: every task × modifier, plus each modifier's content and edge cases), `test_security_stress_runs.py` (257), `test_hidden.py` (27), `stress/tests/test_stress_core.py` (15), `test_calibrate.py` (7). Before Phase 5: 1,705 (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
 
 ## Decisions made
 
-See `docs/DECISIONS.md`, entries 1–127 and the two reward-hacking reviews. Phase 4's that later
+See `docs/DECISIONS.md`, entries 1–149 and the two reward-hacking reviews. Phase 5's that later
+phases depend on:
+
+- Modifiers are `(task, seed) -> TaskSpec` with an `adjust` and a `trap`, registered per world
+  through the `agent_sandbox.stress` entry point; `stress.core.apply` checks what they may not
+  change (128–131, 134).
+- Payments stress checks travel in `initial_state.stress_checks` and decide the failure type
+  (135); security has three stress guards (140).
+- The stressed set is seed 0, one modifier per task with a trap (142). Calibration verdicts at
+  5 points and 0% / 50% (133, 141).
+- The hidden set's layout, canaries, canonical-JSON hashes beside the world's tasks, and the
+  loading rules (145–148). Rotation policy: `docs/HIDDEN_SETS.md`.
+
+Phase 4's that later
 phases depend on:
 
 - `overall` is the mean over tasks of each task's pass rate, with a 95% bootstrap interval over
@@ -193,10 +237,8 @@ Phase 2's that later phases depend on:
    `CODE_OF_CONDUCT.md` and `security@example.invalid` in `SECURITY.md`.
 8. **`uv.lock` is written by uv 0.12.20** (`revision = 3`), so contributors on other uv versions
    may see that line flip. Phase 2 added `mcp` and its dependencies to the lock.
-9. **Not yet built, by design**: the generic `stress/core` and hidden-set tooling (Phase 5; the
-   security world's own five modifiers exist; the runner already reads a hidden set from
-   `HIDDEN_TASKS_DIR`), `release-check` (Phase 6). `scripts/check_no_hidden.py` guards
-   the hidden-task rule in the meantime.
+9. **Not yet built, by design**: `release-check` (Phase 6) and the leaderboard's `stress`
+   category (Phase 6, decision 133).
 10. **The content of a question to the user is not graded** (accepted residual risk in the
     reward-hacking review): only that the agent asked, after looking at the right thing.
 11. **Security world: no named SOC reviewer.** No grader or benign look-alike story is signed off;
@@ -219,14 +261,36 @@ Phase 2's that later phases depend on:
     so whether `openenv==0.9.0` works on huggingface-hub 1.x is untested.
 17. **Both worlds are `preview` on the leaderboard** until their reviewers sign off the graders.
     Security's `scope_recall` metric from the leaderboard sample is not computed (decision 111).
+18. **The hidden sets do not exist yet.** The repo owner generates them with a secret seed
+    (`docs/HIDDEN_SETS.md`) and commits the two published hash lists. Until then
+    `--tasks <world>-v0.1-hidden` refuses to run ("no published hash list").
+19. **The v0.1 hidden set is weak by construction**: seeded variants of public tasks under public
+    modifiers (stated in `docs/HIDDEN_SETS.md`). It catches copied answers and leaks, not transfer
+    to unseen jobs. Tasks written from scratch, signed off by reviewers, should replace it at the
+    first rotation.
+20. **No calibration has been run with real models**, so no modifier is yet known to be too easy
+    or too hard, and "best model under about 50% on the stressed set" is unmeasured.
+21. **Stress coverage gaps**: no payments modifier applies to the 12 `disputes` tasks (they do not
+    allow `pay`); security implements no `misleading_content`, `pressure`, `flaky_service` or
+    `shifted_constraint`. Stress numbers (decision 137) and the `shifted_constraint` window
+    (decision 138) are invented, for the payments reviewer.
+22. **Building a stressed set takes 10–20 s**, mostly in the kit's `validate_task`, which
+    re-checks the JSON schema on every call. A cached validator needs an approved kit change
+    (decision 149).
 
 ## Next step
 
-Run the pending Phase 4 item with a real model (the README's command, 50 tasks × 3 runs, killed
-midway and resumed, then `sandbox verify` and `sandbox export`), and load the export in the
-leaderboard. Phase 3P (drug safety) still starts only once the repo owner confirms a drug-safety
-physician as reviewer. Otherwise Phase 5 (stress and hidden sets): the generic `stress/core`
-modifiers and `stress.apply()`, which can call the security world's five modifiers unchanged
-(decision 102), the stressed task sets, and the hidden-set tooling with canaries. In parallel, a
-payments reviewer and a SOC reviewer should sign off their 50 graders each and freeze
+The pending real-model items, all the user's to run:
+
+- Phase 4's 50 × 3 run, killed and resumed (README).
+- Phase 5's calibration for both worlds with 2–3 cheap models (`docs/STRESS.md`). Then fix or
+  drop any modifier marked `too_easy` or `too_hard`, and check that the best model scores under
+  about 50% on each stressed set.
+
+Generate the two hidden sets and commit their hash lists (`docs/HIDDEN_SETS.md`). Load the
+export in the leaderboard.
+
+Phase 3P (drug safety) still starts only once the repo owner confirms a drug-safety physician as
+reviewer. Otherwise Phase 6. In parallel, a payments reviewer and a SOC reviewer should sign off
+their 50 graders each (and now the stress modifiers and their checks), and freeze
 `tools-payments-v0.1` and `tools-security-v0.1`.

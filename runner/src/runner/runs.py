@@ -36,9 +36,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from kit.clock import EPOCH, SimClock
 from kit.episode import BaseEpisode
 from kit.rng import SeededRNG
-from kit.tasks import hidden_tasks_dir, load_tasks
+from kit.tasks import load_tasks
 from kit.types import GradeResult, TaskSpec, Usage, Visibility
 from kit.world import WorldSpec, load_grader, worlds
+from stress.core import stressed_set
 
 from .agent import CallModel, Caps, run_agent, system_prompt
 from .models import Message, ModelFactory, ModelReply, ProviderError, model_factory
@@ -50,6 +51,9 @@ RUNS_DIR = "runs"
 TRACE_FILE = "trace.jsonl"
 RESULT_FILE = "result.json"
 HIDDEN_SUFFIX = "-hidden"
+STRESSED_SUFFIX = "-stressed"
+STRESSED_SEED = 0
+"""The public stressed set is always built with seed 0 (decision in DECISIONS.md)."""
 
 BACKOFF_BASE = 2.0
 BACKOFF_MAX = 60.0
@@ -64,7 +68,7 @@ class RunConfig(BaseModel):
 
     world: str
     tasks: str
-    """A task set (``payments-v0.1``, ``payments-v0.1-hidden``) or a task directory."""
+    """A task set (``payments-v0.1``, ``-stressed``, ``-hidden``) or a task directory."""
     model: str
     model_name: str
     provider: str
@@ -172,33 +176,51 @@ def task_set_version(spec: WorldSpec) -> str:
 
 
 def resolve_task_set(spec: WorldSpec, value: str) -> list[TaskSpec]:
-    """The tasks a ``--tasks`` value names: the public set, the hidden set, or a directory."""
+    """The tasks a ``--tasks`` value names: the public, stressed or hidden set, or a directory.
+
+    Hidden tasks load only as the hidden set, from ``HIDDEN_TASKS_DIR``, and only if they
+    match the hashes the world published (:mod:`runner.hidden`).
+    """
+    from .hidden import load_hidden
+
     base = task_set_version(spec)
     if value == base:
         tasks = spec.task_source().split(spec.version)
+    elif value == base + STRESSED_SUFFIX:
+        tasks = list(_stressed_set(spec))
     elif value == base + HIDDEN_SUFFIX:
-        root = hidden_tasks_dir()
-        if root is None:
-            msg = f"{value} needs HIDDEN_TASKS_DIR pointing at the private task repository"
-            raise ValueError(msg)
-        tasks = load_tasks(root / spec.name / spec.version)
-        public = [task.id for task in tasks if task.visibility != "hidden"]
-        if public:
-            msg = f"the hidden task set holds tasks not marked hidden: {public}"
-            raise ValueError(msg)
+        tasks = load_hidden(spec)
     elif Path(value).is_dir():
         tasks = load_tasks(value)
     else:
-        msg = f"unknown task set {value!r}; use {base}, {base}{HIDDEN_SUFFIX} or a task directory"
+        msg = (
+            f"unknown task set {value!r}; use {base}, {base}{STRESSED_SUFFIX}, "
+            f"{base}{HIDDEN_SUFFIX} or a task directory"
+        )
         raise ValueError(msg)
     for task in tasks:
         if task.world != spec.name or task.version != spec.version:
             msg = f"task {task.id} is {task.world}/{task.version}, not {spec.name}/{spec.version}"
             raise ValueError(msg)
+        if task.visibility == "hidden" and value != base + HIDDEN_SUFFIX:
+            msg = f"task {task.id} is hidden: hidden tasks load only as {base}{HIDDEN_SUFFIX}"
+            raise ValueError(msg)
     if not tasks:
         msg = f"task set {value!r} is empty"
         raise ValueError(msg)
     return tasks
+
+
+_STRESSED: dict[str, tuple[TaskSpec, ...]] = {}
+
+
+def _stressed_set(spec: WorldSpec) -> tuple[TaskSpec, ...]:
+    """The public stressed set, built once per process: it is pure, and slow to build."""
+    key = task_set_version(spec)
+    if key not in _STRESSED:
+        public = spec.task_source().split(spec.version)
+        _STRESSED[key] = tuple(stressed_set(public, STRESSED_SEED, runs_dir=spec.runs_dir))
+    return _STRESSED[key]
 
 
 def select_tasks(spec: WorldSpec, config: RunConfig) -> list[TaskSpec]:
