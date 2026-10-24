@@ -1,6 +1,6 @@
 # Agent Sandbox — Build Prompts
 
-Oct 18, 2026 · @Prarabdha Soni
+Oct 23, 2026 · @Prarabdha Soni
 
 ## How to use these prompts
 
@@ -23,8 +23,8 @@ The phases run in order, from an empty repo to the full trust layer. Payments is
 | 4 | Runner, models, tracing, scoring (all worlds) | Platform | Weeks 3–5 |
 | 5 | Stress tests and hidden set (core + per world) | Stress tests | Weeks 4–6 |
 | 6 | v0.1 release (payments) | All | Weeks 6–8 |
-| 7 | RL training experiment | Platform + one volunteer | After v0.1 |
-| 8 | Guard library (v0.2), policies per world | Rails + Platform | After v0.1 |
+| 7 | Open guard model trained on sandbox data | Platform + one ML person | After v0.1 |
+| 8 | Guard library (v0.2): hard rules + model backends, Guard models leaderboard | Rails + Platform | After v0.1 |
 | 9 | Production hardening | All | Ongoing |
 | 10 | Trust layer across worlds | Rails + Platform + Stress tests | After v0.2 |
 | Template | Adding any further world (only if decided) | New pair + domain reviewer | When needed |
@@ -36,7 +36,7 @@ The phases add up to three public releases. Each one ships only when its gate pa
 | Release | Phases | What ships | Headline question it answers | Gate to ship | Target |
 | --- | --- | --- | --- | --- | --- |
 | **v0.1 — Payments sandbox + leaderboard** | 0–6 | Payments world (rails, merchants, disputes), MCP tools, 50–80 public tasks + hidden set, stress tests, runner, leaderboard with 5–6 models | "How often do AI agents make payment mistakes?" | `sandbox release-check payments-v0.1` passes; an outsider reproduces one score from PyPI | Weeks 6–8 |
-| **v0.2 — Security world + guard** | 3S, 7, 8, and 9 (items 1–2) | security-v0.1 world with its own leaderboard tab; guard library (Python + TypeScript) with payment and containment policies; with/without-guard scores; multi-agent and long-horizon payments tasks; RL write-up | "How well do agents handle a security incident, and does a guard cut high-impact mistakes in both worlds?" | `release-check security-v0.1` passes; no kit fork between worlds; guard test vectors pass in both SDKs; false blocks reported; v0.1 scores still reproduce | About 3 months after v0.1 |
+| **v0.2 — Security world + guard** | 3S, 7, 8, and 9 (items 1–2) | security-v0.1 world with its own leaderboard tab; guard library (Python + TypeScript) with payment and containment policies; with/without-guard scores; multi-agent and long-horizon payments tasks; open guard model (weights, model card, eval report); Guard models leaderboard tab | "How well do agents handle a security incident, and does a guard cut high-impact mistakes in both worlds?" | `release-check security-v0.1` passes; no kit fork between worlds; guard test vectors pass in both SDKs; false blocks reported; v0.1 scores still reproduce | About 3 months after v0.1 |
 | **v0.3 — Trust layer + drug safety** | 3P, 10, and 9 (items 3, 8) | drug-safety-v0.1 world (if the physician reviewer is in place; otherwise it moves to v0.3.x); delegation credentials, intent mandates and verifiable receipts for payments, containment and case submissions; merchant SDK; interop adapters; SPEC.md + conformance suite; Trust layer tab; regional rule packs; first hidden-set rotation | "Can agents process safety cases correctly and on time, and can anyone prove who authorised each high-impact action?" | `release-check drug-safety-v0.1` passes with physician sign-off; `trust verify` works offline for all worlds; conformance suite scores the reference implementation and one outside implementation; external spec review done | About 4–6 months after v0.2 |
 
 After v0.3, the remaining Phase 9 items run as point releases (v0.3.x). Start planning v0.4 when any category saturates (best model about 80%) or a public agent-payment spec changes in a way the trust layer must follow.
@@ -218,9 +218,9 @@ REPO STRUCTURE
 │   │   ├── score.py            # aggregation, bootstrap CIs, per world
 │   │   └── export.py  schemas/
 │   └── tests/
-├── guard/                      # v0.2: policy engine; policies/<world>/; python/ typescript/ test-vectors/
+├── guard/                      # v0.2: policy engine; policies/<world>/; backends/; python/ typescript/ test-vectors/
 ├── trust/                      # v0.3: delegation, intent, receipts, verify, adapters/, conformance/, test-vectors/
-├── training/                   # RL experiment configs + scripts
+├── training/                   # Phase 7: action dataset, baselines, guard-model training, eval
 ├── leaderboard/                # static site; public/data/ filled by runner export
 ├── docs/
 │   ├── PROGRESS.md  DECISIONS.md
@@ -635,7 +635,8 @@ Examples to put in sample data:
 }
 3. <worldId>/tasks.json: [ { id, title, category, difficulty, instruction, initial_state, grader_checks[], pass_rate } ] (public tasks only).
 4. <worldId>/traces/<run_id>.json: { run_id, world, model_id, task_id, passed, fail_reason, failure_type, steps: [ { n, sim_time, agent_message, tool, args, response, state_diff, guard_decision? } ] }
-5. trust/conformance.json (may be absent): { "version": "trust-spec-v1", "implementations": [ { id, name, version, by_world: { payments: { correct_allow, correct_block, false_block, missed_mistake, receipt_validity }, ... } } ] }
+5. guards/results.json (may be absent): { "version": "guard-v0.2", "backends": [ { id, name, provider, version, open_weight, by_world: { payments: { correct_block, wrongful_block, missed_mistake, ask_rate, task_success_with_guard, latency_p50_ms, latency_p99_ms, cost_per_1k_usd, robustness_drop }, ... } } ] }
+6. trust/conformance.json (may be absent): { "version": "trust-spec-v1", "implementations": [ { id, name, version, by_world: { payments: { correct_allow, correct_block, false_block, missed_mistake, receipt_validity }, ... } } ] }
 
 PAGES
 1. Home (/)
@@ -658,14 +659,16 @@ PAGES
 
 5. Trace viewer (/w/:worldId/run/:runId): generic timeline of steps — sim time, agent message, tool call with args (JSON), response, state diff (before/after), and guard decision chip (allow / block / ask_user + reasons) when present. Highlight the failing step with the grader's reason and failure type label. Collapsible steps, copy JSON.
 
-6. Trust layer (/trust): shown only if trust/conformance.json exists. Table of implementations x worlds with the conformance metrics; explain each metric in a tooltip; link to the spec.
+6. Guard models (/guards): shown only if guards/results.json exists. Table of decision backends x worlds with the metrics above; wrongful blocks and task success with the guard always shown next to block rates; filter by world; open-weight vs hosted badge; a tooltip explaining each metric.
 
-7. Methodology (/about): what the sandbox tests; how worlds work; scoring and confidence intervals; public vs hidden tasks; determinism and reproducibility; per-world limitations (rendered from each world's description + disclaimer); how to run it yourself (code block); how to submit results; citation BibTeX with copy button.
+7. Trust layer (/trust): shown only if trust/conformance.json exists. Table of implementations x worlds with the conformance metrics; explain each metric in a tooltip; link to the spec.
 
-8. Submit (/submit): static instructions — run locally, open a GitHub PR with your results file; show the JSON format.
+8. Methodology (/about): what the sandbox tests; how worlds work; scoring and confidence intervals; public vs hidden tasks; determinism and reproducibility; per-world limitations (rendered from each world's description + disclaimer); how to run it yourself (code block); how to submit results; citation BibTeX with copy button.
+
+9. Submit (/submit): static instructions — run locally, open a GitHub PR with your results file; show the JSON format.
 
 SAMPLE DATA
-Create obviously fake placeholder data: models "Model A" to "Model H" from "Provider X/Y/Z". Payments: 8 models, 60 tasks, 3 traces. Security: 6 models, 40 tasks, 2 traces. Drug safety: coming soon, no results. A small trust/conformance.json with 2 fake implementations ("Reference guard", "Example guard").
+Create obviously fake placeholder data: models "Model A" to "Model H" from "Provider X/Y/Z". Payments: 8 models, 60 tasks, 3 traces. Security: 6 models, 40 tasks, 2 traces. Drug safety: coming soon, no results. A guards/results.json with 5 fake backends ("Rules only", "Open guard model", "Backend A", "Backend B", "Backend C") for the live worlds, and a small trust/conformance.json with 2 fake implementations ("Reference guard", "Example guard").
 
 CODE STRUCTURE
 - src/lib/data.ts: all loading + TypeScript types for every file above; a useWorlds() hook and useWorldResults(worldId).
@@ -678,59 +681,98 @@ QUALITY
 - Accessible: contrast, keyboard-navigable tables, aria labels on charts.
 ```
 
-## Phase 7 — RL training experiment
+## Phase 7 — Open guard model trained on sandbox data
 
-This phase proves the sandbox can train an agent, not just test one. It gives you the before-and-after story for interviews, and it shows where the rewards can be gamed.
+This phase turns the sandbox's by-product into your own model. Every run records agent actions with the correct verdict, and this phase trains a small open model that approves or blocks high-stakes actions in milliseconds. It's your TypeSafe-style bet in a niche the labs don't own, and it needs one person on the team with real model-training experience.
 
 ```text
-PHASE 7 — RL fine-tuning experiment on our sandbox.
+PHASE 7 — Open guard model trained on sandbox data (training/).
 
-Goal: train a small open model with RL on our training split and show the score before vs after on held-out tasks, honestly.
+Goal: build a versioned dataset of labelled high-impact agent actions from all three worlds, train a small open model that decides allow | block | ask_user with reason codes and a calibrated confidence, and evaluate it honestly against strong baselines on held-out and hidden tasks. Synthetic data only.
 
-1. Splits: train (new tasks generated from templates + stress modifiers, seeded), validation, and the existing public/hidden sets as held-out test. No test task or close variant appears in train; add a similarity check.
-2. Task generator: templates with parameters (amounts, merchants, limits, failure timing) to produce 500–2,000 training tasks deterministically.
-3. Training: use an existing open-source RL library rather than writing our own — evaluate Prime Intellect's verifiers/prime-rl and Hugging Face TRL (GRPO) against our OpenEnv adapter; pick one and justify it in DECISIONS.md. Check each library's current docs before writing code.
-4. Model: start with a ~0.5–1.5B instruct model that fits a free Kaggle/Colab GPU; config for a rented single GPU as the next step.
-5. Reward: the grader's score, plus a penalty for money mistakes (FailureType counts). No reward from LLM judges.
-6. Watch for reward hacking: log and review 20 random successful training episodes per checkpoint; add any exploit found as a grader check and a new test.
-7. Report (docs/blog/rl-experiment.md): base vs trained on held-out tasks with confidence intervals, by category and failure type; cost and GPU hours; exploits found; what didn't work.
+1. Action dataset (training/data/)
+   - Harvest every high-impact action attempt from runs: payments (pay, checkout, create_mandate, request_refund), security (isolate_host, disable_account, reset_credentials, reimage_host), drug safety (submit_case, close_case_invalid, seriousness downgrade).
+   - Each example = the user's instruction + the delegated policy + relevant world state + the last N trace steps + any content the agent read (pages, logs, report text) + the attempted action.
+   - Label = the correct decision (allow / block / ask_user) derived from ground truth and graders, plus reason codes (policy rule ids and the world's failure types). Include stress-modifier examples (conflicting instructions, misleading content, look-alikes): these are the hard cases that matter most.
+   - Generate extra training tasks from seeded templates (worlds/<name>/tasks/templates/) to reach 20k-100k examples; balance classes; deduplicate.
+   - Split by task FAMILY, not by row, so near-identical examples never cross splits. Hidden tasks are NEVER used for training; they are the test set. CI check: no hidden-task id, canary or near-duplicate (similarity threshold) in any training file.
+   - Dataset card: sources, worlds, label definitions, class balance, known gaps, licence.
 
-Plan first, including the GPU memory estimate and expected runtime.
+2. Baselines first (training/baselines/), all behind one DecisionBackend interface (the same one the guard uses in Phase 8):
+   - rules-only guard (deterministic policy checks)
+   - two general LLM judges from different providers
+   - decision models: TypeSafe Jev, OpenAI Decisions API, AWS Strands Decider 2B (open, self-hosted), Cloudflare Clef — whichever are accessible; pin exact versions
+   - an evaluator model (e.g. Galileo Luna-2) if accessible
+   Check each provider's current docs and pricing before integrating; record model ids and versions in every result.
+
+3. Model training (training/guard_model/)
+   - Base: a small open model (~0.5-3B) whose licence permits fine-tuning and redistribution (e.g. AWS Strands Decider 2B, Apache-2.0). Verify the licence; record the choice and reasons in DECISIONS.md.
+   - Output contract: {decision, reason_codes[], confidence}, validated against a strict JSON schema.
+   - Stage A: supervised fine-tuning on the action dataset.
+   - Stage B (optional): RL with the graders as reward, using an existing library (Prime Intellect's verifiers/prime-rl or Hugging Face TRL; pick one and justify it). Penalise wrongful blocks and missed mistakes separately.
+   - Start on free Kaggle/Colab GPUs with the smallest model; provide a config for one rented GPU as the next step. Estimate memory and runtime before running anything.
+
+4. Calibration and abstention: calibrate confidence (report expected calibration error) and set thresholds so low-confidence cases become ask_user, never a silent allow.
+
+5. Evaluation (training/eval/) — identical tests for every backend
+   - Held-out public split and the hidden set, by world and category, with bootstrap confidence intervals.
+   - Metrics: correct blocks, wrongful blocks, missed mistakes, ask_user rate, latency p50/p99 (CPU and one small GPU), cost per 1,000 decisions.
+   - Robustness: the same tasks with and without stress modifiers designed to flip the decision; report the drop.
+   - Report where our model loses, prominently.
+
+6. Release: open weights (licence compatible with the base), model card (training data, intended use, limits: research model trained on synthetic data, not validated for real money, systems or patients), dataset card, eval report (docs/blog/guard-model.md), and guards/results.json for the leaderboard.
+
+7. Neutrality rules: hidden sets never touch training; every backend gets identical inputs; results reproduce from published configs; disclose that we built the model; check each provider's terms on publishing benchmark results before publishing.
+
+8. Optional side track: RL-train a small general agent on the training split and report before/after on held-out tasks.
+
+Plan first: dataset schema, splitting strategy, leakage checks, baseline list with access status, base-model choice, and the GPU memory/runtime estimate.
 ```
 
 **Done when**
 
-- [ ] The trained model is evaluated on held-out tasks with confidence intervals, whether or not it improved
-- [ ] At least one round of reward-hacking review is documented
-- [ ] The write-up is published
+- [ ] A versioned action dataset and its dataset card exist, and CI proves no hidden task, canary or near-duplicate is in the training data
+- [ ] Our model and at least four baselines (rules only, two LLM judges, one decision model) are scored on held-out and hidden sets, with confidence intervals, robustness and wrongful-block rates
+- [ ] Weights, model card and eval report are published, including where our model loses
+- [ ] A leakage and reward-hacking review is in `docs/DECISIONS.md`
 
-## Phase 8 — Guard library (v0.2, start of the trust layer)
+## Phase 8 — Guard library (v0.2) with model backends
 
-This phase builds the small open-source checker that sits in front of an agent's payment tool. Then it scores the guard in your own sandbox: the same model with and without it.
+This phase builds the open checker that sits in front of an agent's high-impact tools. Hard rules always run first, and a model backend handles the judgement calls: your open guard model from Phase 7 by default, or Jev, OpenAI's Decisions API, Strands Decider and others. It also launches the Guard models leaderboard, which scores every backend on the same tests.
 
 ```text
-PHASE 8 — Payment guard library (guard/), v0.2.
+PHASE 8 — Guard library (guard/), v0.2, with pluggable decision backends.
 
-Goal: an open-source, domain-neutral library that checks every high-impact action an agent attempts against the delegated policy before it executes, and records why it allowed or blocked it. First two policy packs: payments (pay, checkout, create_mandate) and security (isolate_host, disable_account, reset_credentials, reimage_host). Policies live in guard/policies/<world>/; the engine never imports a world. Pure software: it never holds money, never connects to real payment systems on its own, and must be usable in front of any payment tool.
+Goal: an open-source, domain-neutral library that checks every high-impact action an agent attempts against the delegated policy before it executes, decides allow | block | ask_user, and records why. It never holds or moves money, never touches real systems on its own, and works in front of any tool. The engine never imports a world.
 
-1. Policy model: per-user rules in YAML/JSON — budgets (per payment, daily, monthly), allowed/blocked merchants and categories, require-confirmation thresholds, mandate rules, time windows. Versioned and signed (hash) so a decision can be tied to the exact policy.
-2. Intent check: compare the attempted payment (payee, amount, item) with the user's original instruction and the agent's stated reason; deterministic rules first, optional pluggable model-based check marked as such.
-3. Decision: allow | block | ask_user, with reasons (list of rule ids). Fail closed on errors.
-4. Audit record: append-only, hash-chained log of every decision (inputs, policy hash, decision, reasons, timestamp). Tool to verify the chain.
-5. Integration: middleware that wraps any tool function (Python decorator) and an MCP proxy that sits between agent and a payment MCP server.
-6. SDKs: Python first; TypeScript SDK with the same policy format and decision semantics (shared JSON Schema + shared test vectors so both behave identically).
-7. Sandbox integration: `sandbox run --guard <policy>` runs every task with the guard in front of pay/checkout/create_mandate. Leaderboard gets with_guard scores.
-8. Evaluate honestly: report blocked-correctly, blocked-wrongly (false blocks that made the task fail), missed mistakes. A guard that blocks everything is not a win — report task success too.
-9. Overhead: decision latency p50/p99 < 5 ms for rules-only mode.
+1. Policy model: per-user rules in YAML/JSON — budgets (per action, daily, monthly), allowed/blocked counterparties and categories, require-confirmation thresholds, mandate rules, time windows. Policy packs per world in guard/policies/<world>/ (payments: pay, checkout, create_mandate; security: isolate_host, disable_account, reset_credentials, reimage_host; drug safety: submit_case, close_case_invalid, seriousness downgrade). Versioned and hashed so every decision ties to the exact policy.
 
-Plan first: policy schema, decision API, and audit record format.
+2. Layered decision, fail closed:
+   a. Hard rules: deterministic and always enforced. A model can NEVER turn a hard-rule block into an allow.
+   b. Model check for semantic questions (does this action match what the user asked? is content the agent read trying to steer it?) through the DecisionBackend interface from Phase 7.
+   c. Low confidence, timeout or backend error -> ask_user.
+
+3. Decision backends (guard/backends/): rules_only; our open guard model (default model check, local inference); adapters for TypeSafe Jev, OpenAI Decisions API, AWS Strands Decider (self-hosted), Cloudflare Clef, and generic LLM judges. Each backend has a pinned model id + version, a timeout and cost tracking. Check each provider's current API docs before writing its adapter. Never send real customer, company or patient data to a hosted backend; the sandbox uses synthetic data only.
+
+4. Decision record: append-only, hash-chained log of every decision (inputs hash, policy hash, backend + model version, decision, reason codes, confidence, latency, sim timestamp), plus a tool to verify the chain. These records become trust-layer receipts in Phase 10.
+
+5. Integration: a Python decorator that wraps any tool function, and an MCP proxy between an agent and any MCP server. SDKs: Python first, then TypeScript with the same policy format and decision semantics (shared JSON Schemas + shared test vectors).
+
+6. Sandbox integration: `sandbox run --guard <policy> --backend <name>` runs every task with the guard in front of the world's high-impact tools; results get with_guard scores per backend.
+
+7. Guard models leaderboard track: every backend on identical public + hidden tasks per world, scored on correct blocks, wrongful blocks, missed mistakes, ask_user rate, task success with the guard on, latency p50/p99, cost per 1,000 decisions, and robustness under stress modifiers. Export guards/results.json in the leaderboard format. A guard that blocks everything is not a win: task success is always reported next to block rates. Check each provider's terms on publishing benchmark results first.
+
+8. Overhead: rules-only mode p50/p99 < 5 ms; model mode measured and reported on CPU and one small GPU.
+
+Plan first: policy schema, layered decision API, DecisionBackend interface, decision-record format, and the leaderboard export.
 ```
 
 **Done when**
 
-- [ ] Python and TypeScript SDKs pass the same shared test vectors
-- [ ] The leaderboard shows with-guard and without-guard scores for every model, including false blocks
-- [ ] Audit-chain verification detects any edited or removed record in tests
+- [ ] Python and TypeScript SDKs pass the same shared test vectors, and a test proves no model backend can override a hard-rule block
+- [ ] At least four backends (rules only, our open guard model and two outside models) run through `sandbox run --guard`, with decision records verified
+- [ ] The Guard models leaderboard is live, with wrongful blocks and task success shown next to block rates
+- [ ] Chain verification detects any edited or removed decision record in tests
 
 ## Phase 9 — Production hardening (ongoing)
 
