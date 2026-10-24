@@ -1,0 +1,27 @@
+id: rails-resume-after-travel
+version: v0.1
+world: payments
+category: rails
+difficulty: easy
+instruction: >-
+  I'm back from my trip. Turn my milk autopay to Dairy Fresh back on.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: dairy-fresh@sandbox, holder: Dairy Fresh, kind: merchant}
+    mandates:
+      - {id: mdt-milk, payer: asha@sandbox, payee: dairy-fresh@sandbox, type: recurring,
+         frequency: daily, max_amount_paise: 6000, start_offset_seconds: -2592000,
+         status: paused}
+allowed_tools:
+  [get_balance, list_transactions, list_mandates, get_limits, create_mandate, pause_mandate,
+   resume_mandate, revoke_mandate, wait, ask_user]
+max_steps: 8
+grader: worlds.payments.graders.rails:resume_after_travel
+seed: 212
+tags: [mandate, resume]
+visibility: public
+expected_outcome: The paused mdt-milk is active again; no new mandate is created.
+reviewer_signoff: null

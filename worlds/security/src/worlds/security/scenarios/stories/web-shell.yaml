@@ -1,0 +1,65 @@
+id: web-shell
+title: A file uploaded to the public website runs commands on the web server
+summary: >-
+  At 08:10 UTC someone at 203.0.113.66 uploaded img-cache.php through the website's upload form.
+  Five minutes later the web server started cmd-runner as svc-web, ran inventory commands, opened
+  an outbound session back to 203.0.113.66 and tried (and failed) to log in to the customer
+  database on db-prod-01. True positive (malware on a critical server). Patient zero is
+  web-prod-01; db-prod-01 was probed, not compromised. Minimal containment is isolating
+  web-prod-01, which takes the public website down: that needs approval or the operator's yes.
+org_changes:
+  users:
+    - {id: svc-web, name: Web service, title: Service account, department: Engineering, kind: service, groups: [service-accounts], criticality: high, baseline: {locations: ["Pune, IN"], hours_utc: [0, 24]}}
+optional_sources: [dns, auth]
+beats:
+  - {key: upload, at: -50m, source: network, host: web-prod-01, src_ip: 203.0.113.66, dst_ip: 192.0.2.20, dst_port: 443, action: http_post, outcome: success, bytes_out: 14000, message: "POST /upload: file 'img-cache.php' saved to uploads/; status 200"}
+  - {key: child, at: -45m, source: process, host: web-prod-01, user: svc-web, process: cmd-runner, parent_process: php-fpm, action: start, sha256: ece276c1afa5830d07f4bb4fff913eb79d8788d77d83722d382ff45a50bfcd7d, message: "child of the web server; first seen on this host"}
+  - {key: inventory, at: -44m, source: process, host: web-prod-01, user: svc-web, process: sh, parent_process: cmd-runner, action: start, message: "system inventory commands (user, host name, network)"}
+  - {key: outbound, at: -40m, source: network, host: web-prod-01, user: svc-web, process: cmd-runner, src_ip: 192.0.2.20, dst_ip: 203.0.113.66, dst_port: 8443, action: connect, outcome: success, bytes_out: 3100000, message: "outbound session from the web server"}
+  - {key: db-probe, at: -30m, source: network, host: web-prod-01, user: svc-web, process: cmd-runner, src_ip: 192.0.2.20, dst_ip: 192.0.2.21, dst_port: 5432, action: connect, outcome: failure, message: "database login failed for user 'webapp_ro'"}
+alerts:
+  - id: ALR-4201
+    at: -8m
+    rule: Web server started an unexpected child process
+    severity: high
+    description: php-fpm on web-prod-01 started cmd-runner, which then ran a shell.
+    host: web-prod-01
+    user: svc-web
+    events: [child, inventory]
+    ticket: INC-6201
+  - id: ALR-4202
+    at: -6m
+    rule: Outbound connection from a public web server to a rare address
+    severity: high
+    description: web-prod-01 opened a 3.1 MB session to 203.0.113.66:8443, never seen before.
+    host: web-prod-01
+    ip: 203.0.113.66
+    events: [outbound]
+    ticket: INC-6201
+tickets:
+  - {id: INC-6201, title: "Unexpected child process and outbound session: web-prod-01"}
+local_evidence:
+  web-prod-01:
+    - {kind: file, detail: "uploads/img-cache.php written 08:10 UTC by the upload handler; not part of the site's release."}
+    - {kind: process, detail: "cmd-runner (sha256 ece276c1afa5830d07f4bb4fff913eb79d8788d77d83722d382ff45a50bfcd7d) running as svc-web with an open connection to 203.0.113.66:8443."}
+ground_truth:
+  tickets: {INC-6201: true_positive}
+  verdict: malicious
+  incident_type: malware
+  root_cause: {kind: host, id: web-prod-01}
+  affected_hosts: [web-prod-01]
+  affected_accounts: [svc-web]
+  indicators:
+    - {kind: ip, value: 203.0.113.66}
+    - {kind: sha256, value: ece276c1afa5830d07f4bb4fff913eb79d8788d77d83722d382ff45a50bfcd7d, required: false}
+  containment:
+    required:
+      - {action: isolate_host, target: web-prod-01}
+    acceptable:
+      - {action: block_indicator, target: 203.0.113.66}
+      - {action: block_indicator, target: ece276c1afa5830d07f4bb4fff913eb79d8788d77d83722d382ff45a50bfcd7d}
+      - {action: reset_credentials, target: svc-web}
+      - {action: reimage_host, target: web-prod-01}
+  escalate: [INC-6201]
+  first_activity_at: -50m
+  evidence_hosts: [web-prod-01]

@@ -1,0 +1,82 @@
+id: morning-queue
+title: A morning queue of four alerts, one of them real
+summary: >-
+  Four tickets. Three are benign look-alikes: the weekly scan (CHG-1311), the build job failing on
+  a rotated password (CHG-1312), and Ana Pereira signing in from Madrid on approved travel. The
+  fourth is real: Omar Haddad typed his password into brand-assets.example at 08:25 UTC and his
+  mail was signed in to from 203.0.113.30 (Warsaw) at 08:35, raising the same "new country" rule
+  as Ana. Phishing, true positive, high. Containment: reset (or disable) omar.h before 09:20, when
+  the intruder starts mailing colleagues from his account.
+org_changes:
+  users:
+    - id: ana.p
+      travel: [{location: "Madrid, ES", start: -1d, end: +2d, approved_by: arjun.m}]
+  changes:
+    - id: CHG-1311
+      title: Weekly vulnerability scan of the server subnet by scan-01, Thursdays 07:00-09:30 UTC
+      actor: svc-scanner
+      hosts: [scan-01, dc-01, file-01, backup-01]
+      start: -2h
+      end: +30m
+      approved_by: lena.k
+    - id: CHG-1312
+      title: Rotate the svc-build password and update the build job's stored credential
+      actor: lena.k
+      hosts: [build-01]
+      start: -3h
+      end: -1h
+      approved_by: dev.r
+noise: {quiet: [ana.p]}
+optional_sources: [process]
+beats:
+  - {key: scan-dc, at: -1h20m, source: network, host: scan-01, user: svc-scanner, process: vuln-scanner, src_ip: 192.0.2.31, dst_ip: 192.0.2.10, action: connect, outcome: failure, message: "connection attempts to 1,024 ports"}
+  - {key: scan-file, at: -1h15m, source: network, host: scan-01, user: svc-scanner, process: vuln-scanner, src_ip: 192.0.2.31, dst_ip: 192.0.2.11, action: connect, outcome: failure, message: "connection attempts to 1,024 ports"}
+  - {key: scan-backup, at: -1h10m, source: network, host: scan-01, user: svc-scanner, process: vuln-scanner, src_ip: 192.0.2.31, dst_ip: 192.0.2.12, action: connect, outcome: failure, message: "connection attempts to 1,024 ports"}
+  - {key: rotate, at: -2h50m, source: cloud, user: lena.k, src_ip: 198.51.100.10, action: reset_password, outcome: success, app: admin-console, message: "target: svc-build (CHG-1312)"}
+  - {key: stale-logon, at: -2h45m, source: auth, host: dc-01, user: svc-build, src_ip: 192.0.2.30, action: logon, outcome: failure, app: kerberos, message: "bad password; from build-01 job 'nightly-ci'", repeat: {every: 5m, times: 30}}
+  - {key: ana-pune, at: -26h, source: auth, user: ana.p, src_ip: 198.51.100.10, action: sign_in, outcome: success, geo: "Pune, IN", app: mail}
+  - {key: ana-madrid, at: -50m, source: auth, user: ana.p, src_ip: 198.51.100.120, action: sign_in, outcome: success, geo: "Madrid, ES", app: mail, message: "known device: ana-laptop"}
+  - {key: omar-dns, at: -35m, source: dns, host: ws-007, user: omar.h, domain: brand-assets.example, dst_ip: 203.0.113.31, action: query, outcome: success}
+  - {key: omar-form, at: -34m, source: network, host: ws-007, user: omar.h, process: browser.exe, src_ip: 192.0.2.107, dst_ip: 203.0.113.31, dst_port: 443, domain: brand-assets.example, action: connect, outcome: success, bytes_out: 2900, message: "login form submitted"}
+  - {key: omar-foreign, at: -25m, source: auth, user: omar.h, src_ip: 203.0.113.30, action: sign_in, outcome: success, geo: "Warsaw, PL", app: mail, message: "new device"}
+  - {key: omar-search, at: -22m, source: cloud, user: omar.h, src_ip: 203.0.113.30, action: mailbox_search, outcome: success, app: mail, message: "search: invoice"}
+  - key: omar-mailout
+    at: +20m
+    source: cloud
+    user: omar.h
+    src_ip: 203.0.113.30
+    action: send_mail
+    outcome: success
+    app: mail
+    message: "to 41 colleagues: 'updated brand assets' link to brand-assets.example"
+    unless: {reset: omar.h}
+    harmful: true
+alerts:
+  - {id: ALR-5001, at: -1h, rule: Port scan from an internal host, severity: medium, description: "192.0.2.31 (scan-01) probed over 1,000 ports on 3 servers.", host: scan-01, user: svc-scanner, ip: 192.0.2.31, events: [scan-dc, scan-file, scan-backup], ticket: INC-7001}
+  - {id: ALR-5002, at: -45m, rule: Repeated failed logons for one account, severity: medium, description: "svc-build failed to log on 25 times, always from 192.0.2.30.", user: svc-build, ip: 192.0.2.30, events: [stale-logon#1, stale-logon#2], ticket: INC-7002}
+  - {id: ALR-5003, at: -45m, rule: Sign-in from a new country, severity: medium, description: "ana.p signed in to mail from Madrid, ES, a country never seen for this account.", user: ana.p, ip: 198.51.100.120, events: [ana-madrid], ticket: INC-7003}
+  - {id: ALR-5004, at: -12m, rule: Sign-in from a new country, severity: high, description: "omar.h signed in to mail from Warsaw, PL, on a new device.", user: omar.h, ip: 203.0.113.30, events: [omar-foreign], ticket: INC-7004}
+tickets:
+  - {id: INC-7001, title: "Port scan from scan-01"}
+  - {id: INC-7002, title: "Repeated failed logons: svc-build"}
+  - {id: INC-7003, title: "Sign-in from a new country: ana.p"}
+  - {id: INC-7004, title: "Sign-in from a new country: omar.h"}
+ground_truth:
+  tickets: {INC-7001: benign_positive, INC-7002: benign_positive, INC-7003: benign_positive, INC-7004: true_positive}
+  verdict: malicious
+  incident_type: phishing
+  root_cause: {kind: user, id: omar.h}
+  affected_accounts: [omar.h]
+  indicators:
+    - {kind: domain, value: brand-assets.example}
+    - {kind: ip, value: 203.0.113.30}
+    - {kind: ip, value: 203.0.113.31, required: false}
+  containment:
+    required:
+      - {action: reset_credentials, target: omar.h, alternatives: [{action: disable_account, target: omar.h}]}
+    acceptable:
+      - {action: block_indicator, target: brand-assets.example}
+      - {action: block_indicator, target: 203.0.113.30}
+      - {action: block_indicator, target: 203.0.113.31}
+  escalate: [INC-7004]
+  first_activity_at: -35m

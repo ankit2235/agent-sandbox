@@ -1,0 +1,23 @@
+id: reporting-web-shell
+version: v0.1
+world: security
+category: reporting
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate ticket INC-6201 and submit the
+  incident report on it: verdict, incident type, root cause, affected hosts and accounts,
+  indicators, and when the activity started.
+initial_state:
+  scenario: web-shell
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.reporting:web_shell
+seed: 324
+tags: [web-server, malware, report]
+visibility: public
+expected_outcome: >-
+  Report on INC-6201: malicious malware; root cause web-prod-01; affected host web-prod-01 and
+  account svc-web (not db-prod-01); indicator 203.0.113.66; first activity 08:10 UTC (within five
+  minutes).
+reviewer_signoff: null

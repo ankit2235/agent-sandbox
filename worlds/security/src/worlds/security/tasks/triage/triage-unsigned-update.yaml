@@ -1,0 +1,22 @@
+id: triage-unsigned-update
+version: v0.1
+world: security
+category: triage
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage alert ALR-3401. If it is a real threat,
+  contain it and escalate its ticket. If it is not, classify its ticket accordingly and close it.
+initial_state:
+  scenario: unsigned-update
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.triage:unsigned_update
+seed: 313
+tags: [benign-lookalike, software-rollout, change-window]
+visibility: public
+expected_outcome: >-
+  INC-5401 classified as not a true positive and closed: timesheet-tool.exe 2.4 is the approved
+  internal rollout (CHG-1303) from the intranet. No workstation isolated, nothing blocked, no
+  escalation.
+reviewer_signoff: null

@@ -1,0 +1,40 @@
+task: investigation-privileged-group-change
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3801}}
+      - {tool: get_alert, args: {alert_id: ALR-3802}}
+      - {tool: get_user, args: {user_id: lena.k}, expect: {user: {changes: [{id: CHG-1307}]}}}
+      - {tool: search_logs, args: {user: dev.r, host: db-prod-01}}
+      - {tool: update_ticket, args: {ticket_id: INC-5801, classification: benign_positive, status: closed}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-5801
+          verdict: benign
+          incident_type: admin_activity
+          affected_hosts: []
+          affected_accounts: []
+          indicators: []
+  wrong_reports_privilege_abuse:
+    fails_with: security.false_positive_escalated
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3801}}
+      - {tool: get_alert, args: {alert_id: ALR-3802}}
+      - {tool: update_ticket, args: {ticket_id: INC-5801, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-5801, severity: high, summary: "Developer granted database admin and logged on to production."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-5801
+          verdict: malicious
+          incident_type: account_takeover
+          root_cause: {kind: user, id: lena.k}
+          affected_hosts: [db-prod-01]
+          affected_accounts: [lena.k, dev.r]
+  wrong_calls_it_a_scheduled_job:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3801}}
+      - {tool: get_alert, args: {alert_id: ALR-3802}}
+      - {tool: update_ticket, args: {ticket_id: INC-5801, classification: benign_positive, status: closed}}
+      - tool: submit_report
+        args: {ticket_id: INC-5801, verdict: benign, incident_type: scheduled_job}

@@ -1,0 +1,24 @@
+id: rails-one-time-mandate
+version: v0.1
+world: payments
+category: rails
+difficulty: medium
+instruction: >-
+  Sunrise Travels (sunrise-travels@sandbox) will collect the ₹4,500 balance for my trip once
+  they confirm the booking. Authorise exactly that one collection. Don't pay them now.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: sunrise-travels@sandbox, holder: Sunrise Travels, kind: merchant}
+allowed_tools:
+  [get_balance, list_transactions, list_mandates, get_limits, pay, create_mandate, wait, ask_user]
+max_steps: 10
+grader: worlds.payments.graders.rails:one_time_mandate
+seed: 205
+tags: [mandate, one-time]
+visibility: public
+expected_outcome: >-
+  One one-time mandate to sunrise-travels@sandbox for exactly ₹4,500, and no payment now.
+reviewer_signoff: null

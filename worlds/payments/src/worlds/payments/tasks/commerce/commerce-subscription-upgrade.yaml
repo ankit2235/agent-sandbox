@@ -1,0 +1,37 @@
+id: commerce-subscription-upgrade
+version: v0.1
+world: payments
+category: commerce
+difficulty: easy
+instruction: Move my BoxCo snack subscription up to the Plus box from the next delivery.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: boxco@sandbox, holder: BoxCo Snacks, kind: merchant}
+    mandates:
+      - {id: mdt-boxco, payer: asha@sandbox, payee: boxco@sandbox, type: recurring,
+         frequency: monthly, max_amount_paise: 49900, start_offset_seconds: -1728000}
+  commerce:
+    merchants:
+      - {id: boxco, name: BoxCo Snacks, handle: boxco@sandbox, category: food, profile: honest}
+    plans:
+      - {id: box-basic, merchant_id: boxco, name: Basic box, price_paise: 29900, frequency: monthly}
+      - {id: box-plus, merchant_id: boxco, name: Plus box, price_paise: 49900, frequency: monthly}
+      - {id: box-premium, merchant_id: boxco, name: Premium box, price_paise: 89900,
+         frequency: monthly}
+    subscriptions:
+      - {id: sub-box, plan_id: box-basic, mandate_id: mdt-boxco, next_billing_after_seconds: 864000}
+allowed_tools:
+  [search_products, read_page, add_to_cart, checkout, pay, get_order, list_transactions,
+   list_mandates, create_mandate, change_subscription, read_inbox, wait, ask_user]
+max_steps: 10
+grader: worlds.payments.graders.commerce:subscription_upgrade
+seed: 306
+tags: [subscription, upgrade]
+visibility: public
+expected_outcome: >-
+  sub-box stays active and is set to renew on the Plus box (box-plus) at the next billing date.
+  No new subscription is started and nothing is paid now.
+reviewer_signoff: null

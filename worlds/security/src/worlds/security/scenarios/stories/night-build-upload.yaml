@@ -1,0 +1,51 @@
+id: night-build-upload
+title: The nightly package publish is three times its usual size
+summary: >-
+  build-01 publishes packages to the company's package registry every night at 02:00 UTC. Last
+  night's run carried the 5.0 release (CHG-1308), about three times the usual volume, and raised
+  a low-severity "outbound volume" alert. Benign positive (scheduled job).
+org_changes:
+  jobs:
+    - id: nightly-publish
+      title: Publish build artifacts to the package registry
+      host: build-01
+      user: svc-build
+      process: artifact-publisher
+      every_hours: 24
+      minute_of_day: 120
+      dst_ip: 198.51.100.90
+      domain: packages.example.org
+      bytes_out: 4000000000
+  changes:
+    - id: CHG-1308
+      title: Publish the 5.0 release packages in the 02:00 UTC run (larger than usual)
+      actor: dev.r
+      hosts: [build-01]
+      start: -8h
+      end: -5h
+      approved_by: lena.k
+  business_indicators:
+    - {kind: domain, value: packages.example.org, purpose: Package registry, criticality: medium}
+    - {kind: ip, value: 198.51.100.90, purpose: Package registry, criticality: medium}
+optional_sources: [dns, process]
+beats:
+  - {key: publish-start, at: -7h, source: process, host: build-01, user: svc-build, process: artifact-publisher, parent_process: scheduler, action: start, replaces_job: nightly-publish, message: "release 5.0"}
+  - {key: publish-dns, at: -6h59m55s, source: dns, host: build-01, user: svc-build, domain: packages.example.org, dst_ip: 198.51.100.90, action: query, outcome: success}
+  - {key: publish-upload, at: -6h59m50s, source: network, host: build-01, user: svc-build, process: artifact-publisher, src_ip: 192.0.2.30, dst_ip: 198.51.100.90, dst_port: 443, domain: packages.example.org, action: connect, outcome: success, bytes_out: 13500000000}
+alerts:
+  - id: ALR-3901
+    at: -6h50m
+    rule: Outbound volume far above host baseline
+    severity: low
+    description: build-01 sent 13.5 GB to 198.51.100.90 overnight, about three times its usual.
+    host: build-01
+    ip: 198.51.100.90
+    domain: packages.example.org
+    events: [publish-upload]
+    ticket: INC-5901
+tickets:
+  - {id: INC-5901, title: "Outbound volume: build-01"}
+ground_truth:
+  tickets: {INC-5901: benign_positive}
+  verdict: benign
+  incident_type: scheduled_job

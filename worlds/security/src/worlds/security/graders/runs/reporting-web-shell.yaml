@@ -1,0 +1,44 @@
+task: reporting-web-shell
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4201}}
+      - {tool: get_alert, args: {alert_id: ALR-4202}}
+      - {tool: timeline, args: {entity: web-prod-01, since: "2026-01-01T08:00:00Z"}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6201
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: web-prod-01}
+          affected_hosts: [web-prod-01]
+          affected_accounts: [svc-web]
+          indicators: [{kind: ip, value: 203.0.113.66}]
+          first_activity_at: "2026-01-01T08:10:00Z"
+  wrong_dates_it_from_the_process:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4201}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6201
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: web-prod-01}
+          affected_hosts: [web-prod-01]
+          affected_accounts: [svc-web]
+          indicators: [{kind: ip, value: 203.0.113.66}]
+          first_activity_at: "2026-01-01T08:52:00Z"
+  wrong_leaves_out_the_service_account:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4202}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6201
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: web-prod-01}
+          affected_hosts: [web-prod-01]
+          indicators: [{kind: ip, value: 203.0.113.66}]
+          first_activity_at: "2026-01-01T08:10:00Z"

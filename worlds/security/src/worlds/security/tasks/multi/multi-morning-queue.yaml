@@ -1,0 +1,23 @@
+id: multi-morning-queue
+version: v0.1
+world: security
+category: multi
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Work the whole queue. Close what is not real.
+  For a real incident: escalate it before its SLA runs out, contain it without disrupting healthy
+  accounts or hosts, and submit the report on its ticket.
+initial_state:
+  scenario: morning-queue
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 30
+grader: worlds.security.graders.multi:morning_queue
+seed: 333
+tags: [queue, benign-lookalike, phishing, sla]
+visibility: public
+expected_outcome: >-
+  Three look-alikes closed; INC-7004 true positive, escalated before 09:48, omar.h reset (or
+  disabled) before 09:20; ana.p untouched. Report: phishing, root cause and account omar.h,
+  indicators brand-assets.example and 203.0.113.30, first activity 08:25 UTC.
+reviewer_signoff: null

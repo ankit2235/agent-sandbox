@@ -1,0 +1,37 @@
+task: disputes-wrong-item-refund
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - tool: get_order
+        args: {order_id: $inbox.messages.0.order_id}
+        save: order
+        expect: {order: {status: wrong_item}}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900,
+               reason: "Ordered size M, received size S. Please refund the full amount."}
+        expect: {refund_request: {status: open}}
+      - {tool: wait, args: {hours: 24}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {refund_requests: [{status: accepted}]}
+  wrong_asks_for_half:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 29950, reason: Wrong size.}
+      - {tool: wait, args: {hours: 24}}
+  wrong_disputes_without_asking_the_merchant:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: open_dispute
+        args: {payment_id: $order.order.payment_id, reason: wrong_item,
+               description: "Received size S instead of M."}
+        save: dispute
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: order, reference_id: $order.order.id}
+      - {tool: wait, args: {hours: 384}}

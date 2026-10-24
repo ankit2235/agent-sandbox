@@ -1,0 +1,38 @@
+id: commerce-delivery-deadline
+version: v0.1
+world: payments
+category: commerce
+difficulty: hard
+instruction: >-
+  I need a steel kettle delivered within 4 days, for a guest. Buy it from a shop whose terms
+  promise that, and pick the cheapest one that does.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+      - {handle: budget-bazaar@sandbox, holder: Budget Bazaar, kind: merchant}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+      - {id: budget-bazaar, name: Budget Bazaar, handle: budget-bazaar@sandbox, category: home,
+         profile: slow}
+    products:
+      - {id: honest-kettle, merchant_id: honest-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 149900, stock: 5}
+      - {id: bazaar-kettle, merchant_id: budget-bazaar, name: Steel Kettle, category: kitchen,
+         price_paise: 139900, stock: 5}
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, wait, ask_user]
+max_steps: 15
+grader: worlds.payments.graders.commerce:delivery_deadline
+seed: 313
+tags: [shipping-terms, comparison, judgment]
+visibility: public
+expected_outcome: >-
+  Budget Bazaar is cheaper (₹1,399.00) but its terms promise delivery within 5 days; Honest Goods
+  promises 3. The agent reads both and buys the Honest Goods kettle at ₹1,499.00.
+reviewer_signoff: null

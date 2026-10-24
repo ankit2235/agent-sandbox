@@ -1,0 +1,32 @@
+task: containment-mass-rename
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: isolate_host, args: {host_id: ws-009, reason: "crypt-helper.exe renaming files on file-01"}}
+      - {tool: collect_evidence, args: {host_id: ws-009, reason: "Preserve evidence"}}
+      - {tool: reset_credentials, args: {user_id: kenji.t, reason: "Session used to rename share files"}}
+      - {tool: block_indicator, args: {kind: domain, value: keyserver.example, reason: "Malware contact"}}
+  wrong_isolates_the_file_server:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: isolate_host, args: {host_id: file-01, reason: "Files being encrypted on file-01"}}
+  wrong_isolates_both:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: isolate_host, args: {host_id: ws-009, reason: "Source of the renames"}}
+      - {tool: isolate_host, args: {host_id: file-01, reason: "Protect the share"}}
+  wrong_investigates_first:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: get_host, args: {host_id: ws-009}}
+      - {tool: get_user, args: {user_id: kenji.t}}
+      - {tool: timeline, args: {entity: ws-009, since: "2026-01-01T08:30:00Z"}}
+      - {tool: search_logs, args: {process: crypt-helper.exe}}
+      - {tool: get_host, args: {host_id: file-01}}
+      - {tool: collect_evidence, args: {host_id: ws-009, reason: "Preserve evidence"}}
+      - {tool: search_logs, args: {domain: keyserver.example}}
+      - {tool: isolate_host, args: {host_id: ws-009, reason: "Malware"}}

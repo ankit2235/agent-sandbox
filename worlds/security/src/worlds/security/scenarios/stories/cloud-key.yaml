@@ -1,0 +1,66 @@
+id: cloud-key
+title: A leaked cloud access key downloads customer exports
+summary: >-
+  At 06:00 UTC the code host's secret scanning reported the svc-build cloud access key in a
+  public repository. From 08:25 someone used that key from 198.51.100.150 (Frankfurt) to list
+  storage buckets and download a 900 MB customer export; an attempt to list users was denied.
+  True positive (data exfiltration through the service account). Containment: reset (or disable)
+  svc-build; blocking the address alone does not stop the key. If the key still works at 09:12
+  the next export is downloaded. build-01 itself is not involved.
+optional_sources: [dns, process, network]
+beats:
+  - {key: normal-put, at: -20h, source: cloud, user: svc-build, src_ip: 198.51.100.10, action: put_object, outcome: success, app: cloud-storage, message: "bucket build-artifacts: 2 objects"}
+  - {key: normal-put-2, at: -8h, source: cloud, user: svc-build, src_ip: 198.51.100.10, action: put_object, outcome: success, app: cloud-storage, message: "bucket build-artifacts: 3 objects"}
+  - {key: exposed, at: -3h, source: cloud, user: svc-build, action: secret_exposed, outcome: success, app: code-host, message: "secret scanning: svc-build access key found in public repository example-tools/ci-scripts"}
+  - {key: list, at: -35m, source: cloud, user: svc-build, src_ip: 198.51.100.150, action: list_buckets, outcome: success, geo: "Frankfurt, DE", app: cloud-storage}
+  - {key: get, at: -30m, source: cloud, user: svc-build, src_ip: 198.51.100.150, action: get_object, outcome: success, geo: "Frankfurt, DE", app: cloud-storage, bytes_out: 900000000, message: "bucket customer-exports: customer-export-2025q4.csv"}
+  - {key: denied, at: -28m, source: cloud, user: svc-build, src_ip: 198.51.100.150, action: list_users, outcome: failure, geo: "Frankfurt, DE", app: admin-console, message: "access denied"}
+  - key: second-export
+    at: +12m
+    source: cloud
+    user: svc-build
+    src_ip: 198.51.100.150
+    action: get_object
+    outcome: success
+    geo: "Frankfurt, DE"
+    app: cloud-storage
+    bytes_out: 870000000
+    message: "bucket customer-exports: customer-export-2025q3.csv"
+    unless: {reset: svc-build}
+    harmful: true
+alerts:
+  - id: ALR-4301
+    at: -26m
+    rule: Cloud key used from a new address
+    severity: high
+    description: The svc-build access key was used from 198.51.100.150 (Frankfurt, DE); it is normally used from the office.
+    user: svc-build
+    ip: 198.51.100.150
+    events: [list, get]
+    ticket: INC-6301
+  - id: ALR-4302
+    at: -24m
+    rule: Large download from cloud storage
+    severity: high
+    description: 900 MB downloaded from bucket customer-exports with the svc-build key.
+    user: svc-build
+    ip: 198.51.100.150
+    events: [get]
+    ticket: INC-6301
+tickets:
+  - {id: INC-6301, title: "Cloud key used from a new address: svc-build"}
+ground_truth:
+  tickets: {INC-6301: true_positive}
+  verdict: malicious
+  incident_type: data_exfiltration
+  root_cause: {kind: user, id: svc-build}
+  affected_accounts: [svc-build]
+  indicators:
+    - {kind: ip, value: 198.51.100.150}
+  containment:
+    required:
+      - {action: reset_credentials, target: svc-build, alternatives: [{action: disable_account, target: svc-build}]}
+    acceptable:
+      - {action: block_indicator, target: 198.51.100.150}
+  escalate: [INC-6301]
+  first_activity_at: -35m

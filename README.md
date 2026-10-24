@@ -46,20 +46,68 @@ just worlds         # what is installed
 | `security` | Phase 3S | Works an alert queue as a SOC analyst: triage, investigate, contain, escalate, report. Defensive only. |
 | `drug_safety` | Phase 3P, gated | Processes synthetic adverse-event reports: validity, duplicates, coding, seriousness, deadlines. Starts only once a pharmacovigilance physician has committed as reviewer. |
 
+## Running a model
+
+`sandbox run` drives a reference tool-calling agent over a world's MCP tools, grades every run
+and writes full traces. CI only ever uses the fake models, so it spends nothing.
+
+```bash
+# No API key, no cost: replay every task's golden run through the whole runner.
+uv run sandbox run --world payments --model fake:golden --tasks payments-v0.1 --out runs/fake/
+
+# A real model through LiteLLM (any provider or a local model).
+uv sync --all-packages --extra litellm
+export OPENAI_API_KEY=...            # whatever your provider needs; see the LiteLLM docs
+uv run sandbox run --world payments --model gpt-4.1-mini --provider openai --tasks payments-v0.1 \
+    --runs 3 --concurrency 4 --max-cost 0.50 --out runs/2026-10-23-gpt-4.1-mini/
+
+# Development budget mode: ten seeded tasks, one run each, a local model.
+uv run sandbox run --world security --model ollama/llama3.2 --tasks security-v0.1 \
+    --sample 10 --out runs/dev/
+```
+
+- **Resumable.** Run the same command again: finished runs are skipped, a run that was killed
+  starts again from a fresh world, and a run whose provider kept failing is retried. Changing the
+  settings for an existing `--out` is refused.
+- **Caps per run**: the task's step cap (or a lower `--max-steps`), `--max-tokens`, and
+  `--max-cost` in US dollars. A run that hits a cap stops and is graded as it stands. Provider
+  errors are retried with backoff (`--retries`, default 5).
+- **What is recorded**: `manifest.json`, `runs/<run_id>/trace.jsonl` (every agent message, tool,
+  arguments, response, state change and simulated time) and `result.json` (grade, tokens, cost,
+  steps, stop reason), plus OpenTelemetry spans in `spans.jsonl`. Set
+  `OTEL_EXPORTER_OTLP_ENDPOINT`, or `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` and
+  `LANGFUSE_HOST`, to send spans on as well (`uv sync --all-packages --extra otlp`).
+- **Hidden tasks**: `--tasks payments-v0.1-hidden` reads `$HIDDEN_TASKS_DIR/payments/v0.1/`.
+  Hidden results are only ever published as aggregates.
+
+```bash
+uv run sandbox verify --run runs/2026-10-23-gpt-4.1-mini/     # replay actions, same grades?
+uv run sandbox export runs/2026-10-23-gpt-4.1-mini/ runs/another-model/ \
+    --out leaderboard/public/data --updated 2026-10-23           # the leaderboard's data files
+```
+
+The export writes `worlds.json` and, per world, `results.json`, `tasks.json` and
+`traces/<run_id>.json`, each validated against the JSON Schemas in `runner/src/runner/schemas/`.
+Scores: `overall` is the mean over tasks of each task's pass rate, with a 95% bootstrap interval
+over tasks; `task_success_rate` is the share of tasks passed in every run; `safe_action_rate`
+is the share of runs with no unsafe mistake (in payments a money mistake, in security a
+disruption of a healthy asset or destroyed evidence).
+
 ## Layout
 
 ```
 kit/          core types, episode loop, trace, clock, rng, world registry, OpenEnv adapter
 worlds/       one directory per domain; nothing outside worlds/ imports them
 stress/       generic, seeded modifiers that make any task harder
-runner/       the `sandbox` CLI: tasks, episodes, traces, scoring
+runner/       the `sandbox` CLI: agent loop, runs, traces, scoring, export, verify
 docs/         DECISIONS.md, PROGRESS.md, and the docs site
 ```
 
 ## Status
 
-Phase 0 of the build plan: the repo, the workspace and the core interfaces, with a hello-world
-world proving them end to end — including through the OpenEnv adapter. The interfaces are tagged
+Phases 0–4 of the build plan: the core kit, the payments and security worlds with 50 tasks each,
+and the runner that scores models on them and exports leaderboard files. No grader is signed off
+by a domain reviewer yet, so both worlds are listed as `preview`. The interfaces are tagged
 `kit-v0.1` once the pair leads have reviewed them; see [docs/PROGRESS.md](docs/PROGRESS.md) for
 what exists today and [docs/DECISIONS.md](docs/DECISIONS.md) for why.
 

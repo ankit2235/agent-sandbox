@@ -11,6 +11,10 @@ setup:
 setup-openenv:
     uv sync --all-packages --extra openenv
 
+# Install LiteLLM, for running real models (heavy; CI only uses the fake models).
+setup-models:
+    uv sync --all-packages --extra litellm
+
 # Run every test.
 test *ARGS:
     uv run pytest {{ARGS}}
@@ -29,6 +33,8 @@ format:
 typecheck:
     uv run mypy --strict kit/src/kit
     uv run mypy runner/src/runner stress/src/stress
+    uv run mypy -p worlds.payments
+    uv run mypy -p worlds.security
 
 # The determinism and domain-neutrality rules, as their own fast check.
 invariants:

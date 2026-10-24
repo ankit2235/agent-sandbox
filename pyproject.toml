@@ -26,6 +26,9 @@ dependencies = [
 # OpenEnv is experimental upstream and pulls a heavy dependency tree, so the
 # adapter is an extra rather than a hard dependency of the kit. See DECISIONS.md.
 openenv = ["openenv==0.9.0"]
+# Real model calls through LiteLLM, and OTLP span export (Langfuse or a collector).
+litellm = ["agent-sandbox-runner[litellm]"]
+otlp = ["agent-sandbox-runner[otlp]"]
 
 [project.urls]
 Homepage = "https://github.com/prarabdha-soni/agent-sandbox"
@@ -96,8 +99,13 @@ plugins = []
 module = ["openenv.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# Optional extras; the runner imports them lazily and is typed against Any.
+module = ["litellm.*", "opentelemetry.exporter.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
-testpaths = ["kit/tests", "runner/tests"]
+testpaths = ["kit/tests", "runner/tests", "worlds/payments/tests", "worlds/security/tests"]
 addopts = "-q --strict-markers --strict-config"
 markers = [
   "openenv: requires the optional openenv extra to be installed",

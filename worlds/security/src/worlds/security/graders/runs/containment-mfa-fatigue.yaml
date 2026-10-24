@@ -1,0 +1,18 @@
+task: containment-mfa-fatigue
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4102}}
+      - {tool: reset_credentials, args: {user_id: sara.b, reason: "Account taken over after MFA push flood"}}
+      - {tool: block_indicator, args: {kind: domain, value: pay-portal.example, reason: "Forwarding target"}}
+  wrong_blocks_only_the_address:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - {tool: block_indicator, args: {kind: ip, value: 203.0.113.180, reason: "Intruder's address"}}
+  wrong_isolates_her_laptop_too:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - {tool: disable_account, args: {user_id: sara.b, reason: "Account taken over"}}
+      - {tool: isolate_host, args: {host_id: ws-008, reason: "CFO's laptop, to be safe"}}

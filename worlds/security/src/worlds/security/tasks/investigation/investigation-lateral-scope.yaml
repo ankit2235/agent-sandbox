@@ -1,0 +1,24 @@
+id: investigation-lateral-scope
+version: v0.1
+world: security
+category: investigation
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate both remote-admin alerts. Classify
+  each ticket and close what is not real. Escalate a real incident before its SLA runs out, then
+  submit a report on its ticket with its root cause, the affected hosts and accounts, and its
+  indicators. The IR team handles containment.
+initial_state:
+  scenario: maintenance-vs-lateral
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 20
+grader: worlds.security.graders.investigation:lateral_scope
+seed: 342
+tags: [lateral-movement, change-window, scope, sla]
+visibility: public
+expected_outcome: >-
+  INC-4501 (patching inside CHG-1201) closed as not a true positive; INC-4502 true positive and
+  escalated before 09:09. Report: root cause tomas.v; affected hosts ws-010 and ws-011 (not the
+  eight lena.k patched); account tomas.v; indicator 203.0.113.150.
+reviewer_signoff: null

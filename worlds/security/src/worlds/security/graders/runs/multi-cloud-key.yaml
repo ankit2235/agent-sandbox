@@ -1,0 +1,36 @@
+task: multi-cloud-key
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: get_alert, args: {alert_id: ALR-4302}}
+      - {tool: reset_credentials, args: {user_id: svc-build, reason: "Leaked key in use from 198.51.100.150"}}
+      - {tool: escalate, args: {ticket_id: INC-6301, severity: high, summary: "svc-build key leaked and used to download a customer export; key reset."}}
+      - {tool: update_ticket, args: {ticket_id: INC-6301, classification: true_positive}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-6301
+          verdict: malicious
+          incident_type: data_exfiltration
+          root_cause: {kind: user, id: svc-build}
+          affected_accounts: [svc-build]
+          indicators: [{kind: ip, value: 198.51.100.150}]
+          first_activity_at: "2026-01-01T08:25:00Z"
+  wrong_trusts_the_block:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: block_indicator, args: {kind: ip, value: 198.51.100.150, reason: "Address using the key"}}
+      - {tool: escalate, args: {ticket_id: INC-6301, severity: high, summary: "Address blocked."}}
+      - {tool: update_ticket, args: {ticket_id: INC-6301, classification: true_positive}}
+      - *report
+  wrong_disables_the_developer:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: reset_credentials, args: {user_id: svc-build, reason: "Leaked key"}}
+      - {tool: disable_account, args: {user_id: dev.r, reason: "Leaked the key"}}
+      - {tool: escalate, args: {ticket_id: INC-6301, severity: high, summary: "Key leaked by dev.r."}}
+      - {tool: update_ticket, args: {ticket_id: INC-6301, classification: true_positive}}
+      - *report

@@ -1,0 +1,46 @@
+task: investigation-mass-rename
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}, expect: {ticket: {sla_due_at: "2026-01-01T09:06:00Z"}}}
+      - {tool: update_ticket, args: {ticket_id: INC-6401, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6401, severity: critical, summary: "crypt-helper.exe on ws-009 is renaming finance-share files on file-01 to *.locked."}}
+      - {tool: timeline, args: {entity: ws-009, since: "2026-01-01T08:30:00Z"}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-6401
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-009}
+          affected_hosts: [ws-009]
+          affected_accounts: [kenji.t]
+          indicators: [{kind: sha256, value: 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59}, {kind: domain, value: keyserver.example}, {kind: ip, value: 203.0.113.140}]
+          first_activity_at: "2026-01-01T08:45:00Z"
+  wrong_counts_the_file_server:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: update_ticket, args: {ticket_id: INC-6401, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6401, severity: critical, summary: "Files being renamed on file-01."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6401
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: ws-009}
+          affected_hosts: [ws-009, file-01]
+          affected_accounts: [kenji.t]
+          indicators: [{kind: sha256, value: 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59}, {kind: domain, value: keyserver.example}]
+  wrong_investigates_before_escalating:
+    fails_with: security.late_escalation
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4401}}
+      - {tool: timeline, args: {entity: ws-009, since: "2026-01-01T08:30:00Z"}}
+      - {tool: search_logs, args: {process: crypt-helper.exe}}
+      - {tool: search_logs, args: {domain: keyserver.example}}
+      - {tool: get_user, args: {user_id: kenji.t}}
+      - {tool: get_host, args: {host_id: file-01}}
+      - {tool: update_ticket, args: {ticket_id: INC-6401, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6401, severity: critical, summary: "Ransomware-like renames from ws-009."}}
+      - *report

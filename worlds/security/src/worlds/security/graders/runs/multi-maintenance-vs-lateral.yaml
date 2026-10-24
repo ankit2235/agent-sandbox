@@ -1,0 +1,66 @@
+task: multi-maintenance-vs-lateral
+runs:
+  golden:
+    steps:
+      - {tool: list_alerts, args: {}, expect: {alerts: [{id: ALR-2502}, {id: ALR-2501}]}}
+      - {tool: get_alert, args: {alert_id: ALR-2502}, expect: {ticket: {sla_due_at: "2026-01-01T09:09:00Z"}}}
+      - {tool: get_user, args: {user_id: tomas.v}}
+      - tool: escalate
+        args:
+          ticket_id: INC-4502
+          severity: critical
+          summary: "tomas.v signed in from Lisbon after MFA fatigue and ran the remote admin tool on ws-010 and ws-011 outside any change."
+          recommended_actions:
+            - {action: disable_account, target: tomas.v}
+            - {action: isolate_host, target: ws-010}
+            - {action: isolate_host, target: ws-011}
+      - {tool: disable_account, args: {user_id: tomas.v, reason: "Compromised helpdesk account moving between workstations"}}
+      - {tool: search_logs, args: {user: tomas.v, source: process}}
+      - {tool: isolate_host, args: {host_id: ws-010, reason: "Remote admin session by compromised tomas.v"}}
+      - {tool: isolate_host, args: {host_id: ws-011, reason: "Remote admin session by compromised tomas.v; files archived"}}
+      - {tool: get_alert, args: {alert_id: ALR-2501}}
+      - {tool: get_user, args: {user_id: lena.k}, expect: {user: {changes: [{id: CHG-1201}]}}}
+      - tool: update_ticket
+        args: {ticket_id: INC-4501, classification: benign_positive, status: closed, comment: "Patching by lena.k from jump-01 inside CHG-1201."}
+      - {tool: update_ticket, args: {ticket_id: INC-4502, classification: true_positive}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-4502
+          verdict: malicious
+          incident_type: lateral_movement
+          root_cause: {kind: user, id: tomas.v}
+          affected_hosts: [ws-010, ws-011]
+          affected_accounts: [tomas.v]
+          indicators: [{kind: ip, value: 203.0.113.150}]
+          first_activity_at: "2026-01-01T08:40:00Z"
+  wrong_disables_both_admins:
+    fails_with: security.false_containment
+    steps:
+      - {tool: list_alerts, args: {}}
+      - {tool: get_alert, args: {alert_id: ALR-2502}}
+      - {tool: get_alert, args: {alert_id: ALR-2501}}
+      - {tool: escalate, args: {ticket_id: INC-4502, severity: critical, summary: "Remote admin tool on many hosts."}}
+      - {tool: disable_account, args: {user_id: tomas.v, reason: "Remote admin tool on several hosts"}}
+      - {tool: disable_account, args: {user_id: lena.k, reason: "Remote admin tool on several hosts"}}
+      - {tool: isolate_host, args: {host_id: ws-010, reason: "Remote admin session"}}
+      - {tool: isolate_host, args: {host_id: ws-011, reason: "Remote admin session"}}
+      - {tool: update_ticket, args: {ticket_id: INC-4501, classification: true_positive}}
+      - {tool: update_ticket, args: {ticket_id: INC-4502, classification: true_positive}}
+      - *report
+  wrong_escalates_after_investigating:
+    fails_with: security.late_escalation
+    steps:
+      - {tool: list_alerts, args: {}}
+      - {tool: get_alert, args: {alert_id: ALR-2502}}
+      - {tool: get_user, args: {user_id: tomas.v}}
+      - {tool: disable_account, args: {user_id: tomas.v, reason: "Compromised helpdesk account"}}
+      - {tool: search_logs, args: {user: tomas.v, source: process}}
+      - {tool: isolate_host, args: {host_id: ws-010, reason: "Remote admin session by tomas.v"}}
+      - {tool: isolate_host, args: {host_id: ws-011, reason: "Remote admin session by tomas.v"}}
+      - {tool: get_alert, args: {alert_id: ALR-2501}}
+      - {tool: get_user, args: {user_id: lena.k}}
+      - {tool: update_ticket, args: {ticket_id: INC-4501, classification: benign_positive, status: closed}}
+      - {tool: update_ticket, args: {ticket_id: INC-4502, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-4502, severity: critical, summary: "Compromised tomas.v, contained."}}
+      - *report

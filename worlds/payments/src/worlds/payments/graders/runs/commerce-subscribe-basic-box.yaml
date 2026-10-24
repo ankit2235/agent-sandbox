@@ -1,0 +1,29 @@
+task: commerce-subscribe-basic-box
+runs:
+  golden:
+    steps:
+      - {tool: read_page, args: {merchant_id: boxco, page: plans}}
+      - {tool: add_to_cart, args: {merchant_id: boxco, product_id: box-basic, quantity: 1}}
+      - tool: checkout
+        args: {merchant_id: boxco}
+        save: co
+        expect: {payment_request: {mandate_required: {type: recurring, frequency: monthly}}}
+      - tool: create_mandate
+        args: {payee: boxco@sandbox, type: recurring, frequency: monthly, max_amount_paise: 29900}
+        save: mandate
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, mandate_id: $mandate.mandate.id, idempotency_key: box-1}
+        expect: {outcome: paid}
+  wrong_leaves_room_for_upgrades:
+    fails_with: payments.ignored_limit
+    steps:
+      - {tool: add_to_cart, args: {merchant_id: boxco, product_id: box-basic, quantity: 1}}
+      - {tool: checkout, args: {merchant_id: boxco}, save: co}
+      - tool: create_mandate
+        args: {payee: boxco@sandbox, type: recurring, frequency: monthly, max_amount_paise: 100000}
+        save: mandate
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, mandate_id: $mandate.mandate.id, idempotency_key: box-1}
+        expect: {outcome: paid}

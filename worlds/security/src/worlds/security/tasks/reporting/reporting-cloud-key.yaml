@@ -1,0 +1,23 @@
+id: reporting-cloud-key
+version: v0.1
+world: security
+category: reporting
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate ticket INC-6301 and submit the
+  incident report on it: verdict, incident type, root cause, affected hosts and accounts,
+  indicators, and when the activity started.
+initial_state:
+  scenario: cloud-key
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.reporting:cloud_key
+seed: 347
+tags: [cloud, leaked-key, report]
+visibility: public
+expected_outcome: >-
+  Report on INC-6301: malicious data exfiltration; root cause and only affected account svc-build;
+  no hosts; indicator 198.51.100.150; first activity 08:25 UTC (the first use of the key, within
+  five minutes).
+reviewer_signoff: null

@@ -1,0 +1,52 @@
+task: investigation-lateral-scope
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2502}}
+      - {tool: update_ticket, args: {ticket_id: INC-4502, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-4502, severity: critical, summary: "tomas.v used the remote admin tool from a VPN address after a Lisbon sign-in, outside any change."}}
+      - {tool: search_logs, args: {user: tomas.v, source: process}}
+      - {tool: get_alert, args: {alert_id: ALR-2501}}
+      - {tool: get_user, args: {user_id: lena.k}}
+      - {tool: update_ticket, args: {ticket_id: INC-4501, classification: benign_positive, status: closed}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4502
+          verdict: malicious
+          incident_type: lateral_movement
+          root_cause: {kind: user, id: tomas.v}
+          affected_hosts: [ws-010, ws-011]
+          affected_accounts: [tomas.v]
+          indicators: [{kind: ip, value: 203.0.113.150}, {kind: ip, value: 192.0.2.200}]
+  wrong_scopes_every_patched_host:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2502}}
+      - {tool: update_ticket, args: {ticket_id: INC-4502, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-4502, severity: critical, summary: "Remote admin tool misuse."}}
+      - {tool: get_alert, args: {alert_id: ALR-2501}}
+      - {tool: update_ticket, args: {ticket_id: INC-4501, classification: benign_positive, status: closed}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4502
+          verdict: malicious
+          incident_type: lateral_movement
+          root_cause: {kind: user, id: tomas.v}
+          affected_hosts: [ws-001, ws-002, ws-003, ws-004, ws-005, ws-006, ws-007, ws-008, ws-010, ws-011]
+          affected_accounts: [tomas.v]
+          indicators: [{kind: ip, value: 203.0.113.150}]
+  wrong_leaves_the_patching_ticket_open:
+    fails_with: kit.incomplete
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2502}}
+      - {tool: update_ticket, args: {ticket_id: INC-4502, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-4502, severity: critical, summary: "Remote admin tool misuse."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4502
+          verdict: malicious
+          incident_type: lateral_movement
+          root_cause: {kind: user, id: tomas.v}
+          affected_hosts: [ws-010, ws-011]
+          affected_accounts: [tomas.v]
+          indicators: [{kind: ip, value: 203.0.113.150}]

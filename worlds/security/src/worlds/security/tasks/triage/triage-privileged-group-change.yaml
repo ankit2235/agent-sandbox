@@ -1,0 +1,23 @@
+id: triage-privileged-group-change
+version: v0.1
+world: security
+category: triage
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage the alerts on ticket INC-5801. If it is
+  a real threat, contain it and escalate the ticket. If it is not, classify the ticket accordingly
+  and close it.
+initial_state:
+  scenario: privileged-group-change
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.triage:privileged_group_change
+seed: 317
+tags: [benign-lookalike, privileged-access, change-window]
+visibility: public
+expected_outcome: >-
+  INC-5801 classified as not a true positive and closed: lena.k added dev.r to db-admins under
+  CHG-1307 for tonight's upgrade, and dev.r's first logon was read-only preparation. lena.k, dev.r
+  and db-prod-01 untouched; no escalation.
+reviewer_signoff: null

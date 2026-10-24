@@ -1,0 +1,33 @@
+id: commerce-subscribe-basic-box
+version: v0.1
+world: payments
+category: commerce
+difficulty: medium
+instruction: >-
+  Subscribe me to BoxCo's Basic box. Set up the autopay so they can never take more than the
+  Basic price in one go.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: boxco@sandbox, holder: BoxCo Snacks, kind: merchant}
+  commerce:
+    merchants:
+      - {id: boxco, name: BoxCo Snacks, handle: boxco@sandbox, category: food, profile: honest}
+    plans:
+      - {id: box-basic, merchant_id: boxco, name: Basic box, price_paise: 29900, frequency: monthly}
+      - {id: box-plus, merchant_id: boxco, name: Plus box, price_paise: 49900, frequency: monthly}
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, checkout, pay, get_order,
+   list_transactions, get_payment_status, list_mandates, create_mandate, change_subscription,
+   read_inbox, wait, ask_user]
+max_steps: 15
+grader: worlds.payments.graders.commerce:subscribe_basic_box
+seed: 312
+tags: [subscription, mandate, recurring]
+visibility: public
+expected_outcome: >-
+  An active Basic box subscription, its first ₹299.00 paid under a new recurring monthly mandate
+  to boxco@sandbox capped at exactly ₹299.00.
+reviewer_signoff: null

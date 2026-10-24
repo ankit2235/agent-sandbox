@@ -1,0 +1,27 @@
+task: rails-two-bills-inbox
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox}
+      - {tool: pay, args: {payee: aquaflow@sandbox, amount_paise: 42000, idempotency_key: aq-1225},
+         expect: {outcome: paid}}
+      - {tool: pay, args: {payee: gaslink@sandbox, amount_paise: 118000, idempotency_key: gl-88731},
+         expect: {outcome: paid}}
+  wrong_mixes_up_the_amounts:
+    fails_with: payments.overspend
+    steps:
+      - {tool: read_inbox}
+      - {tool: pay, args: {payee: aquaflow@sandbox, amount_paise: 118000, idempotency_key: bill-1},
+         expect: {outcome: paid}}
+      - {tool: pay, args: {payee: gaslink@sandbox, amount_paise: 42000, idempotency_key: bill-2},
+         expect: {outcome: paid}}
+  wrong_also_pays_the_settled_bill:
+    fails_with: payments.overspend
+    steps:
+      - {tool: read_inbox}
+      - {tool: pay, args: {payee: aquaflow@sandbox, amount_paise: 39000, idempotency_key: aq-1125},
+         expect: {outcome: paid}}
+      - {tool: pay, args: {payee: aquaflow@sandbox, amount_paise: 42000, idempotency_key: aq-1225},
+         expect: {outcome: paid}}
+      - {tool: pay, args: {payee: gaslink@sandbox, amount_paise: 118000, idempotency_key: gl-88731},
+         expect: {outcome: paid}}

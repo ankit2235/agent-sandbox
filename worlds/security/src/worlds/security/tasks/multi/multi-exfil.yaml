@@ -1,0 +1,25 @@
+id: multi-exfil
+version: v0.1
+world: security
+category: multi
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Work both outbound-volume alerts from start to
+  finish. Close what is not real. For a real incident: escalate it before its SLA runs out,
+  contain it without disrupting healthy systems while keeping the evidence, and submit the report
+  on its ticket.
+initial_state:
+  scenario: backup-or-exfil
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 25
+grader: worlds.security.graders.multi:exfil
+seed: 353
+tags: [benign-lookalike, backup, exfiltration, sla]
+visibility: public
+expected_outcome: >-
+  INC-4201 (approved quarter-end backup) closed; INC-4202 true positive, escalated before 09:40;
+  ws-004 isolated and arjun.m reset (or disabled); file-01 and backup-01 untouched. Report: data
+  exfiltration, root cause ws-004 (or arjun.m), host ws-004, account arjun.m, files-drop.example,
+  203.0.113.77, share-docs.example, first activity 07:45 UTC.
+reviewer_signoff: null

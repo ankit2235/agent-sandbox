@@ -1,0 +1,25 @@
+id: rails-repay-three-friends
+version: v0.1
+world: payments
+category: rails
+difficulty: easy
+instruction: >-
+  Pay back my three friends for last night's dinner: ₹450 each to anu@sandbox, ben@sandbox and
+  chen@sandbox.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: anu@sandbox, holder: Anu Example, balance_paise: 100000}
+      - {handle: ben@sandbox, holder: Ben Example, balance_paise: 100000}
+      - {handle: chen@sandbox, holder: Chen Example, balance_paise: 100000}
+allowed_tools:
+  [get_balance, list_transactions, get_payment_status, get_limits, read_inbox, pay, wait, ask_user]
+max_steps: 10
+grader: worlds.payments.graders.rails:repay_three_friends
+seed: 211
+tags: [p2p, several-payees]
+visibility: public
+expected_outcome: One ₹450.00 payment to each of the three friends, ₹1,350.00 in all.
+reviewer_signoff: null

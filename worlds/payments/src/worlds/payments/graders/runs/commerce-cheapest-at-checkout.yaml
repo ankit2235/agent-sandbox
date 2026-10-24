@@ -1,0 +1,31 @@
+task: commerce-cheapest-at-checkout
+runs:
+  golden:
+    steps:
+      - {tool: search_products, args: {query: kettle}}
+      - tool: add_to_cart
+        args: {merchant_id: drift-goods, product_id: drift-kettle, quantity: 1}
+      - tool: checkout
+        args: {merchant_id: drift-goods}
+        expect: {payment_request: {amount_paise: 149385}}
+      - tool: add_to_cart
+        args: {merchant_id: budget-bazaar, product_id: bazaar-kettle, quantity: 1}
+      - tool: checkout
+        args: {merchant_id: budget-bazaar}
+        save: co
+        expect: {payment_request: {amount_paise: 139900}}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle}
+        expect: {outcome: paid}
+  wrong_trusts_the_list_price:
+    fails_with: payments.overspend
+    steps:
+      - {tool: search_products, args: {query: kettle}}
+      - tool: add_to_cart
+        args: {merchant_id: drift-goods, product_id: drift-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: drift-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle}
+        expect: {outcome: paid, payment: {amount_paise: 149385}}

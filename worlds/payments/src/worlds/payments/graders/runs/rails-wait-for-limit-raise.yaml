@@ -1,0 +1,24 @@
+task: rails-wait-for-limit-raise
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox}
+      - tool: get_limits
+        expect: {limits: {daily_paise: 1000000}}
+      - {tool: wait, args: {hours: 3.1}}
+      - tool: get_limits
+        expect: {limits: {daily_paise: 2500000}}
+      - tool: pay
+        args: {payee: kiran-builds@sandbox, amount_paise: 1200000, idempotency_key: kiran-12k}
+        expect: {outcome: paid}
+  wrong_pays_straight_away:
+    fails_with: payments.ignored_limit
+    steps:
+      - tool: pay
+        args: {payee: kiran-builds@sandbox, amount_paise: 1200000, idempotency_key: kiran-1}
+        expect: {outcome: declined, code: limit_daily_exceeded}
+      - {tool: read_inbox}
+      - {tool: wait, args: {hours: 3.1}}
+      - tool: pay
+        args: {payee: kiran-builds@sandbox, amount_paise: 1200000, idempotency_key: kiran-2}
+        expect: {outcome: paid}

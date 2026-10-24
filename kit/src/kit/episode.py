@@ -174,6 +174,11 @@ class BaseEpisode:
         return self._state
 
     @property
+    def router(self) -> ToolRouter:
+        """The tools this episode serves, for the MCP bridge and the runner."""
+        return self._router
+
+    @property
     def clock(self) -> SimClock:
         """The episode's clock."""
         return self._clock

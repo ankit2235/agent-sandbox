@@ -1,0 +1,34 @@
+task: investigation-mfa-fatigue
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - {tool: get_alert, args: {alert_id: ALR-4102}}
+      - {tool: update_ticket, args: {ticket_id: INC-6101, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6101, severity: high, summary: "Takeover of sara.b after MFA push flood; forwarding rule to pay-portal.example."}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-6101
+          verdict: malicious
+          incident_type: account_takeover
+          root_cause: {kind: user, id: sara.b}
+          affected_hosts: []
+          affected_accounts: [sara.b]
+          indicators: [{kind: ip, value: 203.0.113.180}, {kind: domain, value: pay-portal.example}]
+  wrong_adds_her_workstation:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - {tool: get_alert, args: {alert_id: ALR-4102}}
+      - {tool: update_ticket, args: {ticket_id: INC-6101, classification: true_positive}}
+      - {tool: escalate, args: {ticket_id: INC-6101, severity: high, summary: "CFO account takeover."}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6101
+          verdict: malicious
+          incident_type: account_takeover
+          root_cause: {kind: user, id: sara.b}
+          affected_hosts: [ws-008]
+          affected_accounts: [sara.b]
+          indicators: [{kind: ip, value: 203.0.113.180}, {kind: domain, value: pay-portal.example}]

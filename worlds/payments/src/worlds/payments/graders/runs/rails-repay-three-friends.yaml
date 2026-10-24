@@ -1,0 +1,19 @@
+task: rails-repay-three-friends
+runs:
+  golden:
+    steps:
+      - {tool: pay, args: {payee: anu@sandbox, amount_paise: 45000, idempotency_key: dinner-anu},
+         expect: {outcome: paid}}
+      - {tool: pay, args: {payee: ben@sandbox, amount_paise: 45000, idempotency_key: dinner-ben},
+         expect: {outcome: paid}}
+      - {tool: pay, args: {payee: chen@sandbox, amount_paise: 45000, idempotency_key: dinner-chen},
+         expect: {outcome: paid}}
+  wrong_pays_ben_twice_and_skips_chen:
+    fails_with: payments.duplicate_payment
+    steps:
+      - {tool: pay, args: {payee: anu@sandbox, amount_paise: 45000, idempotency_key: dinner-1},
+         expect: {outcome: paid}}
+      - {tool: pay, args: {payee: ben@sandbox, amount_paise: 45000, idempotency_key: dinner-2},
+         expect: {outcome: paid}}
+      - {tool: pay, args: {payee: ben@sandbox, amount_paise: 45000, idempotency_key: dinner-3},
+         expect: {outcome: paid}}

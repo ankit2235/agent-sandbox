@@ -1,0 +1,1635 @@
+{
+  "$defs": {
+    "Action": {
+      "description": "Every response action. ``collect_evidence`` and ``restore`` disrupt nothing.",
+      "enum": [
+        "collect_evidence",
+        "isolate_host",
+        "disable_account",
+        "reset_credentials",
+        "block_indicator",
+        "reimage_host",
+        "restore"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "ActionRef": {
+      "additionalProperties": false,
+      "description": "A containment action on one target.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/Action"
+        },
+        "target": {
+          "maxLength": 253,
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "target"
+      ],
+      "title": "ActionRef",
+      "type": "object"
+    },
+    "AlertDef": {
+      "additionalProperties": false,
+      "description": "An alert the SIEM raised, linked to the beats it fired on.",
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "^[+-]?(([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?|[0-9]+)$",
+              "type": "string"
+            }
+          ],
+          "title": "At"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "maxLength": 253,
+              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Domain"
+        },
+        "events": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9-]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Host"
+        },
+        "id": {
+          "pattern": "^ALR-[0-9]{3,6}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "ip": {
+          "anyOf": [
+            {
+              "pattern": "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ip"
+        },
+        "rule": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Rule",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "ticket": {
+          "pattern": "^INC-[0-9]{3,6}$",
+          "title": "Ticket",
+          "type": "string"
+        },
+        "unless": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Condition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "user": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User"
+        }
+      },
+      "required": [
+        "id",
+        "at",
+        "rule",
+        "severity",
+        "description",
+        "ticket"
+      ],
+      "title": "AlertDef",
+      "type": "object"
+    },
+    "Analyst": {
+      "additionalProperties": false,
+      "description": "What the agent may do on its own. Above the gate, it must escalate with a recommendation.",
+      "properties": {
+        "approval_required_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Severity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Analyst",
+      "type": "object"
+    },
+    "Artifact": {
+      "additionalProperties": false,
+      "description": "One item of local evidence on a host.",
+      "properties": {
+        "detail": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        },
+        "kind": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "detail"
+      ],
+      "title": "Artifact",
+      "type": "object"
+    },
+    "Beat": {
+      "additionalProperties": false,
+      "description": "One log line of the story, as a log source would record it.",
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "app": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "App"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "^[+-]?(([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?|[0-9]+)$",
+              "type": "string"
+            }
+          ],
+          "title": "At"
+        },
+        "bytes_out": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bytes Out"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "maxLength": 253,
+              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Domain"
+        },
+        "dst_ip": {
+          "anyOf": [
+            {
+              "pattern": "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dst Ip"
+        },
+        "dst_port": {
+          "anyOf": [
+            {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dst Port"
+        },
+        "geo": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geo"
+        },
+        "harmful": {
+          "default": false,
+          "title": "Harmful",
+          "type": "boolean"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9-]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Host"
+        },
+        "key": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "message": {
+          "default": "",
+          "title": "Message",
+          "type": "string"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "enum": [
+                "success",
+                "failure",
+                "blocked"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outcome"
+        },
+        "parent_process": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Process"
+        },
+        "process": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Process"
+        },
+        "repeat": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Repeat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "replaces_job": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Replaces Job"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "src_ip": {
+          "anyOf": [
+            {
+              "pattern": "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Src Ip"
+        },
+        "unless": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Condition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "user": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User"
+        }
+      },
+      "required": [
+        "key",
+        "at",
+        "source"
+      ],
+      "title": "Beat",
+      "type": "object"
+    },
+    "BusinessIndicator": {
+      "additionalProperties": false,
+      "description": "An external address or domain the business depends on: blocking it hurts.",
+      "properties": {
+        "criticality": {
+          "$ref": "#/$defs/Severity"
+        },
+        "kind": {
+          "$ref": "#/$defs/IndicatorKind"
+        },
+        "purpose": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "purpose",
+        "criticality"
+      ],
+      "title": "BusinessIndicator",
+      "type": "object"
+    },
+    "Change": {
+      "additionalProperties": false,
+      "description": "An approved change record: who may do what, where, when.",
+      "properties": {
+        "actor": {
+          "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+          "title": "Actor",
+          "type": "string"
+        },
+        "approved_by": {
+          "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+          "title": "Approved By",
+          "type": "string"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "^[+-]?(([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?|[0-9]+)$",
+              "type": "string"
+            }
+          ],
+          "title": "End"
+        },
+        "hosts": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9-]{0,31}$",
+            "type": "string"
+          },
+          "title": "Hosts",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^CHG-[0-9]{3,6}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "^[+-]?(([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?|[0-9]+)$",
+              "type": "string"
+            }
+          ],
+          "title": "Start"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "actor",
+        "start",
+        "end",
+        "approved_by"
+      ],
+      "title": "Change",
+      "type": "object"
+    },
+    "Classification": {
+      "description": "A ticket's classification, after Microsoft Sentinel's incident classifications.",
+      "enum": [
+        "true_positive",
+        "benign_positive",
+        "false_positive",
+        "undetermined"
+      ],
+      "title": "Classification",
+      "type": "string"
+    },
+    "CommentDef": {
+      "additionalProperties": false,
+      "description": "A comment already on a ticket.",
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "^[+-]?(([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?|[0-9]+)$",
+              "type": "string"
+            }
+          ],
+          "title": "At"
+        },
+        "author": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Author",
+          "type": "string"
+        },
+        "body": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Body",
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "author",
+        "body"
+      ],
+      "title": "CommentDef",
+      "type": "object"
+    },
+    "Condition": {
+      "additionalProperties": false,
+      "description": "What stops a future beat or alert from happening: exactly one containment.",
+      "properties": {
+        "blocked": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Blocked"
+        },
+        "disabled": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disabled"
+        },
+        "isolated": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9-]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Isolated"
+        },
+        "reset": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reset"
+        }
+      },
+      "title": "Condition",
+      "type": "object"
+    },
+    "ContainmentTruth": {
+      "additionalProperties": false,
+      "description": "The minimal containment, plus actions that are fine but not needed.",
+      "properties": {
+        "acceptable": {
+          "items": {
+            "$ref": "#/$defs/ActionRef"
+          },
+          "title": "Acceptable",
+          "type": "array"
+        },
+        "required": {
+          "items": {
+            "$ref": "#/$defs/RequiredAction"
+          },
+          "title": "Required",
+          "type": "array"
+        }
+      },
+      "title": "ContainmentTruth",
+      "type": "object"
+    },
+    "EntityKind": {
+      "description": "What a root cause can be.",
+      "enum": [
+        "host",
+        "user",
+        "indicator"
+      ],
+      "title": "EntityKind",
+      "type": "string"
+    },
+    "EntityRef": {
+      "additionalProperties": false,
+      "description": "A host, account or indicator, as a report names it.",
+      "properties": {
+        "id": {
+          "maxLength": 253,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/EntityKind"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "EntityRef",
+      "type": "object"
+    },
+    "GroundTruth": {
+      "additionalProperties": false,
+      "description": "The answer key a SOC reviewer signs off.",
+      "properties": {
+        "affected_accounts": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+            "type": "string"
+          },
+          "title": "Affected Accounts",
+          "type": "array"
+        },
+        "affected_hosts": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9-]{0,31}$",
+            "type": "string"
+          },
+          "title": "Affected Hosts",
+          "type": "array"
+        },
+        "containment": {
+          "$ref": "#/$defs/ContainmentTruth"
+        },
+        "escalate": {
+          "items": {
+            "pattern": "^INC-[0-9]{3,6}$",
+            "type": "string"
+          },
+          "title": "Escalate",
+          "type": "array"
+        },
+        "evidence_hosts": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9-]{0,31}$",
+            "type": "string"
+          },
+          "title": "Evidence Hosts",
+          "type": "array"
+        },
+        "first_activity_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "^[+-]?(([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?|[0-9]+)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Activity At"
+        },
+        "first_activity_tolerance_minutes": {
+          "default": 5,
+          "maximum": 120,
+          "minimum": 0,
+          "title": "First Activity Tolerance Minutes",
+          "type": "integer"
+        },
+        "incident_type": {
+          "$ref": "#/$defs/IncidentType"
+        },
+        "indicators": {
+          "items": {
+            "$ref": "#/$defs/IndicatorTruth"
+          },
+          "title": "Indicators",
+          "type": "array"
+        },
+        "root_cause": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EntityRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "root_cause_alternatives": {
+          "items": {
+            "$ref": "#/$defs/EntityRef"
+          },
+          "title": "Root Cause Alternatives",
+          "type": "array"
+        },
+        "tickets": {
+          "patternProperties": {
+            "^INC-[0-9]{3,6}$": {
+              "enum": [
+                "true_positive",
+                "benign_positive",
+                "false_positive"
+              ],
+              "type": "string"
+            }
+          },
+          "title": "Tickets",
+          "type": "object"
+        },
+        "verdict": {
+          "$ref": "#/$defs/Verdict"
+        }
+      },
+      "required": [
+        "tickets",
+        "verdict",
+        "incident_type"
+      ],
+      "title": "GroundTruth",
+      "type": "object"
+    },
+    "IncidentType": {
+      "description": "What happened, in a closed list a grader can compare (benign kinds included).",
+      "enum": [
+        "phishing",
+        "malware",
+        "password_spray",
+        "account_takeover",
+        "lateral_movement",
+        "data_exfiltration",
+        "admin_activity",
+        "scheduled_job",
+        "travel",
+        "security_testing",
+        "misconfiguration",
+        "benign_software"
+      ],
+      "title": "IncidentType",
+      "type": "string"
+    },
+    "IndicatorKind": {
+      "description": "What ``block_indicator`` can block.",
+      "enum": [
+        "ip",
+        "domain",
+        "sha256"
+      ],
+      "title": "IndicatorKind",
+      "type": "string"
+    },
+    "IndicatorTruth": {
+      "additionalProperties": false,
+      "description": "An indicator of the incident; ``required: false`` may be reported but need not be.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/IndicatorKind"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "value": {
+          "maxLength": 253,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "title": "IndicatorTruth",
+      "type": "object"
+    },
+    "Job": {
+      "additionalProperties": false,
+      "description": "A scheduled job: background telemetry at fixed times, every day.",
+      "properties": {
+        "bytes_out": {
+          "exclusiveMinimum": 0,
+          "title": "Bytes Out",
+          "type": "integer"
+        },
+        "domain": {
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$",
+          "title": "Domain",
+          "type": "string"
+        },
+        "dst_ip": {
+          "pattern": "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}$",
+          "title": "Dst Ip",
+          "type": "string"
+        },
+        "dst_port": {
+          "default": 443,
+          "maximum": 65535,
+          "minimum": 1,
+          "title": "Dst Port",
+          "type": "integer"
+        },
+        "every_hours": {
+          "maximum": 24,
+          "minimum": 1,
+          "title": "Every Hours",
+          "type": "integer"
+        },
+        "host": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Host",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "minute_of_day": {
+          "exclusiveMaximum": 1440,
+          "minimum": 0,
+          "title": "Minute Of Day",
+          "type": "integer"
+        },
+        "process": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "title": "Process",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "user": {
+          "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+          "title": "User",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "host",
+        "user",
+        "process",
+        "every_hours",
+        "minute_of_day",
+        "dst_ip",
+        "domain",
+        "bytes_out"
+      ],
+      "title": "Job",
+      "type": "object"
+    },
+    "MisleadingNote": {
+      "additionalProperties": false,
+      "description": "Grader-only record of an instruction planted in the world by a stress modifier.\n\nThe note itself is in a ticket comment or a log message; this says which ticket it\nwanted closed and which healthy account or host it wanted disrupted.",
+      "properties": {
+        "placement": {
+          "enum": [
+            "comment",
+            "log"
+          ],
+          "title": "Placement",
+          "type": "string"
+        },
+        "target": {
+          "maxLength": 253,
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        },
+        "ticket": {
+          "pattern": "^INC-[0-9]{3,6}$",
+          "title": "Ticket",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ticket",
+        "target",
+        "placement"
+      ],
+      "title": "MisleadingNote",
+      "type": "object"
+    },
+    "NoiseConfig": {
+      "additionalProperties": false,
+      "description": "How much background telemetry to generate, and for whom not.",
+      "properties": {
+        "quiet": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Quiet",
+          "type": "array"
+        },
+        "window_hours": {
+          "default": 24,
+          "maximum": 72,
+          "minimum": 1,
+          "title": "Window Hours",
+          "type": "integer"
+        }
+      },
+      "title": "NoiseConfig",
+      "type": "object"
+    },
+    "OrgChanges": {
+      "additionalProperties": false,
+      "description": "A story's edits to a company: rows to add, or to update by ``id``.",
+      "properties": {
+        "business_indicators": {
+          "items": {
+            "$ref": "#/$defs/BusinessIndicator"
+          },
+          "title": "Business Indicators",
+          "type": "array"
+        },
+        "changes": {
+          "items": {
+            "$ref": "#/$defs/Change"
+          },
+          "title": "Changes",
+          "type": "array"
+        },
+        "hosts": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Hosts",
+          "type": "array"
+        },
+        "jobs": {
+          "items": {
+            "$ref": "#/$defs/Job"
+          },
+          "title": "Jobs",
+          "type": "array"
+        },
+        "users": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Users",
+          "type": "array"
+        }
+      },
+      "title": "OrgChanges",
+      "type": "object"
+    },
+    "PriorAction": {
+      "additionalProperties": false,
+      "description": "Containment a previous shift already took, still on the record when the agent starts.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/Action"
+        },
+        "actor": {
+          "default": "previous shift",
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Actor",
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "^[+-]?(([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?|[0-9]+)$",
+              "type": "string"
+            }
+          ],
+          "title": "At"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "target": {
+          "maxLength": 253,
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "target",
+        "at",
+        "reason"
+      ],
+      "title": "PriorAction",
+      "type": "object"
+    },
+    "Repeat": {
+      "additionalProperties": false,
+      "description": "A beat that happens again every ``every`` seconds, ``times`` times in all.",
+      "properties": {
+        "every": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "^[+-]?(([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?|[0-9]+)$",
+              "type": "string"
+            }
+          ],
+          "title": "Every"
+        },
+        "times": {
+          "maximum": 200,
+          "minimum": 2,
+          "title": "Times",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "every",
+        "times"
+      ],
+      "title": "Repeat",
+      "type": "object"
+    },
+    "RequiredAction": {
+      "additionalProperties": false,
+      "description": "A containment the incident needs; any one of ``alternatives`` also does.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/Action"
+        },
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/ActionRef"
+          },
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "target": {
+          "maxLength": 253,
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "target"
+      ],
+      "title": "RequiredAction",
+      "type": "object"
+    },
+    "SecurityState": {
+      "additionalProperties": false,
+      "description": "A security task's ``initial_state``.",
+      "properties": {
+        "analyst": {
+          "$ref": "#/$defs/Analyst"
+        },
+        "scenario": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/Story"
+            }
+          ],
+          "title": "Scenario"
+        },
+        "sla_minutes": {
+          "$ref": "#/$defs/SlaMinutes"
+        }
+      },
+      "required": [
+        "scenario"
+      ],
+      "title": "SecurityState",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "An alert's or ticket's severity, lowest first.",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "Signoff": {
+      "additionalProperties": false,
+      "description": "A named human taking responsibility for a task or grader.",
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "role",
+        "date"
+      ],
+      "title": "Signoff",
+      "type": "object"
+    },
+    "SlaMinutes": {
+      "additionalProperties": false,
+      "description": "Minutes from a ticket opening to escalation or closure, by severity (decision 93).",
+      "properties": {
+        "critical": {
+          "default": 15,
+          "exclusiveMinimum": 0,
+          "maximum": 10080,
+          "title": "Critical",
+          "type": "integer"
+        },
+        "high": {
+          "default": 60,
+          "exclusiveMinimum": 0,
+          "maximum": 10080,
+          "title": "High",
+          "type": "integer"
+        },
+        "low": {
+          "default": 1440,
+          "exclusiveMinimum": 0,
+          "maximum": 10080,
+          "title": "Low",
+          "type": "integer"
+        },
+        "medium": {
+          "default": 240,
+          "exclusiveMinimum": 0,
+          "maximum": 10080,
+          "title": "Medium",
+          "type": "integer"
+        }
+      },
+      "title": "SlaMinutes",
+      "type": "object"
+    },
+    "Source": {
+      "description": "The five log sources the telemetry store holds.",
+      "enum": [
+        "auth",
+        "process",
+        "network",
+        "dns",
+        "cloud"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "Story": {
+      "additionalProperties": false,
+      "description": "One scenario: the company, what happened, what the SIEM saw, and the truth.",
+      "properties": {
+        "alerts": {
+          "items": {
+            "$ref": "#/$defs/AlertDef"
+          },
+          "minItems": 1,
+          "title": "Alerts",
+          "type": "array"
+        },
+        "beats": {
+          "items": {
+            "$ref": "#/$defs/Beat"
+          },
+          "title": "Beats",
+          "type": "array"
+        },
+        "dropped_sources": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "title": "Dropped Sources",
+          "type": "array"
+        },
+        "ground_truth": {
+          "$ref": "#/$defs/GroundTruth"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "local_evidence": {
+          "patternProperties": {
+            "^[a-z][a-z0-9-]{0,31}$": {
+              "items": {
+                "$ref": "#/$defs/Artifact"
+              },
+              "type": "array"
+            }
+          },
+          "title": "Local Evidence",
+          "type": "object"
+        },
+        "misleading": {
+          "items": {
+            "$ref": "#/$defs/MisleadingNote"
+          },
+          "title": "Misleading",
+          "type": "array"
+        },
+        "noise": {
+          "$ref": "#/$defs/NoiseConfig"
+        },
+        "optional_sources": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "title": "Optional Sources",
+          "type": "array"
+        },
+        "org": {
+          "default": "default",
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Org",
+          "type": "string"
+        },
+        "org_changes": {
+          "$ref": "#/$defs/OrgChanges"
+        },
+        "prior_actions": {
+          "items": {
+            "$ref": "#/$defs/PriorAction"
+          },
+          "title": "Prior Actions",
+          "type": "array"
+        },
+        "summary": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "tickets": {
+          "items": {
+            "$ref": "#/$defs/TicketDef"
+          },
+          "minItems": 1,
+          "title": "Tickets",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "summary",
+        "alerts",
+        "tickets",
+        "ground_truth"
+      ],
+      "title": "Story",
+      "type": "object"
+    },
+    "TicketDef": {
+      "additionalProperties": false,
+      "description": "An incident ticket the alert pipeline opened, possibly already worked on.",
+      "properties": {
+        "breached_at_load": {
+          "default": false,
+          "title": "Breached At Load",
+          "type": "boolean"
+        },
+        "classification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Classification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "comments": {
+          "items": {
+            "$ref": "#/$defs/CommentDef"
+          },
+          "title": "Comments",
+          "type": "array"
+        },
+        "escalated_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "pattern": "^[+-]?(([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?|[0-9]+)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Escalated At"
+        },
+        "id": {
+          "pattern": "^INC-[0-9]{3,6}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "status": {
+          "default": "open",
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "TicketDef",
+      "type": "object"
+    },
+    "Verdict": {
+      "description": "What a report concludes.",
+      "enum": [
+        "malicious",
+        "benign"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One unit of work given to an agent, and everything needed to reproduce it.",
+  "properties": {
+    "allowed_tools": {
+      "contains": {
+        "const": "ask_user"
+      },
+      "items": {
+        "enum": [
+          "list_alerts",
+          "get_alert",
+          "search_logs",
+          "timeline",
+          "get_host",
+          "get_user",
+          "collect_evidence",
+          "isolate_host",
+          "disable_account",
+          "reset_credentials",
+          "block_indicator",
+          "restore",
+          "reimage_host",
+          "update_ticket",
+          "escalate",
+          "submit_report",
+          "ask_user"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "category": {
+      "enum": [
+        "triage",
+        "investigation",
+        "containment",
+        "reporting",
+        "multi"
+      ]
+    },
+    "difficulty": {
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "expected_outcome": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "grader": {
+      "pattern": "^worlds\\.security\\.graders\\.[a-z_]+:[a-z_][a-z0-9_]*$",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9_\\-.]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "initial_state": {
+      "$ref": "#/$defs/SecurityState"
+    },
+    "instruction": {
+      "minLength": 1,
+      "title": "Instruction",
+      "type": "string"
+    },
+    "max_steps": {
+      "exclusiveMinimum": 0,
+      "title": "Max Steps",
+      "type": "integer"
+    },
+    "reviewer_signoff": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Signoff"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "seed": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "stress": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Stress",
+      "type": "array"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "version": {
+      "pattern": "^[a-z0-9][a-z0-9_\\-.]*$",
+      "title": "Version",
+      "type": "string"
+    },
+    "visibility": {
+      "default": "public",
+      "enum": [
+        "public",
+        "hidden"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    },
+    "world": {
+      "const": "security"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "world",
+    "category",
+    "difficulty",
+    "instruction",
+    "initial_state",
+    "allowed_tools",
+    "max_steps",
+    "grader",
+    "seed",
+    "expected_outcome",
+    "reviewer_signoff"
+  ],
+  "title": "Security task file",
+  "type": "object"
+}

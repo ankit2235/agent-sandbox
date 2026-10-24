@@ -1,0 +1,15 @@
+task: triage-restore-test
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3501}}
+      - {tool: get_host, args: {host_id: file-01}, expect: {host: {changes: [{id: CHG-1304}]}}}
+      - tool: update_ticket
+        args: {ticket_id: INC-5501, classification: benign_positive, status: closed, comment: "Quarterly restore test under CHG-1304."}
+  wrong_isolates_the_file_server:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3501}}
+      - {tool: isolate_host, args: {host_id: file-01, reason: "Mass file changes, possible ransomware"}}
+      - {tool: disable_account, args: {user_id: svc-backup, reason: "Account rewriting the finance share"}}
+      - {tool: update_ticket, args: {ticket_id: INC-5501, classification: true_positive}}

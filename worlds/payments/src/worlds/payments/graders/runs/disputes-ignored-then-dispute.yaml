@@ -1,0 +1,60 @@
+task: disputes-ignored-then-dispute
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - tool: get_order
+        args: {order_id: $inbox.messages.0.order_id}
+        save: order
+        expect: {order: {status: wrong_item}}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900, reason: "Wrong item delivered."}
+        save: request
+      - {tool: wait, args: {hours: 121}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {refund_requests: [{status: expired}]}
+      - tool: open_dispute
+        args: {payment_id: $order.order.payment_id, reason: wrong_item,
+               description: "Wrong item delivered; the merchant ignored my refund request."}
+        save: dispute
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: order, reference_id: $order.order.id}
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: refund_request,
+               reference_id: $request.refund_request.id}
+      - {tool: wait, args: {hours: 361}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {disputes: [{status: won}]}
+  wrong_gives_up_after_being_ignored:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900, reason: "Wrong item delivered."}
+      - {tool: wait, args: {hours: 121}}
+      - tool: send_message
+        args: {merchant_id: mixup-goods, order_id: $order.order.id,
+               body: "You never answered my refund request. Please refund me."}
+      - {tool: wait, args: {hours: 72}}
+  wrong_points_the_evidence_at_the_payment:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900, reason: "Wrong item delivered."}
+      - {tool: wait, args: {hours: 121}}
+      - tool: open_dispute
+        args: {payment_id: $order.order.payment_id, reason: wrong_item,
+               description: "Wrong item delivered."}
+        save: dispute
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: payment,
+               reference_id: $order.order.payment_id}
+      - {tool: wait, args: {hours: 361}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {disputes: [{status: lost}]}

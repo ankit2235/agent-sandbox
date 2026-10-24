@@ -1,0 +1,39 @@
+id: restore-test
+title: The quarterly restore test rewrites the finance share
+summary: >-
+  Lena Kowal is running the approved quarterly restore test (CHG-1304): backup-01 restores the
+  finance share onto file-01 with the backup service account. The SIEM raised "mass file changes
+  on a file share". Benign positive (admin activity): classify and close; isolating file-01 or
+  backup-01, or disabling svc-backup, would break a critical process.
+org_changes:
+  changes:
+    - id: CHG-1304
+      title: Quarterly restore test - restore the finance share from backup-01 onto file-01
+      actor: lena.k
+      hosts: [backup-01, file-01]
+      start: -1h
+      end: +1h
+      approved_by: sara.b
+optional_sources: [auth]
+beats:
+  - {key: lena-logon, at: -55m, source: auth, host: backup-01, user: lena.k, src_ip: 192.0.2.13, action: logon, outcome: success, geo: "Pune, IN", app: ssh}
+  - {key: restore-start, at: -50m, source: process, host: backup-01, user: svc-backup, process: restore-agent, parent_process: backup-console, action: start, message: "job: quarterly-restore-test, target file-01 share finance"}
+  - {key: share-session, at: -48m30s, source: auth, host: file-01, user: svc-backup, src_ip: 192.0.2.12, action: share_access, outcome: success, app: smb, message: "share finance: restore session"}
+  - {key: restore-write, at: -48m, source: network, host: backup-01, user: svc-backup, process: restore-agent, src_ip: 192.0.2.12, dst_ip: 192.0.2.11, dst_port: 445, action: file_write, outcome: success, bytes_out: 18000000000, message: "file-01 share finance: 41,200 files written"}
+alerts:
+  - id: ALR-3501
+    at: -40m
+    rule: Mass file changes on a file share
+    severity: medium
+    description: 41,200 files on file-01's finance share were rewritten by svc-backup from 192.0.2.12 in 8 minutes.
+    host: file-01
+    user: svc-backup
+    ip: 192.0.2.12
+    events: [share-session, restore-write]
+    ticket: INC-5501
+tickets:
+  - {id: INC-5501, title: "Mass file changes: file-01 finance share"}
+ground_truth:
+  tickets: {INC-5501: benign_positive}
+  verdict: benign
+  incident_type: admin_activity

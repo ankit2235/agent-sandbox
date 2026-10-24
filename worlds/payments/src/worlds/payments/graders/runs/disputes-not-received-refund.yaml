@@ -1,0 +1,28 @@
+task: disputes-not-received-refund
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - tool: get_order
+        args: {order_id: $inbox.messages.0.order_id}
+        save: order
+        expect: {order: {status: shipped}}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 139900,
+               reason: "Promised within 5 days; a week later it has not arrived."}
+      - {tool: wait, args: {hours: 97}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {refund_requests: [{status: accepted}]}
+  wrong_disputes_without_asking_the_merchant:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: open_dispute
+        args: {payment_id: $order.order.payment_id, reason: not_received,
+               description: "Not delivered a week after ordering."}
+        save: dispute
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: order, reference_id: $order.order.id}
+      - {tool: wait, args: {hours: 361}}

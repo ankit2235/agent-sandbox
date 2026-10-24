@@ -1,0 +1,48 @@
+task: multi-not-received-dispute
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - tool: get_order
+        args: {order_id: $inbox.messages.0.order_id}
+        save: order
+        expect: {order: {status: shipped}}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 139900,
+               reason: "Promised within 5 days; 8 days later it has not arrived."}
+        save: request
+      - {tool: wait, args: {hours: 121}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {refund_requests: [{status: expired}]}
+      - tool: open_dispute
+        args: {payment_id: $order.order.payment_id, reason: not_received,
+               description: "Not delivered, long past the promised date; refund request ignored."}
+        save: dispute
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: order, reference_id: $order.order.id}
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: refund_request,
+               reference_id: $request.refund_request.id}
+      - {tool: wait, args: {hours: 361}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {disputes: [{status: won}]}
+  wrong_disputes_with_the_wrong_reason:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 139900, reason: "Not delivered."}
+      - {tool: wait, args: {hours: 121}}
+      - tool: open_dispute
+        args: {payment_id: $order.order.payment_id, reason: wrong_item,
+               description: "I did not get what I paid for."}
+        save: dispute
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: order, reference_id: $order.order.id}
+      - {tool: wait, args: {hours: 361}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {disputes: [{status: lost}]}

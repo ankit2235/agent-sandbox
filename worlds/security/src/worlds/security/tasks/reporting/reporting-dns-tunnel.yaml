@@ -1,0 +1,22 @@
+id: reporting-dns-tunnel
+version: v0.1
+world: security
+category: reporting
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate ticket INC-6501 and submit the
+  incident report on it: verdict, incident type, root cause, affected hosts and accounts,
+  indicators, and when the activity started.
+initial_state:
+  scenario: dns-tunnel
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.reporting:dns_tunnel
+seed: 348
+tags: [malware, dns, report]
+visibility: public
+expected_outcome: >-
+  Report on INC-6501: malicious malware; root cause ws-012 (or noah.f); affected host ws-012, no
+  account; indicators data-sync.example and drivers-free.example; first activity 05:55 UTC.
+reviewer_signoff: null

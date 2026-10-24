@@ -1,0 +1,23 @@
+id: triage-real-or-simulated-phish
+version: v0.1
+world: security
+category: triage
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage every alert in the queue. Classify each
+  ticket and close what is not real. Escalate anything real before its SLA runs out; containment
+  will be decided by on-call.
+initial_state:
+  scenario: phish-sim-vs-real
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 20
+grader: worlds.security.graders.triage:real_or_simulated_phish
+seed: 332
+tags: [queue, phishing-simulation, lookalike-domain, sla]
+visibility: public
+expected_outcome: >-
+  INC-7101 (the approved simulation on training-phish.example) closed as not a true positive;
+  INC-7102 (li.w on trainings-phish.example, then a sign-in from Tallinn) classified true positive
+  and escalated before 09:45. The vendor domain stays unblocked.
+reviewer_signoff: null

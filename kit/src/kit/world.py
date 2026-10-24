@@ -11,7 +11,7 @@ import importlib
 import importlib.metadata as metadata
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -25,6 +25,7 @@ from kit.types import (
     GradeResult,
     Observation,
     StepResult,
+    Strict,
     TaskSpec,
     ToolCall,
 )
@@ -137,6 +138,50 @@ class Episode(Protocol):
 
 EpisodeFactory = Callable[[TaskSpec, SimClock, SeededRNG], Episode]
 
+WorldStatus = Literal["live", "preview", "coming_soon"]
+
+
+class MetricDef(Strict):
+    """One metric a leaderboard shows for a world. The runner computes it; the world labels it."""
+
+    key: str
+    label: str
+    unit: str
+    higher_is_better: bool
+    primary: bool = False
+    has_ci: bool = False
+
+
+def default_metrics() -> list[MetricDef]:
+    """What a world shows when it does not choose: the primary score, safety, cost, steps."""
+    return [
+        MetricDef(
+            key="overall",
+            label="Overall",
+            unit="%",
+            higher_is_better=True,
+            primary=True,
+            has_ci=True,
+        ),
+        MetricDef(key="safe_action_rate", label="Safe actions", unit="%", higher_is_better=True),
+        MetricDef(key="avg_cost_usd", label="Cost / task", unit="$", higher_is_better=False),
+        MetricDef(key="avg_steps", label="Avg steps", unit="steps", higher_is_better=False),
+    ]
+
+
+class Listing(Strict):
+    """How a world presents itself on the leaderboard (``worlds.json``). Domain-neutral fields."""
+
+    title: str
+    status: WorldStatus = "preview"
+    tagline: str = ""
+    disclaimer: str | None = None
+    category_labels: dict[str, str] = Field(default_factory=dict)
+    """A label per category; a category without one is shown title-cased."""
+    metrics: list[MetricDef] = Field(default_factory=default_metrics)
+    unsafe_failures: list[str] | None = None
+    """Failure types that make a run unsafe (``safe_action_rate``); default: high-impact ones."""
+
 
 class WorldSpec(BaseModel):
     """Everything the kit needs to know about a world, and nothing domain-specific."""
@@ -152,6 +197,10 @@ class WorldSpec(BaseModel):
     episode_factory: EpisodeFactory = Field(exclude=True)
     tasks_dir: Path | None = None
     description: str = ""
+    runs_dir: Path | None = None
+    """Where the world's golden and wrong run files live (:mod:`kit.scripted`), if it ships them."""
+    listing: Listing | None = None
+    """Leaderboard presentation; a world without one is not exported to ``worlds.json``."""
 
     @field_validator("name", "version")
     @classmethod
@@ -169,6 +218,34 @@ class WorldSpec(BaseModel):
         directly), so registration belongs here rather than in the registry.
         """
         failure_types.register_world(self.name, self.failure_types)
+        if self.listing is not None:
+            self._check_listing(self.listing)
+
+    def _check_listing(self, listing: Listing) -> None:
+        unknown = sorted(set(listing.category_labels) - set(self.categories))
+        if unknown:
+            msg = f"listing labels categories {self.name} does not have: {unknown}"
+            raise ValueError(msg)
+        known = {definition.id for definition in self.failure_types} | set(failure_types.ids("kit"))
+        unknown = sorted(set(listing.unsafe_failures or []) - known)
+        if unknown:
+            msg = f"listing names failure types {self.name} cannot report: {unknown}"
+            raise ValueError(msg)
+        if sum(metric.primary for metric in listing.metrics) != 1:
+            msg = f"listing for {self.name} must mark exactly one metric primary"
+            raise ValueError(msg)
+
+    def category_label(self, category: str) -> str:
+        """The leaderboard label for one of this world's categories."""
+        labels = self.listing.category_labels if self.listing else {}
+        return labels.get(category, category.replace("_", " ").title())
+
+    def unsafe_failures(self) -> set[str]:
+        """Failure types that make a run unsafe: the listing's, else every high-impact one."""
+        if self.listing is not None and self.listing.unsafe_failures is not None:
+            return set(self.listing.unsafe_failures)
+        own = {definition.id for definition in self.failure_types if definition.high_impact}
+        return own | failure_types.high_impact_ids("kit")
 
     def validate_task(self, task: TaskSpec) -> TaskSpec:
         """Check a task belongs to this world and its ``initial_state`` fits the schema."""
@@ -283,11 +360,15 @@ __all__ = [
     "Episode",
     "EpisodeFactory",
     "Grader",
+    "Listing",
+    "MetricDef",
     "ReadOnlyService",
     "StateView",
     "WorldRegistry",
     "WorldSpec",
     "WorldState",
+    "WorldStatus",
+    "default_metrics",
     "load_grader",
     "worlds",
 ]

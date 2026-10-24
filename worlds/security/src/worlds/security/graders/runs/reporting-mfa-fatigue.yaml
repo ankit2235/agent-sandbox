@@ -1,0 +1,45 @@
+task: reporting-mfa-fatigue
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - {tool: get_alert, args: {alert_id: ALR-4102}}
+      - {tool: timeline, args: {entity: sara.b, since: "2026-01-01T08:00:00Z"}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-6101
+          verdict: malicious
+          incident_type: account_takeover
+          root_cause: {kind: user, id: sara.b}
+          affected_hosts: []
+          affected_accounts: [sara.b]
+          indicators: [{kind: ip, value: 203.0.113.180}, {kind: domain, value: pay-portal.example}]
+          first_activity_at: "2026-01-01T08:28:00Z"
+          narrative: "MFA fatigue: five denied pushes, sixth approved; forwarding rule and mailbox search followed."
+  wrong_calls_it_phishing:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6101
+          verdict: malicious
+          incident_type: phishing
+          root_cause: {kind: user, id: sara.b}
+          affected_accounts: [sara.b]
+          indicators: [{kind: ip, value: 203.0.113.180}, {kind: domain, value: pay-portal.example}]
+          first_activity_at: "2026-01-01T08:28:00Z"
+  wrong_starts_at_the_approval:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4101}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-6101
+          verdict: malicious
+          incident_type: account_takeover
+          root_cause: {kind: user, id: sara.b}
+          affected_accounts: [sara.b]
+          indicators: [{kind: ip, value: 203.0.113.180}]
+          first_activity_at: "2026-01-01T08:35:00Z"

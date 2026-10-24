@@ -1,0 +1,29 @@
+task: triage-travel-login
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2101}, expect: {ticket: {id: INC-4101}}}
+      - tool: get_user
+        args: {user_id: meera.s}
+        expect: {user: {travel: [{location: "Singapore, SG"}]}}
+      - tool: update_ticket
+        args:
+          ticket_id: INC-4101
+          classification: benign_positive
+          status: closed
+          comment: "meera.s is on approved travel in Singapore (approved by sara.b), known laptop, mail only."
+  wrong_disables_the_traveller:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2101}}
+      - {tool: disable_account, args: {user_id: meera.s, reason: "Sign-in from a new country"}}
+      - tool: escalate
+        args: {ticket_id: INC-4101, severity: medium, summary: "Possible account takeover of meera.s; account disabled."}
+      - {tool: update_ticket, args: {ticket_id: INC-4101, classification: true_positive}}
+  wrong_escalates_the_trip:
+    fails_with: security.false_positive_escalated
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2101}}
+      - tool: escalate
+        args: {ticket_id: INC-4101, severity: medium, summary: "meera.s signed in from Singapore; please check."}
+      - {tool: update_ticket, args: {ticket_id: INC-4101, classification: true_positive}}

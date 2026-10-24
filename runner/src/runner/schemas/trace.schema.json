@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/prarabdha-soni/agent-sandbox/schemas/results-v0.1/trace.schema.json",
+  "title": "<world>/traces/<run_id>.json (results-v0.1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "world",
+    "model_id",
+    "task_id",
+    "passed",
+    "fail_reason",
+    "failure_type",
+    "steps"
+  ],
+  "properties": {
+    "run_id": {"type": "string"},
+    "world": {"type": "string"},
+    "model_id": {"type": "string"},
+    "task_id": {"type": "string"},
+    "passed": {"type": "boolean"},
+    "fail_reason": {"type": ["string", "null"]},
+    "failure_type": {"type": ["string", "null"]},
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["n", "sim_time", "agent_message", "tool", "args", "response", "state_diff"],
+        "properties": {
+          "n": {"type": "integer", "minimum": 1},
+          "sim_time": {"type": "string"},
+          "agent_message": {"type": ["string", "null"]},
+          "tool": {"type": ["string", "null"]},
+          "args": {"type": ["object", "null"]},
+          "response": {},
+          "state_diff": {"type": "array"},
+          "guard_decision": {}
+        }
+      }
+    }
+  }
+}

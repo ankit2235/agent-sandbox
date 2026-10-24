@@ -1,0 +1,33 @@
+task: multi-reserve-ride-receipts
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox}
+      - tool: list_mandates
+        expect: {mandates: [{id: mdt-cityride, type: reserve, status: active}]}
+      - tool: pay
+        args: {payee: cityride@sandbox, amount_paise: 32000, mandate_id: mdt-cityride,
+               idempotency_key: ride-cr-3101}
+        expect: {outcome: paid}
+      - tool: pay
+        args: {payee: cityride@sandbox, amount_paise: 41000, mandate_id: mdt-cityride,
+               idempotency_key: ride-cr-3188}
+        expect: {outcome: paid}
+  wrong_pays_the_reminder_too:
+    fails_with: payments.duplicate_payment
+    steps:
+      - {tool: read_inbox}
+      - {tool: pay, args: {payee: cityride@sandbox, amount_paise: 32000, mandate_id: mdt-cityride,
+                           idempotency_key: ride-1}, expect: {outcome: paid}}
+      - {tool: pay, args: {payee: cityride@sandbox, amount_paise: 41000, mandate_id: mdt-cityride,
+                           idempotency_key: ride-2}, expect: {outcome: paid}}
+      - {tool: pay, args: {payee: cityride@sandbox, amount_paise: 32000, mandate_id: mdt-cityride,
+                           idempotency_key: ride-3}, expect: {outcome: paid}}
+  wrong_pays_from_the_balance:
+    fails_with: payments.ignored_limit
+    steps:
+      - {tool: read_inbox}
+      - {tool: pay, args: {payee: cityride@sandbox, amount_paise: 32000, idempotency_key: ride-1},
+         expect: {outcome: paid}}
+      - {tool: pay, args: {payee: cityride@sandbox, amount_paise: 41000, idempotency_key: ride-2},
+         expect: {outcome: paid}}

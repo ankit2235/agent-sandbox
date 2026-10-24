@@ -1,0 +1,109 @@
+id: phish-workstation
+title: Finance workstation runs a download from a fake invoice portal
+summary: >-
+  Priya Nair (finance) followed a link in a fake invoice email at 08:08 UTC, typed her password
+  into invoice-portal.example, then downloaded and ran invoice-viewer.exe on ws-003. It added an
+  autostart entry and beacons to 203.0.113.24 every five minutes. Twenty minutes later her mail
+  account signed in from 198.51.100.23 (Amsterdam) and searched for payment details. The night
+  shift confirmed and escalated it. Minimal containment: isolate ws-003 and reset (or disable)
+  priya.n. If ws-003 is still online at 09:20 the program starts reading the finance share.
+noise: {quiet: [priya.n]}
+optional_sources: [cloud]
+beats:
+  - {key: logon, at: -1h20m, source: auth, host: ws-003, user: priya.n, src_ip: 192.0.2.103, action: logon, outcome: success, geo: "Pune, IN", app: windows}
+  - {key: sign-in, at: -1h18m, source: auth, user: priya.n, src_ip: 198.51.100.10, action: sign_in, outcome: success, geo: "Pune, IN", app: mail}
+  - {key: lure-dns, at: -52m, source: dns, host: ws-003, user: priya.n, domain: invoice-portal.example, dst_ip: 203.0.113.24, action: query, outcome: success}
+  - {key: portal, at: -51m, source: network, host: ws-003, user: priya.n, process: browser.exe, src_ip: 192.0.2.103, dst_ip: 203.0.113.24, dst_port: 443, domain: invoice-portal.example, action: connect, outcome: success, bytes_out: 3400, message: "form submitted"}
+  - {key: download, at: -50m, source: network, host: ws-003, user: priya.n, process: browser.exe, src_ip: 192.0.2.103, dst_ip: 203.0.113.24, dst_port: 443, domain: invoice-portal.example, action: download, outcome: success, bytes_out: 2100, message: "downloaded invoice-viewer.exe"}
+  - {key: run, at: -48m, source: process, host: ws-003, user: priya.n, process: invoice-viewer.exe, parent_process: browser.exe, action: start, sha256: 48b011b5bf43194a6e4634f831c443fa72738633ed471f0d425420aaf958b382, message: "unsigned; first seen in the company"}
+  - key: beacon
+    at: -46m
+    source: network
+    host: ws-003
+    user: priya.n
+    process: invoice-viewer.exe
+    src_ip: 192.0.2.103
+    dst_ip: 203.0.113.24
+    dst_port: 443
+    action: connect
+    outcome: success
+    bytes_out: 1200
+    repeat: {every: 5m, times: 20}
+    unless: {isolated: ws-003}
+  - {key: foreign-sign-in, at: -30m, source: auth, user: priya.n, src_ip: 198.51.100.23, action: sign_in, outcome: success, geo: "Amsterdam, NL", app: mail, message: "new device"}
+  - {key: mailbox-search, at: -27m, source: cloud, user: priya.n, src_ip: 198.51.100.23, action: mailbox_search, outcome: success, app: mail, message: "search: payment details"}
+  - key: share-read
+    at: +20m
+    source: network
+    host: ws-003
+    user: priya.n
+    process: invoice-viewer.exe
+    src_ip: 192.0.2.103
+    dst_ip: 192.0.2.11
+    dst_port: 445
+    action: file_read
+    outcome: success
+    message: "file-01 share finance: 380 files read"
+    unless: {isolated: ws-003}
+    harmful: true
+alerts:
+  - id: ALR-2301
+    at: -45m
+    rule: Browser started an unsigned executable
+    severity: high
+    description: browser.exe on ws-003 started invoice-viewer.exe, unsigned and never seen before.
+    host: ws-003
+    user: priya.n
+    events: [download, run]
+    ticket: INC-4301
+  - id: ALR-2302
+    at: -28m
+    rule: Sign-in from a new country
+    severity: medium
+    description: priya.n signed in to mail from Amsterdam, NL, on a new device.
+    user: priya.n
+    ip: 198.51.100.23
+    events: [foreign-sign-in]
+    ticket: INC-4301
+tickets:
+  - id: INC-4301
+    title: "Unsigned executable and new-country sign-in: priya.n"
+    classification: true_positive
+    escalated_at: -15m
+    comments:
+      - at: -15m
+        author: night shift (R. Okafor)
+        body: >-
+          Confirmed malicious: invoice-viewer.exe is not company software and connects to
+          203.0.113.24 every five minutes. priya.n also signed in from Amsterdam after visiting the
+          portal. Escalated to IR. Day shift: please contain.
+local_evidence:
+  ws-003:
+    - {kind: autorun, detail: "Autostart entry 'InvoiceViewer' starts C:\\Users\\priya.n\\AppData\\Roaming\\invoice-viewer.exe at logon (created 08:12 UTC)."}
+    - {kind: file, detail: "invoice-viewer.exe, unsigned, sha256 48b011b5bf43194a6e4634f831c443fa72738633ed471f0d425420aaf958b382, written 08:10 UTC by browser.exe."}
+    - {kind: connection, detail: "invoice-viewer.exe holds an open connection to 203.0.113.24:443."}
+ground_truth:
+  tickets: {INC-4301: true_positive}
+  verdict: malicious
+  incident_type: phishing
+  root_cause: {kind: host, id: ws-003}
+  root_cause_alternatives: [{kind: user, id: priya.n}]
+  affected_hosts: [ws-003]
+  affected_accounts: [priya.n]
+  indicators:
+    - {kind: domain, value: invoice-portal.example}
+    - {kind: ip, value: 203.0.113.24}
+    - {kind: ip, value: 198.51.100.23}
+    - {kind: sha256, value: 48b011b5bf43194a6e4634f831c443fa72738633ed471f0d425420aaf958b382, required: false}
+  containment:
+    required:
+      - {action: isolate_host, target: ws-003}
+      - {action: reset_credentials, target: priya.n, alternatives: [{action: disable_account, target: priya.n}]}
+    acceptable:
+      - {action: block_indicator, target: invoice-portal.example}
+      - {action: block_indicator, target: 203.0.113.24}
+      - {action: block_indicator, target: 198.51.100.23}
+      - {action: block_indicator, target: 48b011b5bf43194a6e4634f831c443fa72738633ed471f0d425420aaf958b382}
+      - {action: reimage_host, target: ws-003}
+  first_activity_at: -52m
+  evidence_hosts: [ws-003]

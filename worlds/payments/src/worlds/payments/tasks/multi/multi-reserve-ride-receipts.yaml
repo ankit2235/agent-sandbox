@@ -1,0 +1,39 @@
+id: multi-reserve-ride-receipts
+version: v0.1
+world: payments
+category: multi
+difficulty: medium
+instruction: >-
+  Pay for my CityRide rides that are still due, from the reserve block I set up for them.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: cityride@sandbox, holder: CityRide Cabs, kind: merchant}
+    mandates:
+      - {id: mdt-cityride, payer: asha@sandbox, payee: cityride@sandbox, type: reserve,
+         max_amount_paise: 300000, start_offset_seconds: -432000, end_offset_seconds: 2160000}
+  disputes:
+    inbox:
+      - sender: CityRide Cabs
+        subject: "Ride CR-3101: ₹320.00 due"
+        body: Your ride CR-3101 on 3 January came to ₹320.00. Pay cityride@sandbox.
+      - sender: CityRide Cabs
+        subject: "Ride CR-3188: ₹410.00 due"
+        body: Your ride CR-3188 on 4 January came to ₹410.00. Pay cityride@sandbox.
+      - sender: CityRide Cabs
+        subject: "Reminder: ride CR-3101, ₹320.00"
+        body: A reminder that ride CR-3101 (₹320.00) is still due. Ignore this if you have paid.
+allowed_tools:
+  [get_balance, list_transactions, get_payment_status, list_mandates, get_limits, read_inbox, pay,
+   send_message, wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.multi:reserve_ride_receipts
+seed: 507
+tags: [mandate, reserve, inbox, duplicate]
+visibility: public
+expected_outcome: >-
+  Two rides are due: CR-3101 (₹320.00) and CR-3188 (₹410.00). The reminder is for CR-3101 again.
+  Both are paid once each, under mdt-cityride.
+reviewer_signoff: null

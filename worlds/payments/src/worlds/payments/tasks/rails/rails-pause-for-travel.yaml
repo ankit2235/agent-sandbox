@@ -1,0 +1,27 @@
+id: rails-pause-for-travel
+version: v0.1
+world: payments
+category: rails
+difficulty: easy
+instruction: >-
+  I'm away for the next two weeks. Pause my daily milk autopay to Dairy Fresh while I'm gone, but
+  don't cancel it: I want it back when I return.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: dairy-fresh@sandbox, holder: Dairy Fresh, kind: merchant}
+    mandates:
+      - {id: mdt-milk, payer: asha@sandbox, payee: dairy-fresh@sandbox, type: recurring,
+         frequency: daily, max_amount_paise: 6000, start_offset_seconds: -2592000}
+allowed_tools:
+  [get_balance, list_transactions, list_mandates, get_limits, pause_mandate, resume_mandate,
+   revoke_mandate, wait, ask_user]
+max_steps: 8
+grader: worlds.payments.graders.rails:pause_for_travel
+seed: 204
+tags: [mandate, pause]
+visibility: public
+expected_outcome: mdt-milk is paused, not revoked, so it can be resumed later.
+reviewer_signoff: null

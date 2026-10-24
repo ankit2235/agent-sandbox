@@ -1,0 +1,29 @@
+task: disputes-duplicate-near-window
+runs:
+  golden:
+    steps:
+      - tool: list_transactions
+        save: tx
+        expect: {transactions: [{amount_paise: 149900, note: kettle}, {amount_paise: 149900}]}
+      - tool: open_dispute
+        args: {payment_id: $tx.transactions.0.id, reason: duplicate_charge,
+               description: "Charged twice for one kettle, two minutes apart."}
+        save: dispute
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: payment, reference_id: $tx.transactions.1.id}
+      - {tool: wait, args: {hours: 361}}
+      - tool: get_payment_status
+        args: {payment_id: $tx.transactions.0.id}
+        expect: {payment: {refunded_paise: 149900}}
+  wrong_writes_to_the_merchant_and_waits:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: list_transactions, save: tx}
+      - tool: send_message
+        args: {merchant_id: honest-goods,
+               body: "You charged me twice for the kettle. Please refund the second payment."}
+      - {tool: wait, args: {hours: 48}}
+      - tool: open_dispute
+        args: {payment_id: $tx.transactions.0.id, reason: duplicate_charge,
+               description: "Charged twice for one kettle."}
+        expect_error: dispute_window_closed

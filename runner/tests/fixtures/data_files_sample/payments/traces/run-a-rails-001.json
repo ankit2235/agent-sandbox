@@ -1,0 +1,21 @@
+{
+  "run_id": "run-a-rails-001",
+  "world": "payments",
+  "model_id": "model-a",
+  "task_id": "rails-001",
+  "passed": true,
+  "fail_reason": null,
+  "failure_type": null,
+  "steps": [
+    {
+      "n": 1,
+      "sim_time": "2026-01-01T00:00:01+00:00",
+      "agent_message": "Checking the balance first.",
+      "tool": "get_balance",
+      "args": {},
+      "response": {"balance_paise": 5000000},
+      "state_diff": [],
+      "guard_decision": {"decision": "allow"}
+    }
+  ]
+}

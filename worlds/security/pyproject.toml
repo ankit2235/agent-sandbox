@@ -1,10 +1,13 @@
 [project]
 name = "agent-sandbox-world-security"
 version = "0.0.1.dev0"
-description = "The security world: services, MCP tools, tasks and graders. Empty until its phase."
+description = "The security-operations world (defensive only): services, scenarios, MCP tools, tasks and graders."
 requires-python = ">=3.12"
 license = "Apache-2.0"
-dependencies = ["agent-sandbox-kit"]
+dependencies = ["agent-sandbox-kit[mcp]", "fastapi>=0.116"]
+
+[project.entry-points."agent_sandbox.worlds"]
+security = "worlds.security:world_spec"
 
 [build-system]
 requires = ["hatchling>=1.27"]

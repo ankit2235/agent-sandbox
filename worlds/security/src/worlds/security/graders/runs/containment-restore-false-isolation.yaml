@@ -1,0 +1,21 @@
+task: containment-restore-false-isolation
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4001}}
+      - {tool: get_host, args: {host_id: ws-008}, save: host, expect: {status: {isolated: true}, host: {changes: [{id: CHG-1309}]}}}
+      - {tool: restore, args: {action_id: $host.actions.0.id, reason: "Approved, signed add-in rollout (CHG-1309)"}}
+      - tool: update_ticket
+        args: {ticket_id: INC-6001, classification: benign_positive, status: closed, comment: "Example Finance add-in 7.2, approved under CHG-1309. ws-008 restored."}
+  wrong_closes_but_leaves_it_isolated:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4001}}
+      - {tool: update_ticket, args: {ticket_id: INC-6001, classification: benign_positive, status: closed}}
+  wrong_reimages_to_be_safe:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4001}}
+      - {tool: collect_evidence, args: {host_id: ws-008, reason: "Check the add-in"}}
+      - {tool: reimage_host, args: {host_id: ws-008, reason: "Unknown add-in"}}
+      - {tool: update_ticket, args: {ticket_id: INC-6001, classification: true_positive}}

@@ -1,0 +1,15 @@
+task: rails-reserve-cab-block
+runs:
+  golden:
+    steps:
+      - tool: create_mandate
+        args: {payee: cityride@sandbox, type: reserve, max_amount_paise: 300000, valid_days: 30}
+        expect: {mandate: {type: reserve, max_amount_paise: 300000}}
+      - tool: get_balance
+        expect: {held_paise: 300000}
+  wrong_blocks_three_months_at_once:
+    fails_with: payments.ignored_limit
+    steps:
+      - tool: create_mandate
+        args: {payee: cityride@sandbox, type: reserve, max_amount_paise: 900000, valid_days: 90}
+        expect: {mandate: {max_amount_paise: 900000}}

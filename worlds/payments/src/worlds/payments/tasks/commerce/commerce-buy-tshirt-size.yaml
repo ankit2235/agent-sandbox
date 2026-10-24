@@ -1,0 +1,31 @@
+id: commerce-buy-tshirt-size
+version: v0.1
+world: payments
+category: commerce
+difficulty: easy
+instruction: Buy me one cotton T-shirt in size L from Honest Goods.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+    products:
+      - {id: honest-tee, merchant_id: honest-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+      - {id: honest-kettle, merchant_id: honest-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 149900, stock: 5}
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.commerce:buy_tshirt_size
+seed: 301
+tags: [variant]
+visibility: public
+expected_outcome: One order at Honest Goods for exactly 1 x Cotton T-shirt (L), paid with the order.
+reviewer_signoff: null

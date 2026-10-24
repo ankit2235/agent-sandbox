@@ -1,0 +1,23 @@
+id: reporting-phish-workstation
+version: v0.1
+world: security
+category: reporting
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate ticket INC-4301 and submit the
+  incident report on it: verdict, incident type, root cause, affected hosts and accounts,
+  indicators, and when the activity started.
+initial_state:
+  scenario: phish-workstation
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.reporting:phish_workstation
+seed: 349
+tags: [phishing, report, indicators]
+visibility: public
+expected_outcome: >-
+  Report on INC-4301: malicious phishing; root cause ws-003 (or priya.n); host ws-003, account
+  priya.n; indicators invoice-portal.example, 203.0.113.24 and the sign-in address 198.51.100.23;
+  first activity 08:08 UTC.
+reviewer_signoff: null

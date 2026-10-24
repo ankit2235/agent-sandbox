@@ -1,0 +1,24 @@
+task: disputes-refund-one-item
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - tool: get_order
+        args: {order_id: $inbox.messages.0.order_id}
+        save: order
+        expect: {order: {total_paise: 119800, status: wrong_item}}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900,
+               reason: "One of the two T-shirts was the wrong one; keeping the other."}
+      - {tool: wait, args: {hours: 24}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {refund_requests: [{status: accepted}]}
+  wrong_claims_the_whole_order:
+    fails_with: payments.false_claim
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 119800, reason: "Wrong item delivered."}
+      - {tool: wait, args: {hours: 24}}

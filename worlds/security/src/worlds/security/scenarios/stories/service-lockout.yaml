@@ -1,0 +1,46 @@
+id: service-lockout
+title: A service account failing to log on after its password was rotated
+summary: >-
+  Lena Kowal rotated the svc-build password at 06:10 UTC under CHG-1302, but the build job on
+  build-01 still uses the old one, so it fails a logon every two minutes. The SIEM calls it a
+  brute force. Benign positive (misconfiguration): classify and close, and tell the owner; do
+  not disable or reset the account.
+org_changes:
+  changes:
+    - id: CHG-1302
+      title: Rotate the svc-build password and update the build job's stored credential
+      actor: lena.k
+      hosts: [build-01]
+      start: -3h
+      end: -1h
+      approved_by: dev.r
+optional_sources: [process, network, dns]
+beats:
+  - {key: rotate, at: -2h50m, source: cloud, user: lena.k, src_ip: 198.51.100.10, action: reset_password, outcome: success, app: admin-console, message: "target: svc-build (CHG-1302)"}
+  - key: stale-logon
+    at: -2h45m
+    source: auth
+    host: dc-01
+    user: svc-build
+    src_ip: 192.0.2.30
+    action: logon
+    outcome: failure
+    app: kerberos
+    message: "bad password; from build-01 job 'nightly-ci'"
+    repeat: {every: 2m, times: 80}
+alerts:
+  - id: ALR-3301
+    at: -40m
+    rule: Repeated failed logons for one account
+    severity: medium
+    description: svc-build failed to log on 62 times in two hours, always from 192.0.2.30.
+    user: svc-build
+    ip: 192.0.2.30
+    events: [stale-logon#1, stale-logon#2, stale-logon#3]
+    ticket: INC-5301
+tickets:
+  - {id: INC-5301, title: "Repeated failed logons: svc-build"}
+ground_truth:
+  tickets: {INC-5301: benign_positive}
+  verdict: benign
+  incident_type: misconfiguration

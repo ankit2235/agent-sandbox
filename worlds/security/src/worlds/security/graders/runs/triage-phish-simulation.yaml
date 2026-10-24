@@ -1,0 +1,16 @@
+task: triage-phish-simulation
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3701}}
+      - {tool: search_logs, args: {domain: training-phish.example}}
+      - {tool: get_user, args: {user_id: lena.k}, expect: {user: {changes: [{id: CHG-1306}]}}}
+      - tool: update_ticket
+        args: {ticket_id: INC-5701, classification: benign_positive, status: closed, comment: "Approved phishing simulation (CHG-1306); clicks landed on the test page."}
+  wrong_blocks_the_vendor:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3701}}
+      - {tool: block_indicator, args: {kind: domain, value: training-phish.example, reason: "Phishing domain"}}
+      - {tool: reset_credentials, args: {user_id: priya.n, reason: "Clicked a phishing link"}}
+      - {tool: update_ticket, args: {ticket_id: INC-5701, classification: true_positive}}

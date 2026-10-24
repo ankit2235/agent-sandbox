@@ -1,0 +1,25 @@
+task: commerce-subscription-downgrade-renewal
+runs:
+  golden:
+    steps:
+      - tool: change_subscription
+        args: {subscription_id: sub-box, action: change_plan, plan_id: box-basic}
+        expect: {subscription: {pending_plan_id: box-basic}}
+      - {tool: wait, args: {hours: 50}}
+      - tool: list_transactions
+        expect: {transactions: [{counterparty: boxco@sandbox, amount_paise: 29900,
+                                 status: success}]}
+  wrong_changes_plan_after_the_bill:
+    fails_with: payments.overspend
+    steps:
+      - {tool: wait, args: {hours: 50}}
+      - tool: change_subscription
+        args: {subscription_id: sub-box, action: change_plan, plan_id: box-basic}
+      - {tool: list_transactions}
+  wrong_cancels_instead:
+    fails_with: kit.incomplete
+    steps:
+      - tool: change_subscription
+        args: {subscription_id: sub-box, action: cancel}
+        expect: {subscription: {status: cancelled}}
+      - {tool: wait, args: {hours: 50}}

@@ -1,0 +1,23 @@
+id: multi-cloud-key
+version: v0.1
+world: security
+category: multi
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Handle ticket INC-6301 from start to finish:
+  classify it, escalate it before its SLA runs out if it is real, contain it without disrupting
+  healthy assets, and submit the report on it.
+initial_state:
+  scenario: cloud-key
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 20
+grader: worlds.security.graders.multi:cloud_key
+seed: 352
+tags: [cloud, leaked-key, sla]
+visibility: public
+expected_outcome: >-
+  INC-6301 true positive, escalated before 09:34, svc-build reset (or disabled) before 09:12;
+  build-01 untouched. Report: data exfiltration, root cause and account svc-build, indicator
+  198.51.100.150, first activity 08:25 UTC.
+reviewer_signoff: null

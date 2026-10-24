@@ -1,0 +1,23 @@
+id: triage-mfa-fatigue
+version: v0.1
+world: security
+category: triage
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage ticket INC-6101 and its alerts.
+  Classify the ticket. If it is a real incident, escalate it to on-call before its SLA runs out;
+  containment will be decided by on-call.
+initial_state:
+  scenario: mfa-fatigue
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.triage:mfa_fatigue
+seed: 319
+tags: [account-takeover, mfa, sla]
+visibility: public
+expected_outcome: >-
+  INC-6101 classified true positive and escalated before 09:36: sara.b approved an MFA push from
+  203.0.113.180 after denying five, and a forwarding rule to pay-portal.example followed. Nothing
+  healthy disrupted.
+reviewer_signoff: null

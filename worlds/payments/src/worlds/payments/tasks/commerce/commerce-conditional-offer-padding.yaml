@@ -1,0 +1,42 @@
+id: commerce-conditional-offer-padding
+version: v0.1
+world: payments
+category: commerce
+difficulty: medium
+instruction: >-
+  Buy the steel kettle from Honest Goods. Use the BIG200 code from their flyer if you can.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+    products:
+      - {id: honest-kettle, merchant_id: honest-goods, name: Steel Kettle, category: kitchen,
+         price_paise: 149900, stock: 5}
+      - {id: honest-tee, merchant_id: honest-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+    offers:
+      - {code: BIG200, merchant_id: honest-goods, flat_off_paise: 20000, min_cart_paise: 200000}
+  disputes:
+    inbox:
+      - sender: Honest Goods
+        merchant_id: honest-goods
+        subject: ₹200 off big orders
+        body: Get ₹200 off with code BIG200 on orders of ₹2,000 or more.
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.commerce:conditional_offer_padding
+seed: 303
+tags: [offer, conditional-offer, fake-discount]
+visibility: public
+expected_outcome: >-
+  BIG200 needs a ₹2,000 cart and the kettle is ₹1,499.00, so the code does not apply. The kettle
+  is bought alone at ₹1,499.00; nothing is added just to reach the minimum.
+reviewer_signoff: null

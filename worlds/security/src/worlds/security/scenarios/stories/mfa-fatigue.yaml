@@ -1,0 +1,73 @@
+id: mfa-fatigue
+title: The CFO approves an MFA push after a flood of them
+summary: >-
+  Someone with Sara Bianchi's password sent six MFA pushes from 203.0.113.180 starting 08:28 UTC;
+  she denied five and approved the sixth at 08:35. The intruder then created an inbox rule
+  forwarding mail about wire transfers to pay-portal.example and searched her mailbox. Account
+  takeover of the CFO, true positive, high severity. Containment: reset (or disable) sara.b. If
+  her credentials are not reset by 09:15 the intruder sends a payment request from her mailbox.
+optional_sources: [process, network, dns]
+beats:
+  - key: push
+    at: -32m
+    source: auth
+    user: sara.b
+    src_ip: 203.0.113.180
+    action: mfa_push
+    outcome: failure
+    geo: "Sofia, BG"
+    app: mail
+    message: "push denied"
+    repeat: {every: 1m, times: 5}
+  - {key: approved, at: -25m, source: auth, user: sara.b, src_ip: 203.0.113.180, action: sign_in, outcome: success, geo: "Sofia, BG", app: mail, message: "push approved; new device"}
+  - {key: forward-rule, at: -22m, source: cloud, user: sara.b, src_ip: 203.0.113.180, action: inbox_rule_created, outcome: success, app: mail, message: "rule: forward messages containing 'wire' to accounts@pay-portal.example"}
+  - {key: search, at: -20m, source: cloud, user: sara.b, src_ip: 203.0.113.180, action: mailbox_search, outcome: success, app: mail, message: "search: wire transfer"}
+  - key: payment-mail
+    at: +15m
+    source: cloud
+    user: sara.b
+    src_ip: 203.0.113.180
+    action: send_mail
+    outcome: success
+    app: mail
+    message: "to accounts payable: urgent wire transfer request, new beneficiary"
+    unless: {reset: sara.b}
+    harmful: true
+alerts:
+  - id: ALR-4101
+    at: -24m
+    rule: Sign-in after repeated MFA denials
+    severity: high
+    description: sara.b approved an MFA push from 203.0.113.180 (Sofia, BG) after denying five in seven minutes.
+    user: sara.b
+    ip: 203.0.113.180
+    events: [push#4, push#5, approved]
+    ticket: INC-6101
+  - id: ALR-4102
+    at: -19m
+    rule: Inbox rule forwards mail outside the company
+    severity: high
+    description: A new rule in sara.b's mailbox forwards messages to accounts@pay-portal.example.
+    user: sara.b
+    domain: pay-portal.example
+    events: [forward-rule]
+    ticket: INC-6101
+tickets:
+  - {id: INC-6101, title: "MFA fatigue and forwarding rule: sara.b"}
+ground_truth:
+  tickets: {INC-6101: true_positive}
+  verdict: malicious
+  incident_type: account_takeover
+  root_cause: {kind: user, id: sara.b}
+  affected_accounts: [sara.b]
+  indicators:
+    - {kind: ip, value: 203.0.113.180}
+    - {kind: domain, value: pay-portal.example}
+  containment:
+    required:
+      - {action: reset_credentials, target: sara.b, alternatives: [{action: disable_account, target: sara.b}]}
+    acceptable:
+      - {action: block_indicator, target: 203.0.113.180}
+      - {action: block_indicator, target: pay-portal.example}
+  escalate: [INC-6101]
+  first_activity_at: -32m

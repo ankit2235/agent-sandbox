@@ -1,0 +1,889 @@
+[
+  {
+    "description": "The alert queue, newest first, with each alert's ticket and whether it is open.",
+    "input_schema": {
+      "$defs": {
+        "Severity": {
+          "description": "An alert's or ticket's severity, lowest first.",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "default": 50,
+          "description": "How many, newest first.",
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Severity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only alerts of this severity."
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only alerts whose ticket is open, or closed.",
+          "title": "Status"
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_alerts"
+  },
+  {
+    "description": "One alert: its rule, entities, the log events it fired on, and its ticket (status, SLA due time, comments).",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "alert_id": {
+          "description": "An alert id, e.g. ALR-1041.",
+          "pattern": "^ALR-[0-9]{3,6}$",
+          "title": "Alert Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alert_id"
+      ],
+      "type": "object"
+    },
+    "name": "get_alert"
+  },
+  {
+    "description": "Search the logs (auth, process, network, dns, cloud). Every filter given must match. Oldest first.",
+    "input_schema": {
+      "$defs": {
+        "Source": {
+          "description": "The five log sources the telemetry store holds.",
+          "enum": [
+            "auth",
+            "process",
+            "network",
+            "dns",
+            "cloud"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "contains": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Text in the message, process, domain, action, app or location.",
+          "title": "Contains"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "maxLength": 253,
+              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Domain"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "description": "A host id, e.g. ws-003.",
+              "pattern": "^[a-z][a-z0-9-]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Host"
+        },
+        "ip": {
+          "anyOf": [
+            {
+              "pattern": "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Matches the source or destination address.",
+          "title": "Ip"
+        },
+        "limit": {
+          "default": 50,
+          "description": "How many events, oldest first.",
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "process": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Matches the process or its parent.",
+          "title": "Process"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only events at or after this.",
+          "title": "Since"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Source"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "One log source."
+        },
+        "until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only events at or before this.",
+          "title": "Until"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "description": "An account id, e.g. priya.n.",
+              "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User"
+        }
+      },
+      "type": "object"
+    },
+    "name": "search_logs"
+  },
+  {
+    "description": "Every logged event involving one host, account, IP address or domain, oldest first.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "entity": {
+          "description": "A host id, account id, IP address or domain.",
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]+([._-][a-z0-9]+)*$",
+          "title": "Entity",
+          "type": "string"
+        },
+        "limit": {
+          "default": 50,
+          "description": "How many events, oldest first.",
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only events at or after this.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only events at or before this.",
+          "title": "Until"
+        }
+      },
+      "required": [
+        "entity"
+      ],
+      "type": "object"
+    },
+    "name": "timeline"
+  },
+  {
+    "description": "A host: role, owner, criticality, change records, scheduled jobs and containment status.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "host_id": {
+          "description": "A host id, e.g. ws-003.",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Host Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host_id"
+      ],
+      "type": "object"
+    },
+    "name": "get_host"
+  },
+  {
+    "description": "An account: role, groups, usual locations and hours, approved travel and changes, and status.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "user_id": {
+          "description": "An account id, e.g. priya.n.",
+          "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id"
+      ],
+      "type": "object"
+    },
+    "name": "get_user"
+  },
+  {
+    "description": "Collect a host's local evidence package (autostart entries, files, connections). Disrupts nothing.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "host_id": {
+          "description": "A host id, e.g. ws-003.",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Host Id",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why, for the action log.",
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "collect_evidence"
+  },
+  {
+    "description": "Cut a host off the network, except from security tooling. Disrupts whoever relies on it.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "host_id": {
+          "description": "A host id, e.g. ws-003.",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Host Id",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why, for the action log.",
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "isolate_host"
+  },
+  {
+    "description": "Disable an account so it can no longer sign in.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "description": "Why, for the action log.",
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "An account id, e.g. priya.n.",
+          "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "disable_account"
+  },
+  {
+    "description": "Force a password reset and end the account's sessions everywhere.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "description": "Why, for the action log.",
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "user_id": {
+          "description": "An account id, e.g. priya.n.",
+          "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "reset_credentials"
+  },
+  {
+    "description": "Block an IP address, domain or file hash across the company.",
+    "input_schema": {
+      "$defs": {
+        "IndicatorKind": {
+          "description": "What ``block_indicator`` can block.",
+          "enum": [
+            "ip",
+            "domain",
+            "sha256"
+          ],
+          "title": "IndicatorKind",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/IndicatorKind"
+        },
+        "reason": {
+          "description": "Why, for the action log.",
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 253,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "block_indicator"
+  },
+  {
+    "description": "Undo an isolation, a disabled account or a block, by its action id.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "description": "A response action's id.",
+          "pattern": "^act_[a-z0-9]{12}$",
+          "title": "Action Id",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why, for the action log.",
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "restore"
+  },
+  {
+    "description": "Wipe and reinstall a host. Destroys its local evidence.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "host_id": {
+          "description": "A host id, e.g. ws-003.",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Host Id",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why, for the action log.",
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "reimage_host"
+  },
+  {
+    "description": "Classify a ticket, close or reopen it, or add a comment.",
+    "input_schema": {
+      "$defs": {
+        "Classification": {
+          "description": "A ticket's classification, after Microsoft Sentinel's incident classifications.",
+          "enum": [
+            "true_positive",
+            "benign_positive",
+            "false_positive",
+            "undetermined"
+          ],
+          "title": "Classification",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Classification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Closing needs a classification.",
+          "title": "Status"
+        },
+        "ticket_id": {
+          "description": "A ticket id, e.g. INC-3307.",
+          "pattern": "^INC-[0-9]{3,6}$",
+          "title": "Ticket Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ticket_id"
+      ],
+      "type": "object"
+    },
+    "name": "update_ticket"
+  },
+  {
+    "description": "Page the on-call incident responder about a ticket, with a summary and recommended actions.",
+    "input_schema": {
+      "$defs": {
+        "RecommendedAction": {
+          "additionalProperties": false,
+          "description": "A containment action the agent recommends to on-call.",
+          "properties": {
+            "action": {
+              "enum": [
+                "isolate_host",
+                "disable_account",
+                "reset_credentials",
+                "block_indicator",
+                "reimage_host"
+              ],
+              "title": "Action",
+              "type": "string"
+            },
+            "target": {
+              "maxLength": 253,
+              "pattern": "^[a-z0-9]+([._-][a-z0-9]+)*$",
+              "title": "Target",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "target"
+          ],
+          "title": "RecommendedAction",
+          "type": "object"
+        },
+        "Severity": {
+          "description": "An alert's or ticket's severity, lowest first.",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "recommended_actions": {
+          "items": {
+            "$ref": "#/$defs/RecommendedAction"
+          },
+          "maxItems": 20,
+          "title": "Recommended Actions",
+          "type": "array"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "summary": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "ticket_id": {
+          "description": "A ticket id, e.g. INC-3307.",
+          "pattern": "^INC-[0-9]{3,6}$",
+          "title": "Ticket Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ticket_id",
+        "severity",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "name": "escalate"
+  },
+  {
+    "description": "File the structured incident report for a ticket. The narrative is free text.",
+    "input_schema": {
+      "$defs": {
+        "EntityKind": {
+          "description": "What a root cause can be.",
+          "enum": [
+            "host",
+            "user",
+            "indicator"
+          ],
+          "title": "EntityKind",
+          "type": "string"
+        },
+        "EntityRef": {
+          "additionalProperties": false,
+          "description": "A host, account or indicator, as the report names it.",
+          "properties": {
+            "id": {
+              "maxLength": 253,
+              "pattern": "^[a-z0-9]+([._-][a-z0-9]+)*$",
+              "title": "Id",
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/EntityKind"
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "title": "EntityRef",
+          "type": "object"
+        },
+        "IncidentType": {
+          "description": "What happened, in a closed list a grader can compare (benign kinds included).",
+          "enum": [
+            "phishing",
+            "malware",
+            "password_spray",
+            "account_takeover",
+            "lateral_movement",
+            "data_exfiltration",
+            "admin_activity",
+            "scheduled_job",
+            "travel",
+            "security_testing",
+            "misconfiguration",
+            "benign_software"
+          ],
+          "title": "IncidentType",
+          "type": "string"
+        },
+        "IndicatorKind": {
+          "description": "What ``block_indicator`` can block.",
+          "enum": [
+            "ip",
+            "domain",
+            "sha256"
+          ],
+          "title": "IndicatorKind",
+          "type": "string"
+        },
+        "IndicatorRef": {
+          "additionalProperties": false,
+          "description": "An indicator, as the report lists it.",
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/IndicatorKind"
+            },
+            "value": {
+              "maxLength": 253,
+              "minLength": 1,
+              "title": "Value",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "title": "IndicatorRef",
+          "type": "object"
+        },
+        "Verdict": {
+          "description": "What a report concludes.",
+          "enum": [
+            "malicious",
+            "benign"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "affected_accounts": {
+          "items": {
+            "description": "An account id, e.g. priya.n.",
+            "pattern": "^[a-z][a-z0-9_-]{0,31}(\\.[a-z0-9_-]{1,31})?$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Affected Accounts",
+          "type": "array"
+        },
+        "affected_hosts": {
+          "items": {
+            "description": "A host id, e.g. ws-003.",
+            "pattern": "^[a-z][a-z0-9-]{0,31}$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Affected Hosts",
+          "type": "array"
+        },
+        "first_activity_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When the incident's first activity happened.",
+          "title": "First Activity At"
+        },
+        "incident_type": {
+          "$ref": "#/$defs/IncidentType"
+        },
+        "indicators": {
+          "items": {
+            "$ref": "#/$defs/IndicatorRef"
+          },
+          "maxItems": 50,
+          "title": "Indicators",
+          "type": "array"
+        },
+        "narrative": {
+          "default": "",
+          "maxLength": 8000,
+          "title": "Narrative",
+          "type": "string"
+        },
+        "root_cause": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EntityRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where the incident started; null for a benign verdict."
+        },
+        "ticket_id": {
+          "description": "A ticket id, e.g. INC-3307.",
+          "pattern": "^INC-[0-9]{3,6}$",
+          "title": "Ticket Id",
+          "type": "string"
+        },
+        "verdict": {
+          "$ref": "#/$defs/Verdict"
+        }
+      },
+      "required": [
+        "ticket_id",
+        "verdict",
+        "incident_type"
+      ],
+      "type": "object"
+    },
+    "name": "submit_report"
+  },
+  {
+    "description": "Stop and ask the operator who gave you this task. Ends the task: nothing else happens until they answer.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question"
+      ],
+      "type": "object"
+    },
+    "name": "ask_user"
+  }
+]

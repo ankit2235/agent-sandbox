@@ -1,0 +1,23 @@
+id: multi-mass-rename
+version: v0.1
+world: security
+category: multi
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Handle ticket INC-6401 from start to finish:
+  classify it, escalate it before its SLA runs out if it is real, contain it without disrupting
+  healthy assets while keeping the evidence, and submit the report on it.
+initial_state:
+  scenario: mass-rename
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 20
+grader: worlds.security.graders.multi:mass_rename
+seed: 337
+tags: [malware, file-share, sla, speed]
+visibility: public
+expected_outcome: >-
+  INC-6401 true positive, escalated before 09:06; ws-009 isolated before 09:08 and file-01 left
+  online; no reimage before evidence. Report: malware, root cause ws-009, host ws-009, account
+  kenji.t, the hash and keyserver.example, first activity 08:45 UTC.
+reviewer_signoff: null

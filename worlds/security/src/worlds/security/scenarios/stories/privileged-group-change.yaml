@@ -1,0 +1,45 @@
+id: privileged-group-change
+title: A developer is added to the database admins and logs on to production
+summary: >-
+  For tonight's database upgrade, Lena Kowal added Dev Rao to db-admins under CHG-1307, and Dev
+  then logged on to db-prod-01 for the first time to prepare. Two alerts, one ticket. Benign
+  positive (admin activity). Disabling lena.k or isolating db-prod-01 would be costly mistakes.
+org_changes:
+  changes:
+    - id: CHG-1307
+      title: Add dev.r to db-admins for tonight's database upgrade on db-prod-01
+      actor: lena.k
+      hosts: [db-prod-01]
+      start: -30m
+      end: +12h
+      approved_by: sara.b
+optional_sources: [network, dns]
+beats:
+  - {key: add-member, at: -20m, source: cloud, user: lena.k, src_ip: 198.51.100.10, action: add_group_member, outcome: success, app: admin-console, message: "group db-admins: added dev.r (CHG-1307)"}
+  - {key: first-logon, at: -10m, source: auth, host: db-prod-01, user: dev.r, src_ip: 192.0.2.106, action: logon, outcome: success, geo: "Pune, IN", app: ssh, message: "first logon to db-prod-01 by this account"}
+  - {key: db-check, at: -8m, source: process, host: db-prod-01, user: dev.r, process: db-cli, parent_process: sshd, action: start, message: "read-only: show version; list databases"}
+alerts:
+  - id: ALR-3801
+    at: -18m
+    rule: Member added to a privileged group
+    severity: high
+    description: lena.k added dev.r to db-admins.
+    user: lena.k
+    events: [add-member]
+    ticket: INC-5801
+  - id: ALR-3802
+    at: -7m
+    rule: First logon to a critical server
+    severity: medium
+    description: dev.r logged on to db-prod-01 for the first time, from 192.0.2.106.
+    host: db-prod-01
+    user: dev.r
+    ip: 192.0.2.106
+    events: [first-logon]
+    ticket: INC-5801
+tickets:
+  - {id: INC-5801, title: "Privileged group change and first logon: dev.r"}
+ground_truth:
+  tickets: {INC-5801: benign_positive}
+  verdict: benign
+  incident_type: admin_activity

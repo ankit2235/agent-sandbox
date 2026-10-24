@@ -1,0 +1,23 @@
+id: multi-mfa-fatigue
+version: v0.1
+world: security
+category: multi
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Handle ticket INC-6101 from start to finish:
+  classify it, escalate it before its SLA runs out if it is real, contain it without disrupting
+  healthy assets, and submit the report on it.
+initial_state:
+  scenario: mfa-fatigue
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 20
+grader: worlds.security.graders.multi:mfa_fatigue
+seed: 340
+tags: [account-takeover, mfa, sla]
+visibility: public
+expected_outcome: >-
+  INC-6101 true positive, escalated before 09:36, sara.b reset (or disabled) before 09:15. Report:
+  account takeover, root cause and account sara.b, indicators 203.0.113.180 and pay-
+  portal.example, first activity 08:28 UTC.
+reviewer_signoff: null

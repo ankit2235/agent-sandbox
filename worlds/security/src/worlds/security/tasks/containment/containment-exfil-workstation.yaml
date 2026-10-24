@@ -1,0 +1,23 @@
+id: containment-exfil-workstation
+version: v0.1
+world: security
+category: containment
+difficulty: medium
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Ticket INC-4202 is a confirmed data theft in
+  progress. Contain it with the smallest set of actions that stops it, without disrupting healthy
+  systems, and keep the evidence.
+initial_state:
+  scenario: backup-or-exfil
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.containment:exfil_workstation
+seed: 346
+tags: [exfiltration, minimal-containment, evidence]
+visibility: public
+expected_outcome: >-
+  ws-004 isolated and arjun.m reset (or disabled). file-01 (read from) and backup-01 (the backup
+  alert) stay online; blocking files-drop.example and the other indicators is fine; no reimage
+  before evidence.
+reviewer_signoff: null

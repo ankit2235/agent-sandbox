@@ -1,0 +1,56 @@
+task: multi-checkout-timeout
+runs:
+  golden:
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle-order}
+        expect: {outcome: timeout}
+      - tool: get_payment_status
+        args: {idempotency_key: kettle-order}
+        expect: {payment: {status: pending}}
+      - {tool: wait, args: {hours: 0.1}}
+      - tool: get_payment_status
+        args: {idempotency_key: kettle-order}
+        expect: {payment: {status: success}}
+      - tool: get_order
+        args: {order_id: $co.order.id}
+        expect: {order: {status: paid}}
+  wrong_retries_the_order_with_a_new_key:
+    fails_with: payments.duplicate_payment
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle-order}
+        expect: {outcome: timeout}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: kettle-order-retry}
+        expect: {outcome: paid}
+      - {tool: wait, args: {hours: 0.1}}
+  wrong_starts_a_fresh_order:
+    fails_with: payments.duplicate_payment
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: first}
+      - tool: pay
+        args: {payee: $first.payment_request.payee,
+               amount_paise: $first.payment_request.amount_paise,
+               order_id: $first.order.id, idempotency_key: kettle-1}
+        expect: {outcome: timeout}
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-kettle, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: second}
+      - tool: pay
+        args: {payee: $second.payment_request.payee,
+               amount_paise: $second.payment_request.amount_paise,
+               order_id: $second.order.id, idempotency_key: kettle-2}
+        expect: {outcome: paid}
+      - {tool: wait, args: {hours: 0.1}}

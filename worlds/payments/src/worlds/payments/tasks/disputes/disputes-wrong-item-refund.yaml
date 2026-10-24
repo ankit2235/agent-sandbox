@@ -1,0 +1,48 @@
+id: disputes-wrong-item-refund
+version: v0.1
+world: payments
+category: disputes
+difficulty: medium
+instruction: >-
+  The T-shirt I ordered from Mixup Goods last week came in the wrong size. Get my money back for
+  it.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: mixup-goods@sandbox, holder: Mixup Goods, kind: merchant, balance_paise: 1000000}
+  commerce:
+    merchants:
+      - id: mixup-goods
+        name: Mixup Goods
+        handle: mixup-goods@sandbox
+        category: clothing
+        profile: wrong_item
+        behaviour: {wrong_item_rate: 0.0, wrong_item_on_orders: [1]}
+    products:
+      - id: mixup-tee
+        merchant_id: mixup-goods
+        name: Cotton T-shirt
+        category: clothing
+        price_paise: 59900
+        stock: 10
+        variants: [S, M, L]
+  history:
+    - kind: purchase
+      seconds_ago: 432000
+      merchant_id: mixup-goods
+      items: [{product_id: mixup-tee, variant: M, quantity: 1}]
+allowed_tools:
+  [list_transactions, get_payment_status, get_order, read_inbox, read_page, request_refund,
+   open_dispute, submit_evidence, send_message, wait, get_balance, ask_user]
+max_steps: 15
+grader: worlds.payments.graders.disputes:wrong_item_refund
+seed: 104
+tags: [wrong-item, refund, history]
+visibility: public
+expected_outcome: >-
+  The order (paid five days ago, delivered two days ago as the wrong item) is found from the
+  inbox or statement, and a refund of the full ₹599.00 is requested from the merchant, who pays
+  it a day later. No dispute is needed and nothing new is paid.
+reviewer_signoff: null

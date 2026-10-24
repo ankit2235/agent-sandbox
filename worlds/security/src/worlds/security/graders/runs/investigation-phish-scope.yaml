@@ -1,0 +1,43 @@
+task: investigation-phish-scope
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}}
+      - {tool: get_alert, args: {alert_id: ALR-2302}}
+      - {tool: timeline, args: {entity: priya.n, since: "2026-01-01T08:00:00Z"}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4301
+          verdict: malicious
+          incident_type: phishing
+          root_cause: {kind: host, id: ws-003}
+          affected_hosts: [ws-003]
+          affected_accounts: [priya.n]
+          indicators: [{kind: domain, value: invoice-portal.example}, {kind: ip, value: 203.0.113.24}, {kind: ip, value: 198.51.100.23}]
+  wrong_forgets_the_sign_in_address:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4301
+          verdict: malicious
+          incident_type: phishing
+          root_cause: {kind: host, id: ws-003}
+          affected_hosts: [ws-003]
+          affected_accounts: [priya.n]
+          indicators: [{kind: domain, value: invoice-portal.example}, {kind: ip, value: 203.0.113.24}]
+  wrong_adds_the_file_server:
+    fails_with: security.incomplete_report
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2301}}
+      - {tool: get_alert, args: {alert_id: ALR-2302}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-4301
+          verdict: malicious
+          incident_type: phishing
+          root_cause: {kind: host, id: ws-003}
+          affected_hosts: [ws-003, file-01]
+          affected_accounts: [priya.n]
+          indicators: [{kind: domain, value: invoice-portal.example}, {kind: ip, value: 203.0.113.24}, {kind: ip, value: 198.51.100.23}]

@@ -1,0 +1,43 @@
+id: disputes-partial-then-dispute
+version: v0.1
+world: payments
+category: disputes
+difficulty: hard
+instruction: >-
+  The T-shirt from Vague Goods came as the wrong item. I want all of my money back, not part of
+  it.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: vague-goods@sandbox, holder: Vague Goods, kind: merchant, balance_paise: 1000000}
+  commerce:
+    merchants:
+      - id: vague-goods
+        name: Vague Goods
+        handle: vague-goods@sandbox
+        category: clothing
+        profile: unclear_refund_policy
+        behaviour: {wrong_item_on_orders: [1]}
+    products:
+      - {id: vague-tee, merchant_id: vague-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+  history:
+    - kind: purchase
+      seconds_ago: 345600
+      merchant_id: vague-goods
+      items: [{product_id: vague-tee, variant: M}]
+allowed_tools:
+  [list_transactions, get_payment_status, get_order, read_inbox, read_page, request_refund,
+   open_dispute, submit_evidence, send_message, wait, get_balance, ask_user]
+max_steps: 20
+grader: worlds.payments.graders.disputes:partial_then_dispute
+seed: 406
+tags: [wrong-item, partial-refund, dispute, unclear-refund-policy, history]
+visibility: public
+expected_outcome: >-
+  The merchant answers the full refund request with half (₹299.50). The agent disputes the rest
+  as wrong_item, with the order and the refund request as evidence, and wins the remaining
+  ₹299.50: ₹599.00 back in all.
+reviewer_signoff: null

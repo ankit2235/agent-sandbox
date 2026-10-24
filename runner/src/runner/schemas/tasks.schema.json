@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/prarabdha-soni/agent-sandbox/schemas/results-v0.1/tasks.schema.json",
+  "title": "<world>/tasks.json (results-v0.1): public tasks only",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "title",
+      "category",
+      "difficulty",
+      "instruction",
+      "initial_state",
+      "grader_checks",
+      "pass_rate"
+    ],
+    "properties": {
+      "id": {"type": "string"},
+      "title": {"type": "string"},
+      "category": {"type": "string"},
+      "difficulty": {"enum": ["easy", "medium", "hard"]},
+      "instruction": {"type": "string"},
+      "initial_state": {"type": "object"},
+      "grader_checks": {"type": "array", "items": {"type": "string"}},
+      "pass_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 100}
+    }
+  }
+}

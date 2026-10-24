@@ -1,0 +1,37 @@
+task: multi-refund-and-rebuy
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - tool: get_order
+        args: {order_id: $inbox.messages.0.order_id}
+        save: order
+        expect: {order: {merchant_id: mixup-goods, status: wrong_item}}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900, reason: "Wrong size delivered."}
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: M, quantity: 1}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: tee-m}
+        expect: {outcome: paid}
+      - {tool: wait, args: {hours: 24}}
+      - tool: get_order
+        args: {order_id: $order.order.id}
+        expect: {refund_requests: [{status: accepted}]}
+  wrong_reorders_from_the_same_shop:
+    fails_with: payments.wrong_merchant
+    steps:
+      - {tool: read_inbox, save: inbox}
+      - {tool: get_order, args: {order_id: $inbox.messages.0.order_id}, save: order}
+      - tool: request_refund
+        args: {order_id: $order.order.id, amount_paise: 59900, reason: "Wrong size delivered."}
+      - tool: add_to_cart
+        args: {merchant_id: mixup-goods, product_id: mixup-tee, variant: M, quantity: 1}
+      - {tool: checkout, args: {merchant_id: mixup-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: tee-m}
+        expect: {outcome: paid}
+      - {tool: wait, args: {hours: 24}}

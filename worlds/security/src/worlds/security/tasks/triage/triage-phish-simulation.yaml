@@ -1,0 +1,22 @@
+id: triage-phish-simulation
+version: v0.1
+world: security
+category: triage
+difficulty: easy
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Triage alert ALR-3701. If it is a real threat,
+  contain it and escalate its ticket. If it is not, classify its ticket accordingly and close it.
+initial_state:
+  scenario: phish-simulation
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.triage:phish_simulation
+seed: 316
+tags: [benign-lookalike, phishing-simulation]
+visibility: public
+expected_outcome: >-
+  INC-5701 classified as not a true positive and closed: training-phish.example is the approved
+  simulation vendor (CHG-1306) and the clicks landed on its 'this was a test' page. Domain not
+  blocked, users not reset, no escalation.
+reviewer_signoff: null

@@ -1,0 +1,23 @@
+id: containment-mass-rename
+version: v0.1
+world: security
+category: containment
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Ticket INC-6401 is a confirmed malware
+  infection that is still spreading. Contain it fast, with the smallest set of actions, without
+  disrupting anything healthy, and keep the evidence.
+initial_state:
+  scenario: mass-rename
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.containment:mass_rename
+seed: 330
+tags: [malware, file-share, speed]
+visibility: public
+expected_outcome: >-
+  ws-009 isolated before 09:08, when the HR share would be hit; file-01 is the victim and stays
+  online. Evidence collected before any reimage; resetting kenji.t or blocking the indicators is
+  fine.
+reviewer_signoff: null

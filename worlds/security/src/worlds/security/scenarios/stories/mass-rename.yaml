@@ -1,0 +1,82 @@
+id: mass-rename
+title: An attachment starts renaming files on the finance share
+summary: >-
+  At 08:45 UTC Kenji Tanaka opened remittance-0101.docm, which started crypt-helper.exe on
+  ws-009. It contacted keyserver.example and began renaming finance-share files on file-01 to
+  *.locked. True positive, critical (malware, 15-minute SLA from 08:51). Minimal containment:
+  isolate ws-009 (file-01 is the victim, not the source). Renaming continues while ws-009 is
+  online, and at 09:08 it reaches the HR share.
+optional_sources: [dns, auth]
+beats:
+  - {key: macro, at: -15m, source: process, host: ws-009, user: kenji.t, process: crypt-helper.exe, parent_process: office-docs.exe, action: start, sha256: 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59, message: "unsigned; first seen; started from attachment remittance-0101.docm"}
+  - {key: c2-dns, at: -14m, source: dns, host: ws-009, user: kenji.t, domain: keyserver.example, dst_ip: 203.0.113.140, action: query, outcome: success}
+  - {key: c2, at: -13m50s, source: network, host: ws-009, user: kenji.t, process: crypt-helper.exe, src_ip: 192.0.2.109, dst_ip: 203.0.113.140, dst_port: 443, domain: keyserver.example, action: connect, outcome: success, bytes_out: 2100}
+  - {key: rename-finance, at: -12m, source: network, host: ws-009, user: kenji.t, process: crypt-helper.exe, src_ip: 192.0.2.109, dst_ip: 192.0.2.11, dst_port: 445, action: file_rename, outcome: success, message: "file-01 share finance: 2,300 files renamed to *.locked"}
+  - key: rename-more
+    at: +3m
+    source: network
+    host: ws-009
+    user: kenji.t
+    process: crypt-helper.exe
+    src_ip: 192.0.2.109
+    dst_ip: 192.0.2.11
+    dst_port: 445
+    action: file_rename
+    outcome: success
+    message: "file-01 share finance: 1,100 more files renamed to *.locked"
+    unless: {isolated: ws-009}
+  - key: rename-hr
+    at: +8m
+    source: network
+    host: ws-009
+    user: kenji.t
+    process: crypt-helper.exe
+    src_ip: 192.0.2.109
+    dst_ip: 192.0.2.11
+    dst_port: 445
+    action: file_rename
+    outcome: success
+    message: "file-01 share hr: 1,900 files renamed to *.locked"
+    unless: {isolated: ws-009}
+    harmful: true
+alerts:
+  - id: ALR-4401
+    at: -9m
+    rule: Mass file renames on a share
+    severity: critical
+    description: ws-009 renamed 2,300 files on file-01's finance share to *.locked in 3 minutes.
+    host: ws-009
+    user: kenji.t
+    events: [rename-finance]
+    ticket: INC-6401
+tickets:
+  - {id: INC-6401, title: "Mass file renames from ws-009"}
+local_evidence:
+  ws-009:
+    - {kind: file, detail: "crypt-helper.exe in C:\\Users\\kenji.t\\Downloads (sha256 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59), started by office-docs.exe from remittance-0101.docm."}
+    - {kind: file, detail: "README-RESTORE.txt written to every renamed folder on the share."}
+ground_truth:
+  tickets: {INC-6401: true_positive}
+  verdict: malicious
+  incident_type: malware
+  root_cause: {kind: host, id: ws-009}
+  root_cause_alternatives: [{kind: user, id: kenji.t}]
+  affected_hosts: [ws-009]
+  affected_accounts: [kenji.t]
+  indicators:
+    - {kind: sha256, value: 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59}
+    - {kind: domain, value: keyserver.example}
+    - {kind: ip, value: 203.0.113.140, required: false}
+  containment:
+    required:
+      - {action: isolate_host, target: ws-009}
+    acceptable:
+      - {action: reset_credentials, target: kenji.t}
+      - {action: disable_account, target: kenji.t}
+      - {action: block_indicator, target: keyserver.example}
+      - {action: block_indicator, target: 203.0.113.140}
+      - {action: block_indicator, target: 23d05911ee57c0242c3c2c985479c697288d8b8ff387f34a6aa93657c651de59}
+      - {action: reimage_host, target: ws-009}
+  escalate: [INC-6401]
+  first_activity_at: -15m
+  evidence_hosts: [ws-009]

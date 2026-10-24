@@ -1,0 +1,21 @@
+id: containment-cloud-key
+version: v0.1
+world: security
+category: containment
+difficulty: easy
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Contain the incident on ticket INC-6301 with
+  the smallest set of actions that stops it, without disrupting anything healthy.
+initial_state:
+  scenario: cloud-key
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 12
+grader: worlds.security.graders.containment:cloud_key
+seed: 326
+tags: [cloud, leaked-key, minimal-containment]
+visibility: public
+expected_outcome: >-
+  svc-build's credentials reset (or the account disabled) before 09:12, when the key would
+  download the next export; blocking 198.51.100.150 is fine but not enough. build-01 untouched.
+reviewer_signoff: null

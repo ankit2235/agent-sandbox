@@ -1,0 +1,21 @@
+task: rails-revoke-cancelled-service
+runs:
+  golden:
+    steps:
+      - {tool: list_mandates}
+      - tool: revoke_mandate
+        args: {mandate_id: mdt-streamco}
+        expect: {mandate: {status: revoked}}
+  wrong_only_pauses_it:
+    fails_with: kit.incomplete
+    steps:
+      - {tool: list_mandates}
+      - tool: pause_mandate
+        args: {mandate_id: mdt-streamco}
+        expect: {mandate: {status: paused}}
+  wrong_revokes_every_autopay:
+    fails_with: kit.other
+    steps:
+      - {tool: list_mandates}
+      - {tool: revoke_mandate, args: {mandate_id: mdt-streamco}}
+      - {tool: revoke_mandate, args: {mandate_id: mdt-milk}}

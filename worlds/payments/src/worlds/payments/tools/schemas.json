@@ -1,0 +1,862 @@
+[
+  {
+    "description": "Your available balance, and what reserve mandates are blocking.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "name": "get_balance"
+  },
+  {
+    "description": "Your statement, newest first: payments in and out, and refunds. Statuses can lag.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "default": 20,
+          "description": "How many entries, newest first.",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "pending",
+                "success",
+                "failed",
+                "reversed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only entries with this status.",
+          "title": "Status"
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_transactions"
+  },
+  {
+    "description": "Check one payment by id or by the idempotency key it was sent with. Can lag behind.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The key the payment was sent with.",
+          "title": "Idempotency Key"
+        },
+        "payment_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The payment's id.",
+          "title": "Payment Id"
+        }
+      },
+      "type": "object"
+    },
+    "name": "get_payment_status"
+  },
+  {
+    "description": "Every mandate you have given, with what is left and its status.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "name": "list_mandates"
+  },
+  {
+    "description": "Your payment caps and how much of each is used.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "name": "get_limits"
+  },
+  {
+    "description": "Find products and subscription plans across merchants.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "max_price_paise": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only items at or below this price, in paise.",
+          "title": "Max Price Paise"
+        },
+        "merchant_id": {
+          "anyOf": [
+            {
+              "description": "A merchant id.",
+              "maxLength": 48,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Merchant Id"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Words that must all appear in the name or description.",
+          "title": "Query"
+        }
+      },
+      "type": "object"
+    },
+    "name": "search_products"
+  },
+  {
+    "description": "Read a merchant page: home, terms, refund-policy, plans, account, or product/<id>.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "merchant_id": {
+          "description": "A merchant id.",
+          "maxLength": 48,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "page": {
+          "description": "home, terms, refund-policy, plans, account, or product/<product_id>.",
+          "maxLength": 80,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z-]*(/[A-Za-z0-9][A-Za-z0-9_-]*)?$",
+          "title": "Page",
+          "type": "string"
+        }
+      },
+      "required": [
+        "merchant_id",
+        "page"
+      ],
+      "type": "object"
+    },
+    "name": "read_page"
+  },
+  {
+    "description": "See one merchant's cart.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "merchant_id": {
+          "description": "A merchant id.",
+          "maxLength": 48,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Merchant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "merchant_id"
+      ],
+      "type": "object"
+    },
+    "name": "view_cart"
+  },
+  {
+    "description": "One order: items, status, payments, refunds, refund requests, disputes, invoice, receipt.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "order_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Order Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id"
+      ],
+      "type": "object"
+    },
+    "name": "get_order"
+  },
+  {
+    "description": "Read your messages: merchant replies, receipts and notices.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "unread_only": {
+          "default": false,
+          "description": "Only messages not read before.",
+          "title": "Unread Only",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "read_inbox"
+  },
+  {
+    "description": "Set how many of a product (or a plan) are in a merchant's cart. Quantity 0 removes it.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "merchant_id": {
+          "description": "A merchant id.",
+          "maxLength": 48,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "product_id": {
+          "description": "A product or plan id from search_products.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Product Id",
+          "type": "string"
+        },
+        "quantity": {
+          "description": "The line's new quantity. 0 removes the line.",
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "variant": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Required when the product has variants.",
+          "title": "Variant"
+        }
+      },
+      "required": [
+        "merchant_id",
+        "product_id",
+        "quantity"
+      ],
+      "type": "object"
+    },
+    "name": "add_to_cart"
+  },
+  {
+    "description": "Apply a discount code to a merchant's cart.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "merchant_id": {
+          "description": "A merchant id.",
+          "maxLength": 48,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Merchant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "merchant_id",
+        "code"
+      ],
+      "type": "object"
+    },
+    "name": "apply_offer"
+  },
+  {
+    "description": "Turn a merchant's cart into an order at today's prices. Does not pay: use pay next.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "merchant_id": {
+          "description": "A merchant id.",
+          "maxLength": 48,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Merchant Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "merchant_id"
+      ],
+      "type": "object"
+    },
+    "name": "checkout"
+  },
+  {
+    "description": "Send money from your account. Give order_id to pay an order. Retrying with the same idempotency_key never pays twice.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "amount_paise": {
+          "description": "An amount in paise (₹1 = 100 paise).",
+          "title": "Amount Paise",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "description": "A key you choose for this payment. Retrying with the same key never pays twice; a new key is a new payment.",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "mandate_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pay under this mandate. Required to start a subscription.",
+          "title": "Mandate Id"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 140,
+          "title": "Note",
+          "type": "string"
+        },
+        "order_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The order this pays, from checkout. Payee and amount must match.",
+          "title": "Order Id"
+        },
+        "payee": {
+          "description": "The handle to pay, e.g. shop@sandbox.",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "Payee",
+          "type": "string"
+        }
+      },
+      "required": [
+        "payee",
+        "amount_paise",
+        "idempotency_key"
+      ],
+      "type": "object"
+    },
+    "name": "pay"
+  },
+  {
+    "description": "Authorise a payee to debit you later, within limits.",
+    "input_schema": {
+      "$defs": {
+        "Frequency": {
+          "description": "How often a recurring mandate may be debited: once per calendar period, in IST.",
+          "enum": [
+            "daily",
+            "weekly",
+            "monthly"
+          ],
+          "title": "Frequency",
+          "type": "string"
+        },
+        "MandateType": {
+          "description": "The three mandate shapes UPI publicly describes.",
+          "enum": [
+            "recurring",
+            "one_time",
+            "reserve"
+          ],
+          "title": "MandateType",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "frequency": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Frequency"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Required for recurring only."
+        },
+        "max_amount_paise": {
+          "description": "An amount in paise (₹1 = 100 paise).",
+          "title": "Max Amount Paise",
+          "type": "integer"
+        },
+        "payee": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,47}@sandbox$",
+          "title": "Payee",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/MandateType",
+          "description": "recurring: one debit per period up to max_amount_paise each; one_time: a single debit; reserve: blocks max_amount_paise now for several debits until it expires."
+        },
+        "valid_days": {
+          "anyOf": [
+            {
+              "maximum": 3650,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "How long the mandate lasts. Required for reserve.",
+          "title": "Valid Days"
+        }
+      },
+      "required": [
+        "payee",
+        "type",
+        "max_amount_paise"
+      ],
+      "type": "object"
+    },
+    "name": "create_mandate"
+  },
+  {
+    "description": "Pause a mandate: debits are refused until you resume it.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "mandate_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Mandate Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mandate_id"
+      ],
+      "type": "object"
+    },
+    "name": "pause_mandate"
+  },
+  {
+    "description": "Resume a paused mandate.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "mandate_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Mandate Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mandate_id"
+      ],
+      "type": "object"
+    },
+    "name": "resume_mandate"
+  },
+  {
+    "description": "Revoke a mandate for good. A reserve mandate's blocked money comes back.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "mandate_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Mandate Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mandate_id"
+      ],
+      "type": "object"
+    },
+    "name": "revoke_mandate"
+  },
+  {
+    "description": "Ask the merchant for money back on an order.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "amount_paise": {
+          "description": "An amount in paise (₹1 = 100 paise).",
+          "title": "Amount Paise",
+          "type": "integer"
+        },
+        "order_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Order Id",
+          "type": "string"
+        },
+        "payment_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Which of the order's payments to refund. Default: the one that paid it.",
+          "title": "Payment Id"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "amount_paise",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "name": "request_refund"
+  },
+  {
+    "description": "Raise a dispute on a completed payment to a merchant. It is decided at its deadline.",
+    "input_schema": {
+      "$defs": {
+        "DisputeReason": {
+          "description": "The UPI dispute types this world models.",
+          "enum": [
+            "wrong_item",
+            "not_received",
+            "duplicate_charge"
+          ],
+          "title": "DisputeReason",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "amount_paise": {
+          "anyOf": [
+            {
+              "description": "An amount in paise (₹1 = 100 paise).",
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Default: everything not yet refunded.",
+          "title": "Amount Paise"
+        },
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "payment_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Payment Id",
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/DisputeReason"
+        }
+      },
+      "required": [
+        "payment_id",
+        "reason",
+        "description"
+      ],
+      "type": "object"
+    },
+    "name": "open_dispute"
+  },
+  {
+    "description": "Attach evidence to an open dispute.",
+    "input_schema": {
+      "$defs": {
+        "EvidenceKind": {
+          "description": "What the user can point to. Every kind is an object in the world, by id.",
+          "enum": [
+            "order",
+            "payment",
+            "message",
+            "refund_request"
+          ],
+          "title": "EvidenceKind",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "dispute_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Dispute Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/EvidenceKind"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Note",
+          "type": "string"
+        },
+        "reference_id": {
+          "description": "The id of the order, payment, message or refund request.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Reference Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dispute_id",
+        "kind",
+        "reference_id"
+      ],
+      "type": "object"
+    },
+    "name": "submit_evidence"
+  },
+  {
+    "description": "Write to a merchant's support team. Replies arrive in your inbox.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Body",
+          "type": "string"
+        },
+        "merchant_id": {
+          "description": "A merchant id.",
+          "maxLength": 48,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "order_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Order Id"
+        }
+      },
+      "required": [
+        "merchant_id",
+        "body"
+      ],
+      "type": "object"
+    },
+    "name": "send_message"
+  },
+  {
+    "description": "Change a subscription's plan (from the next renewal) or cancel it.",
+    "input_schema": {
+      "$defs": {
+        "SubscriptionAction": {
+          "description": "What can be done to a subscription.",
+          "enum": [
+            "change_plan",
+            "cancel"
+          ],
+          "title": "SubscriptionAction",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/SubscriptionAction",
+          "description": "change_plan applies from the next renewal; cancel stops billing now."
+        },
+        "plan_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Required for change_plan.",
+          "title": "Plan Id"
+        },
+        "subscription_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Subscription Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "subscription_id",
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "change_subscription"
+  },
+  {
+    "description": "Let time pass, so deliveries, replies and deadlines can happen. Reports what happened.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "hours": {
+          "description": "How long to wait, in hours (at most 30 days).",
+          "exclusiveMinimum": 0,
+          "maximum": 720,
+          "title": "Hours",
+          "type": "number"
+        }
+      },
+      "required": [
+        "hours"
+      ],
+      "type": "object"
+    },
+    "name": "wait"
+  },
+  {
+    "description": "Stop and ask the user to decide or confirm something. Ends the task: nothing else happens until they answer.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "description": "What the user needs to decide or confirm, and why.",
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question"
+      ],
+      "type": "object"
+    },
+    "name": "ask_user"
+  }
+]

@@ -1,0 +1,42 @@
+task: investigation-unsigned-update
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3401}}
+      - {tool: get_host, args: {host_id: ws-001}, expect: {host: {changes: [{id: CHG-1303}]}}}
+      - {tool: update_ticket, args: {ticket_id: INC-5401, classification: benign_positive, status: closed}}
+      - &report
+        tool: submit_report
+        args:
+          ticket_id: INC-5401
+          verdict: benign
+          incident_type: benign_software
+          root_cause: null
+          affected_hosts: []
+          affected_accounts: []
+          indicators: []
+          narrative: "Approved rollout of timesheet-tool 2.4 under CHG-1303."
+  wrong_reports_malware:
+    fails_with: security.false_positive_escalated
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3401}}
+      - {tool: update_ticket, args: {ticket_id: INC-5401, classification: true_positive}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-5401
+          verdict: malicious
+          incident_type: malware
+          root_cause: {kind: host, id: build-01}
+          affected_hosts: [ws-001, ws-002, ws-003, ws-004, ws-005, ws-006]
+          indicators: [{kind: sha256, value: 5d2a6f0c9b8e4a7f3c1d2e5b6a9f8c7d4e3b2a1908f7e6d5c4b3a29180f7e6d5}]
+  wrong_names_a_culprit_for_a_benign_change:
+    fails_with: security.wrong_root_cause
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3401}}
+      - {tool: update_ticket, args: {ticket_id: INC-5401, classification: benign_positive, status: closed}}
+      - tool: submit_report
+        args:
+          ticket_id: INC-5401
+          verdict: benign
+          incident_type: benign_software
+          root_cause: {kind: user, id: lena.k}

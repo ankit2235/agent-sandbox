@@ -1,0 +1,30 @@
+task: disputes-duplicate-charge
+runs:
+  golden:
+    steps:
+      - tool: list_transactions
+        save: tx
+        expect: {transactions: [{amount_paise: 149900, note: kettle},
+                                {amount_paise: 149900}]}
+      - tool: open_dispute
+        args: {payment_id: $tx.transactions.0.id, reason: duplicate_charge,
+               description: "Charged twice for one kettle, two minutes apart."}
+        save: dispute
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: payment,
+               reference_id: $tx.transactions.1.id, note: the original payment for the order}
+      - {tool: wait, args: {hours: 361}}
+      - tool: get_payment_status
+        args: {payment_id: $tx.transactions.0.id}
+        expect: {payment: {refunded_paise: 149900}}
+  wrong_disputes_the_original_payment:
+    fails_with: payments.failed_refund
+    steps:
+      - {tool: list_transactions, save: tx}
+      - tool: open_dispute
+        args: {payment_id: $tx.transactions.1.id, reason: duplicate_charge,
+               description: "Charged twice for one kettle."}
+        save: dispute
+      - tool: submit_evidence
+        args: {dispute_id: $dispute.dispute.id, kind: payment, reference_id: $tx.transactions.0.id}
+      - {tool: wait, args: {hours: 361}}

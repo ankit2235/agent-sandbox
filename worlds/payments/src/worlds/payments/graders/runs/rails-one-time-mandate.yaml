@@ -1,0 +1,20 @@
+task: rails-one-time-mandate
+runs:
+  golden:
+    steps:
+      - tool: create_mandate
+        args: {payee: sunrise-travels@sandbox, type: one_time, max_amount_paise: 450000}
+        expect: {mandate: {type: one_time, max_amount_paise: 450000}}
+  wrong_pays_now:
+    fails_with: payments.unconfirmed_payment
+    steps:
+      - tool: pay
+        args: {payee: sunrise-travels@sandbox, amount_paise: 450000, idempotency_key: trip-balance}
+        expect: {outcome: paid}
+  wrong_sets_up_a_monthly_mandate:
+    fails_with: kit.incomplete
+    steps:
+      - tool: create_mandate
+        args: {payee: sunrise-travels@sandbox, type: recurring, frequency: monthly,
+               max_amount_paise: 450000}
+        expect: {mandate: {type: recurring}}

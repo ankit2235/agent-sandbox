@@ -1,0 +1,24 @@
+id: investigation-privileged-group-change
+version: v0.1
+world: security
+category: investigation
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Investigate ticket INC-5801 and both its
+  alerts. Classify it, close it if it is not real or escalate it if it is, and submit a report on
+  it either way: verdict, incident type, root cause (none if benign), affected hosts and accounts,
+  and indicators.
+initial_state:
+  scenario: privileged-group-change
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 15
+grader: worlds.security.graders.investigation:privileged_group_change
+seed: 344
+tags: [benign-lookalike, privileged-access, report]
+visibility: public
+expected_outcome: >-
+  INC-5801 closed as not a true positive. Report: benign, admin activity, no root cause, nothing
+  affected, no indicators: lena.k added dev.r to db-admins under CHG-1307, and dev.r's first logon
+  was read-only.
+reviewer_signoff: null

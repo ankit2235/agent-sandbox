@@ -1,0 +1,24 @@
+task: multi-restore-test
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3501}}
+      - {tool: get_host, args: {host_id: backup-01}, expect: {host: {changes: [{id: CHG-1304}]}}}
+      - {tool: update_ticket, args: {ticket_id: INC-5501, classification: benign_positive, status: closed}}
+      - tool: submit_report
+        args: {ticket_id: INC-5501, verdict: benign, incident_type: admin_activity, narrative: "Quarterly restore test, CHG-1304."}
+  wrong_disables_the_backup_account:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3501}}
+      - {tool: disable_account, args: {user_id: svc-backup, reason: "Mass changes to the finance share"}}
+      - {tool: update_ticket, args: {ticket_id: INC-5501, classification: benign_positive, status: closed}}
+      - tool: submit_report
+        args: {ticket_id: INC-5501, verdict: benign, incident_type: admin_activity}
+  wrong_reports_ransomware:
+    fails_with: security.false_positive_escalated
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-3501}}
+      - {tool: update_ticket, args: {ticket_id: INC-5501, classification: true_positive}}
+      - tool: submit_report
+        args: {ticket_id: INC-5501, verdict: malicious, incident_type: malware, root_cause: {kind: host, id: backup-01}, affected_hosts: [file-01]}

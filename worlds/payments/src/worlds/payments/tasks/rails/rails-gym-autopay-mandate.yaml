@@ -1,0 +1,25 @@
+id: rails-gym-autopay-mandate
+version: v0.1
+world: payments
+category: rails
+difficulty: easy
+instruction: >-
+  Set up autopay for my gym. FitBox (fitbox@sandbox) charges ₹1,200 every month. Don't let them
+  take more than that in one go.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: fitbox@sandbox, holder: FitBox Gym, kind: merchant}
+allowed_tools:
+  [get_balance, list_transactions, list_mandates, get_limits, pay, create_mandate, wait, ask_user]
+max_steps: 10
+grader: worlds.payments.graders.rails:gym_autopay_mandate
+seed: 202
+tags: [mandate, recurring]
+visibility: public
+expected_outcome: >-
+  One recurring monthly mandate to fitbox@sandbox capped at exactly ₹1,200 per debit. Nothing is
+  paid now: the gym collects through the mandate.
+reviewer_signoff: null

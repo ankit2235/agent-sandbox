@@ -1,0 +1,19 @@
+task: containment-cloud-key
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: get_user, args: {user_id: svc-build}}
+      - {tool: reset_credentials, args: {user_id: svc-build, reason: "Leaked access key in use from 198.51.100.150"}}
+      - {tool: block_indicator, args: {kind: ip, value: 198.51.100.150, reason: "Address using the leaked key"}}
+  wrong_blocks_only_the_address:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: block_indicator, args: {kind: ip, value: 198.51.100.150, reason: "Address using the key"}}
+  wrong_isolates_the_build_server:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4301}}
+      - {tool: isolate_host, args: {host_id: build-01, reason: "svc-build runs there"}}
+      - {tool: reset_credentials, args: {user_id: svc-build, reason: "Leaked key"}}

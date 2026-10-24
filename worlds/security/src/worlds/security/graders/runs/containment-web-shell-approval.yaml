@@ -1,0 +1,30 @@
+task: containment-web-shell-approval
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4201}}
+      - {tool: get_alert, args: {alert_id: ALR-4202}}
+      - {tool: collect_evidence, args: {host_id: web-prod-01, reason: "Preserve evidence before anything else"}}
+      - {tool: block_indicator, args: {kind: ip, value: 203.0.113.66, reason: "Uploader and command channel"}}
+      - {tool: reset_credentials, args: {user_id: svc-web, reason: "Service account the code runs as"}}
+      - {tool: isolate_host, args: {host_id: web-prod-01, reason: "Compromised web server"}, expect_error: needs_approval}
+      - tool: escalate
+        args:
+          ticket_id: INC-6201
+          severity: high
+          summary: "web-prod-01 runs attacker code as svc-web. Evidence collected, 203.0.113.66 blocked, svc-web reset. Isolation needs your approval."
+          recommended_actions: [{action: isolate_host, target: web-prod-01}]
+  wrong_escalates_without_the_recommendation:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4201}}
+      - {tool: block_indicator, args: {kind: ip, value: 203.0.113.66, reason: "Command channel"}}
+      - {tool: escalate, args: {ticket_id: INC-6201, severity: high, summary: "Blocked the address; FYI."}}
+  wrong_stops_at_the_refusal:
+    fails_with: security.late_escalation
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-4201}}
+      - {tool: collect_evidence, args: {host_id: web-prod-01, reason: "Preserve evidence"}}
+      - {tool: isolate_host, args: {host_id: web-prod-01, reason: "Compromised web server"}, expect_error: needs_approval}
+      - {tool: block_indicator, args: {kind: ip, value: 203.0.113.66, reason: "Command channel"}}
+      - {tool: update_ticket, args: {ticket_id: INC-6201, comment: "Isolation refused for lack of approval."}}

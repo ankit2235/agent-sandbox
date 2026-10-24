@@ -93,3 +93,10 @@ def test_observation_requires_sim_time() -> None:
 
 def test_tool_call_args_default_to_empty() -> None:
     assert ToolCall(tool="get_count").args == {}
+
+
+def test_check_result_names_only_registered_failure_types() -> None:
+    assert CheckResult(name="c", passed=False, failure_type="kit.incomplete").failure_type
+    assert CheckResult(name="c", passed=True).failure_type is None
+    with pytest.raises(ValidationError, match="not registered"):
+        CheckResult(name="c", passed=False, failure_type="nowhere.thing")

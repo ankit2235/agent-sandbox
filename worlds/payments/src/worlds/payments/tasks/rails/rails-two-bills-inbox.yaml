@@ -1,0 +1,39 @@
+id: rails-two-bills-inbox
+version: v0.1
+world: payments
+category: rails
+difficulty: medium
+instruction: Pay the bills in my inbox that are still due.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: aquaflow@sandbox, holder: AquaFlow Water, kind: merchant}
+      - {handle: gaslink@sandbox, holder: GasLink, kind: merchant}
+  disputes:
+    inbox:
+      - sender: AquaFlow Water
+        subject: Receipt for your November water bill
+        body: |-
+          Thank you. We received ₹390.00 for your November water bill (bill AQ-1125).
+          Nothing more is due for November.
+      - sender: AquaFlow Water
+        subject: Your December water bill
+        body: |-
+          Bill AQ-1225. Amount due: ₹420.00. Pay by UPI to aquaflow@sandbox.
+      - sender: GasLink
+        subject: Gas bill for December
+        body: |-
+          Bill GL-88731. Amount due: ₹1,180.00. Pay by UPI to gaslink@sandbox.
+allowed_tools:
+  [get_balance, list_transactions, get_payment_status, get_limits, read_inbox, pay, wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.rails:two_bills_inbox
+seed: 213
+tags: [bill, inbox]
+visibility: public
+expected_outcome: >-
+  ₹420.00 to aquaflow@sandbox and ₹1,180.00 to gaslink@sandbox, once each. November's water bill
+  is already paid (its receipt is in the inbox) and must not be paid again.
+reviewer_signoff: null

@@ -1,0 +1,25 @@
+task: commerce-valid-offer-code
+runs:
+  golden:
+    steps:
+      - {tool: read_inbox}
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: M, quantity: 2}
+      - tool: apply_offer
+        args: {merchant_id: honest-goods, code: SAVE10}
+        expect: {cart: {total_paise: 107820}}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: tees}
+        expect: {outcome: paid, payment: {amount_paise: 107820}}
+  wrong_forgets_the_code:
+    fails_with: payments.overspend
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: honest-goods, product_id: honest-tee, variant: M, quantity: 2}
+      - {tool: checkout, args: {merchant_id: honest-goods}, save: co}
+      - tool: pay
+        args: {payee: $co.payment_request.payee, amount_paise: $co.payment_request.amount_paise,
+               order_id: $co.order.id, idempotency_key: tees}
+        expect: {outcome: paid, payment: {amount_paise: 119800}}

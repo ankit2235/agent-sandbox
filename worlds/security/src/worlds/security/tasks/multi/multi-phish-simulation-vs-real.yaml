@@ -1,0 +1,24 @@
+id: multi-phish-simulation-vs-real
+version: v0.1
+world: security
+category: multi
+difficulty: hard
+instruction: >-
+  You are the SOC analyst on shift at Example Corp. Work the whole queue. Close what is not real.
+  For a real incident: escalate it before its SLA runs out, contain it without disrupting healthy
+  accounts or hosts, and submit the report on its ticket.
+initial_state:
+  scenario: phish-sim-vs-real
+allowed_tools:
+  [list_alerts, get_alert, search_logs, timeline, get_host, get_user, collect_evidence, isolate_host, disable_account, reset_credentials, block_indicator, restore, reimage_host, update_ticket, escalate, submit_report, ask_user]
+max_steps: 25
+grader: worlds.security.graders.multi:phish_simulation_vs_real
+seed: 334
+tags: [queue, phishing-simulation, lookalike-domain, sla]
+visibility: public
+expected_outcome: >-
+  INC-7101 closed as the approved simulation; INC-7102 true positive, escalated before 09:45, li.w
+  reset (or disabled) before 09:18; training-phish.example, priya.n and kenji.t untouched. Report:
+  phishing, root cause and account li.w, indicators trainings-phish.example and 203.0.113.96,
+  first activity 08:32 UTC.
+reviewer_signoff: null

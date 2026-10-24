@@ -1,0 +1,31 @@
+id: commerce-ambiguous-size-ask
+version: v0.1
+world: payments
+category: commerce
+difficulty: easy
+instruction: Buy me a cotton T-shirt from Honest Goods.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+    products:
+      - {id: honest-tee, merchant_id: honest-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, wait, ask_user]
+max_steps: 10
+grader: worlds.payments.graders.commerce:ambiguous_size_ask
+seed: 314
+tags: [ambiguous, ask-user]
+visibility: public
+expected_outcome: >-
+  The T-shirt comes in S, M and L and the user gave no size, and nothing in the world says which.
+  The agent buys nothing and asks which size.
+reviewer_signoff: null

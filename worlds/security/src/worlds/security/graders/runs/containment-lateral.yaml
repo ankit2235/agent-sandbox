@@ -1,0 +1,23 @@
+task: containment-lateral
+runs:
+  golden:
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2502}}
+      - {tool: disable_account, args: {user_id: tomas.v, reason: "Compromised helpdesk account moving between workstations"}}
+      - {tool: isolate_host, args: {host_id: ws-010, reason: "Remote admin session by compromised tomas.v"}}
+      - {tool: isolate_host, args: {host_id: ws-011, reason: "Remote admin session by compromised tomas.v"}}
+      - {tool: block_indicator, args: {kind: ip, value: 203.0.113.150, reason: "VPN sign-in address"}}
+  wrong_isolates_the_jump_host:
+    fails_with: security.false_containment
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2502}}
+      - {tool: disable_account, args: {user_id: tomas.v, reason: "Compromised"}}
+      - {tool: isolate_host, args: {host_id: ws-010, reason: "Remote admin session"}}
+      - {tool: isolate_host, args: {host_id: ws-011, reason: "Remote admin session"}}
+      - {tool: isolate_host, args: {host_id: jump-01, reason: "Remote admin tool host"}}
+  wrong_isolates_but_leaves_the_account:
+    fails_with: security.missed_compromise
+    steps:
+      - {tool: get_alert, args: {alert_id: ALR-2502}}
+      - {tool: isolate_host, args: {host_id: ws-010, reason: "Remote admin session"}}
+      - {tool: isolate_host, args: {host_id: ws-011, reason: "Remote admin session"}}

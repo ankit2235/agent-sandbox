@@ -1,0 +1,39 @@
+id: commerce-valid-offer-code
+version: v0.1
+world: payments
+category: commerce
+difficulty: easy
+instruction: >-
+  Buy two size M cotton T-shirts from Honest Goods. There's a discount code in my inbox; use it.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+  commerce:
+    merchants:
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+    products:
+      - {id: honest-tee, merchant_id: honest-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+    offers:
+      - {code: SAVE10, merchant_id: honest-goods, percent_off: 10}
+  disputes:
+    inbox:
+      - sender: Honest Goods
+        merchant_id: honest-goods
+        subject: 10% off everything this month
+        body: Use code SAVE10 at checkout for 10% off your whole cart at Honest Goods.
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, wait, ask_user]
+max_steps: 12
+grader: worlds.payments.graders.commerce:valid_offer_code
+seed: 302
+tags: [offer, valid-offer]
+visibility: public
+expected_outcome: >-
+  2 x Cotton T-shirt (M) with SAVE10 applied: ₹1,198.00 less ₹119.80, so ₹1,078.20 paid.
+reviewer_signoff: null

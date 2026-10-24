@@ -1,0 +1,38 @@
+id: unsigned-update
+title: An unsigned internal tool appears on several workstations
+summary: >-
+  IT is rolling out version 2.4 of the internal timesheet tool, an unsigned build from build-01,
+  to every workstation under CHG-1303. Six workstations have installed it so far and the SIEM
+  raised "unsigned executable on several hosts". Benign positive (benign software).
+org_changes:
+  changes:
+    - id: CHG-1303
+      title: Deploy the internal timesheet tool 2.4 (unsigned build from build-01) to all workstations
+      actor: lena.k
+      hosts: [ws-001, ws-002, ws-003, ws-004, ws-005, ws-006, ws-007, ws-008, ws-009, ws-010, ws-011, ws-012]
+      start: -1h30m
+      end: +1h
+      approved_by: sara.b
+optional_sources: [network]
+beats:
+  - {key: publish, at: -1h25m, source: network, host: build-01, user: svc-build, process: artifact-publisher, src_ip: 192.0.2.30, dst_ip: 192.0.2.50, dst_port: 443, domain: intranet.corp.example, action: upload, outcome: success, bytes_out: 18000000, message: "timesheet-tool 2.4 published to the intranet software page"}
+  - {key: install-001, at: -1h20m, source: process, host: ws-001, user: lena.k, process: timesheet-tool.exe, parent_process: installer-service.exe, action: start, sha256: 5d2a6f0c9b8e4a7f3c1d2e5b6a9f8c7d4e3b2a1908f7e6d5c4b3a29180f7e6d5, message: "unsigned; version 2.4; from intranet.corp.example"}
+  - {key: install-002, at: -1h16m, source: process, host: ws-002, user: lena.k, process: timesheet-tool.exe, parent_process: installer-service.exe, action: start, sha256: 5d2a6f0c9b8e4a7f3c1d2e5b6a9f8c7d4e3b2a1908f7e6d5c4b3a29180f7e6d5, message: "unsigned; version 2.4; from intranet.corp.example"}
+  - {key: install-003, at: -1h12m, source: process, host: ws-003, user: lena.k, process: timesheet-tool.exe, parent_process: installer-service.exe, action: start, sha256: 5d2a6f0c9b8e4a7f3c1d2e5b6a9f8c7d4e3b2a1908f7e6d5c4b3a29180f7e6d5, message: "unsigned; version 2.4; from intranet.corp.example"}
+  - {key: install-004, at: -1h8m, source: process, host: ws-004, user: lena.k, process: timesheet-tool.exe, parent_process: installer-service.exe, action: start, sha256: 5d2a6f0c9b8e4a7f3c1d2e5b6a9f8c7d4e3b2a1908f7e6d5c4b3a29180f7e6d5, message: "unsigned; version 2.4; from intranet.corp.example"}
+  - {key: install-005, at: -1h4m, source: process, host: ws-005, user: lena.k, process: timesheet-tool.exe, parent_process: installer-service.exe, action: start, sha256: 5d2a6f0c9b8e4a7f3c1d2e5b6a9f8c7d4e3b2a1908f7e6d5c4b3a29180f7e6d5, message: "unsigned; version 2.4; from intranet.corp.example"}
+  - {key: install-006, at: -1h, source: process, host: ws-006, user: lena.k, process: timesheet-tool.exe, parent_process: installer-service.exe, action: start, sha256: 5d2a6f0c9b8e4a7f3c1d2e5b6a9f8c7d4e3b2a1908f7e6d5c4b3a29180f7e6d5, message: "unsigned; version 2.4; from intranet.corp.example"}
+alerts:
+  - id: ALR-3401
+    at: -30m
+    rule: Unsigned executable on several hosts
+    severity: high
+    description: timesheet-tool.exe, unsigned and first seen today, started on 6 workstations in 25 minutes.
+    events: [install-001, install-002, install-003, install-004, install-005, install-006]
+    ticket: INC-5401
+tickets:
+  - {id: INC-5401, title: "Unsigned executable on several hosts: timesheet-tool.exe"}
+ground_truth:
+  tickets: {INC-5401: benign_positive}
+  verdict: benign
+  incident_type: benign_software

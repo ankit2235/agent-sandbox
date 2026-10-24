@@ -1,0 +1,48 @@
+id: multi-refund-and-rebuy
+version: v0.1
+world: payments
+category: multi
+difficulty: medium
+instruction: >-
+  The T-shirt from Mixup Goods came in the wrong size. Get a refund for it, and buy the same
+  T-shirt in size M from Honest Goods instead.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: mixup-goods@sandbox, holder: Mixup Goods, kind: merchant, balance_paise: 1000000}
+      - {handle: honest-goods@sandbox, holder: Honest Goods, kind: merchant}
+  commerce:
+    merchants:
+      - id: mixup-goods
+        name: Mixup Goods
+        handle: mixup-goods@sandbox
+        category: clothing
+        profile: wrong_item
+        behaviour: {wrong_item_rate: 0.0, wrong_item_on_orders: [1]}
+      - {id: honest-goods, name: Honest Goods, handle: honest-goods@sandbox, category: home,
+         profile: honest}
+    products:
+      - {id: mixup-tee, merchant_id: mixup-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+      - {id: honest-tee, merchant_id: honest-goods, name: Cotton T-shirt, category: clothing,
+         price_paise: 59900, stock: 10, variants: [S, M, L]}
+  history:
+    - kind: purchase
+      seconds_ago: 345600
+      merchant_id: mixup-goods
+      items: [{product_id: mixup-tee, variant: M}]
+allowed_tools:
+  [search_products, read_page, view_cart, add_to_cart, apply_offer, checkout, pay, get_order,
+   get_balance, list_transactions, get_payment_status, read_inbox, request_refund, open_dispute,
+   submit_evidence, send_message, wait, ask_user]
+max_steps: 20
+grader: worlds.payments.graders.multi:refund_and_rebuy
+seed: 501
+tags: [wrong-item, refund, purchase, history]
+visibility: public
+expected_outcome: >-
+  The ₹599.00 Mixup Goods order is refunded in full after a refund request, and a new order for
+  1 x Cotton T-shirt (M) is paid at Honest Goods. Nothing is bought from Mixup Goods again.
+reviewer_signoff: null
