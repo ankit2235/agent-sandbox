@@ -13,6 +13,12 @@ because the hidden set is built from public families (docs/HIDDEN_SETS.md).
 - ``guards/results.json``: the Guard models leaderboard file (``guard-results-v0.1``,
   ``schemas/guard-results.schema.json``).
 
+Given guarded sandbox run directories (``--runs``, from ``sandbox run --guard``), each
+backend's entry also gets ``with_guard``: by world and task set, the agent's task success
+with the guard on (and, given an unguarded run of the same agent on the same tasks, without
+it), next to the guard's block and ask_user rates, and whether every run's decision records
+verified. A hidden set gives aggregates only.
+
 Nothing is invented: a metric that was not measured is null, and the report says which
 backends are ours.
 """
@@ -21,10 +27,16 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 import jsonschema
+
+from kit.world import worlds
+from runner.runs import RunRecord, load_records, read_manifest
+from runner.score import score
+from runner.verify import verify
 
 EVAL_FORMAT = "guard-eval-v1"
 RESULTS_FORMAT = "guard-results-v0.1"
@@ -97,7 +109,100 @@ def _row(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def leaderboard(results: list[dict[str, Any]], updated: dt.date) -> dict[str, Any]:
+def _share(metric: dict[str, float]) -> dict[str, float | None]:
+    """A runner score (in percent) as a share, with its interval."""
+    ci = metric.get("ci")
+    return {"value": metric["value"] / 100, "ci": None if ci is None else ci / 100}
+
+
+def _task_success(run_dir: Path, records: Sequence[RunRecord]) -> dict[str, float | None]:
+    manifest = read_manifest(run_dir)
+    assert manifest is not None
+    return _share(score(worlds.get(manifest.config.world), records).metrics["overall"])
+
+
+def guard_runs(
+    run_dirs: Sequence[Path], baselines: Sequence[Path] = ()
+) -> dict[str, dict[str, Any]]:
+    """Each guarded run directory as a ``with_guard`` cell, by backend: one per world, task
+    set and agent.
+    """
+    unguarded: dict[tuple[str, str, str], Path] = {}
+    for path in baselines:
+        manifest = read_manifest(path)
+        if manifest is None or manifest.config.guard is not None:
+            msg = f"{path} is not an unguarded run directory"
+            raise ValueError(msg)
+        key = (manifest.config.world, manifest.config.tasks, manifest.config.model)
+        unguarded[key] = path
+    out: dict[str, dict[str, Any]] = {}
+    for path in run_dirs:
+        manifest = read_manifest(path)
+        if manifest is None or manifest.config.guard is None:
+            msg = f"{path} is not a guarded run directory (sandbox run --guard)"
+            raise ValueError(msg)
+        config, guard = manifest.config, manifest.config.guard
+        records = [r for r in load_records(path) if r.status == "completed"]
+        if not records:
+            msg = f"{path} has no completed runs"
+            raise ValueError(msg)
+        decided = [r.guard for r in records if r.guard is not None]
+        decisions = sum(g.decisions for g in decided)
+        baseline = unguarded.get((config.world, config.tasks, config.model))
+        kind = guard.backend_config.get("kind")
+        if kind is None:
+            msg = f"{path}: the backend's kind is not recorded (backend_config has no 'kind')"
+            raise ValueError(msg)
+        entry = out.setdefault(
+            guard.backend,
+            {
+                "kind": kind,
+                "model": guard.backend_config.get("model")
+                or guard.backend_config.get("base_model"),
+                "with_guard": [],
+            },
+        )
+        cell = (config.world, config.tasks, config.model_name)
+        if any((c["world"], c["task_set"], c["agent"]) == cell for c in entry["with_guard"]):
+            msg = f"two guarded run directories for {guard.backend} on {cell}; give one"
+            raise ValueError(msg)
+        entry["with_guard"].append(
+            {
+                "world": config.world,
+                "task_set": config.tasks,
+                "agent": config.model_name,
+                "policy": {
+                    "id": guard.policy_id,
+                    "version": guard.policy_version,
+                    "hash": guard.policy_hash,
+                },
+                "runs": len(records),
+                "tasks": len({r.task_id for r in records}),
+                "task_success": _task_success(path, records),
+                "task_success_without_guard": (
+                    _task_success(
+                        baseline, [r for r in load_records(baseline) if r.status == "completed"]
+                    )
+                    if baseline is not None
+                    else None
+                ),
+                "decisions": decisions,
+                "block_rate": sum(g.blocked for g in decided) / decisions if decisions else None,
+                "ask_user_rate": sum(g.asked for g in decided) / decisions if decisions else None,
+                "records_verified": verify(path).ok,
+                "hidden": any(r.visibility == "hidden" for r in records),
+            }
+        )
+    for entry in out.values():
+        entry["with_guard"].sort(key=lambda c: (c["world"], c["task_set"], c["agent"]))
+    return out
+
+
+def leaderboard(
+    results: list[dict[str, Any]],
+    updated: dt.date,
+    runs: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """The Guard models leaderboard file."""
     backends: dict[str, dict[str, Any]] = {}
     for result in results:
@@ -116,6 +221,20 @@ def leaderboard(results: list[dict[str, Any]], updated: dt.date) -> dict[str, An
         )
         entry["model_versions"] = sorted({*entry["model_versions"], *result["model_versions"]})
         entry["sets"][result["set"]] = _row(result)
+    for name, guarded in (runs or {}).items():
+        entry = backends.setdefault(
+            name,
+            {
+                "name": name,
+                "kind": guarded["kind"],
+                "ours": guarded["kind"] == OURS,
+                "model": guarded["model"],
+                "model_versions": [],
+                "price": None,
+                "sets": {},
+            },
+        )
+        entry["with_guard"] = guarded["with_guard"]
     datasets = sorted({result["dataset"] for result in results})
     data = {
         "format": RESULTS_FORMAT,
@@ -136,7 +255,32 @@ def _pct(metric: Any) -> str:
     return f"{100 * value:.1f}%" + (f" ± {100 * ci:.1f}" if isinstance(ci, int | float) else "")
 
 
-def markdown(results: list[dict[str, Any]]) -> str:
+def guard_table(runs: dict[str, dict[str, Any]]) -> list[str]:
+    """The guarded sandbox runs as a table: task success always beside the block rate."""
+    if not runs:
+        return []
+    lines = [
+        "",
+        "## With the guard on (sandbox runs)",
+        "",
+        "| Backend | World | Task set | Agent | Task success | Without the guard | Block rate | "
+        "Ask rate | Decisions | Records verified |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for name, entry in sorted(runs.items()):
+        for cell in entry["with_guard"]:
+            block, ask = cell["block_rate"], cell["ask_user_rate"]
+            lines.append(
+                f"| {name} | {cell['world']} | {cell['task_set']} | {cell['agent']} | "
+                f"{_pct(cell['task_success'])} | {_pct(cell['task_success_without_guard'])} | "
+                f"{'—' if block is None else f'{100 * block:.1f}%'} | "
+                f"{'—' if ask is None else f'{100 * ask:.1f}%'} | {cell['decisions']} | "
+                f"{'yes' if cell['records_verified'] else 'NO'} |"
+            )
+    return lines
+
+
+def markdown(results: list[dict[str, Any]], runs: dict[str, dict[str, Any]] | None = None) -> str:
     """The report's tables, opening with where our model loses."""
     lines = ["## Where our model loses", ""]
     if not any(r["backend"]["kind"] == OURS for r in results):
@@ -168,12 +312,23 @@ def markdown(results: list[dict[str, Any]]) -> str:
                 f"{'—' if p99 is None else f'{p99:.0f}'} | "
                 f"{'—' if cost is None else f'{cost:.4f}'} |"
             )
+    lines += guard_table(runs or {})
     return "\n".join(lines) + "\n"
 
 
-def write_report(paths: list[Path], out: Path, updated: dt.date) -> dict[str, Path]:
-    """Read eval results and write the report, its tables and the leaderboard file."""
+def write_report(
+    paths: list[Path],
+    out: Path,
+    updated: dt.date,
+    *,
+    runs: Sequence[Path] = (),
+    baselines: Sequence[Path] = (),
+) -> dict[str, Path]:
+    """Read eval results (and guarded run directories) and write the report, its tables and
+    the leaderboard file.
+    """
     results = [read_result(path) for path in paths]
+    guarded = guard_runs(runs, baselines)
     out.mkdir(parents=True, exist_ok=True)
     written = {
         "report": out / "report.json",
@@ -184,10 +339,10 @@ def write_report(paths: list[Path], out: Path, updated: dt.date) -> dict[str, Pa
         json.dumps({"results": results, "losses": losses(results)}, indent=2) + "\n",
         encoding="utf-8",
     )
-    written["markdown"].write_text(markdown(results), encoding="utf-8")
+    written["markdown"].write_text(markdown(results, guarded), encoding="utf-8")
     written["leaderboard"].parent.mkdir(parents=True, exist_ok=True)
     written["leaderboard"].write_text(
-        json.dumps(leaderboard(results, updated), indent=2) + "\n", encoding="utf-8"
+        json.dumps(leaderboard(results, updated, guarded), indent=2) + "\n", encoding="utf-8"
     )
     return written
 
@@ -197,6 +352,8 @@ __all__ = [
     "EVAL_FORMAT",
     "RESULTS_FORMAT",
     "SCHEMA",
+    "guard_runs",
+    "guard_table",
     "leaderboard",
     "losses",
     "markdown",

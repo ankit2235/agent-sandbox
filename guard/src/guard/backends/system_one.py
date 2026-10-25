@@ -28,6 +28,7 @@ from typing import Any
 
 import httpx
 
+from guard.actions import ActionsRegistry, actions
 from guard.decision import (
     DECISIONS,
     BackendResult,
@@ -36,9 +37,8 @@ from guard.decision import (
     DecisionRequest,
     fail_closed,
 )
+from guard.render import render
 
-from ..render import render
-from ..world import ActionsRegistry, actions
 from .questions import DECISION_OPTIONS, DECISION_QUESTION, reason_question
 
 DECISION_ID = "decision"

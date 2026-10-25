@@ -20,6 +20,7 @@ from typing import Any
 
 import jsonschema
 
+from guard.actions import WorldActions, actions
 from kit.scripted import GOLDEN, RunFile, load_runs
 from kit.types import TaskSpec
 from kit.world import WorldSpec, worlds
@@ -27,7 +28,6 @@ from runner.hidden import content_hash
 from stress.core import NotApplicable, apply, registry, scripted_runs
 
 from .. import DATASET_VERSION
-from ..world import WorldActions, actions
 from . import templates
 from .example import ActionExample, RunKind, Source, example_id
 from .labels import golden_asks, label, walk

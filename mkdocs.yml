@@ -46,6 +46,7 @@ nav:
       - Payments: tools/payments.md
       - Security (preview): tools/security.md
   - Scoring and confidence intervals: scoring.md
+  - The guard: guard.md
   - Limitations: limitations.md
   - Submitting results: submit-results.md
   - Contributing tasks: contribute-tasks.md

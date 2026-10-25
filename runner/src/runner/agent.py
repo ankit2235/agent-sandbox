@@ -17,12 +17,17 @@ The loop, until the episode is done or a cap is hit:
 
 Arguments that are not a JSON object never reach the world: the model is told
 ``malformed_arguments`` and the turn still counts towards the turn cap.
+
+With a guard (``sandbox run --guard``), the agent's client talks to a
+:class:`guard.mcp_proxy.GuardProxy` in front of the bridge instead: every call to a
+guarded tool is decided first, and a held call never reaches the world.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from importlib import resources
 from typing import Any
@@ -34,6 +39,7 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from opentelemetry import trace as otel
 from opentelemetry.trace import Tracer
 
+from guard.mcp_proxy import Check, GuardProxy
 from kit.episode import BaseEpisode
 from kit.mcp_bridge import McpBridge
 from kit.types import Observation, TaskSpec, Usage
@@ -134,6 +140,7 @@ async def run_agent(
     prompt: str,
     caps: Caps,
     tracer: Tracer,
+    guard: Check | None = None,
 ) -> AgentResult:
     """Drive one episode with a model until it stops, the episode ends or a cap is hit.
 
@@ -142,7 +149,7 @@ async def run_agent(
     """
     try:
         return await _drive(
-            episode, task, first, call_model, prompt=prompt, caps=caps, tracer=tracer
+            episode, task, first, call_model, prompt=prompt, caps=caps, tracer=tracer, guard=guard
         )
     except BaseExceptionGroup as group:
         raise _sole(group) from None
@@ -164,11 +171,12 @@ async def _drive(
     prompt: str,
     caps: Caps,
     tracer: Tracer,
+    guard: Check | None = None,
 ) -> AgentResult:
     bridge = McpBridge(episode, episode.router, task, name=f"sandbox-{episode.world}")
     result = AgentResult(stop_reason="agent_finished")
     limit = caps.steps_for(task)
-    async with create_connected_server_and_client_session(bridge.server()) as client:
+    async with _session(bridge, guard) as client:
         tools = tool_definitions((await client.list_tools()).tools)
         messages: list[Message] = [
             {"role": "system", "content": prompt},
@@ -208,6 +216,18 @@ async def _drive(
                 result.stop_reason = "max_steps" if capped else "terminal_tool"
                 break
     return result
+
+
+@asynccontextmanager
+async def _session(bridge: McpBridge, guard: Check | None) -> AsyncIterator[ClientSession]:
+    """The agent's MCP session: to the bridge, or to a guard proxy in front of it."""
+    async with create_connected_server_and_client_session(bridge.server()) as upstream:
+        if guard is None:
+            yield upstream
+            return
+        proxy = GuardProxy(upstream, guard, name=f"guard-{bridge.name}")
+        async with create_connected_server_and_client_session(proxy.server()) as client:
+            yield client
 
 
 async def _apply(

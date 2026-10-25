@@ -10,6 +10,39 @@ This section becomes **[0.1.0] — payments-v0.1** when the repo owner tags `pay
 `v0.1.0` (`docs/RELEASING.md`). The release gate does not pass yet: it waits on the payments
 reviewer's sign-off, real model results and the real calibration report.
 
+### Added — Phase 8: the guard library (v0.2)
+
+- `guard/`: policies (`guard-policy-v1`, YAML or JSON, versioned and hashed over RFC 8785
+  canonical JSON) with budgets per action, day and month, a confirm threshold, counterparty and
+  category lists, mandate rules, time windows and named world checks; packs
+  `payments/default` and `security/default` (drug safety pending its world and reviewer).
+- The layered decision (`guard.Guard`): hard rules first and final on a block, then a decision
+  backend within a timeout, the stricter of the two; a timeout, an error, an invalid answer or
+  low confidence becomes ask_user. In sandbox runs the hard rules use each task's own
+  delegated limits, and the stricter of those and the pack wins.
+- Decision backends in `guard/backends/` (moved from `training/`): `rules_only`, our model, Jev,
+  Clef and a self-hosted Strands Decider through System One, OpenAI Decisions, LLM judges, and
+  calibration.
+- Hash-chained decision records (`guard-record-v1`) and `sandbox-guard verify`.
+- A Python decorator (`guard.guarded`), an MCP proxy (`guard.mcp_proxy`, and
+  `sandbox-guard proxy` over stdio) and `sandbox-guard policy list | check`.
+- The TypeScript SDK (`guard/typescript/`) with the same policy format, decisions and records,
+  passing the same shared test vectors (`guard/test-vectors/`, written by
+  `scripts/guard_vectors.py`); a `guard-typescript` CI job.
+- `sandbox run --guard <policy> --backend <name>`: the guard in front of the world's
+  high-impact tools, a `decisions.jsonl` per run, and `sandbox verify` checking it.
+- The Guard models track: `sandbox-train eval --guard '{world}/default'` and
+  `sandbox-train report --runs ... --baseline-runs ...`, writing `with_guard` (task success with
+  and without the guard, beside block and ask_user rates) into `guards/results.json`.
+- `docs/site/guard.md`.
+
+### Changed — Phase 8
+
+- The `rules` backend is `rules_only`. `guard` depends on the kit; the runner depends on
+  `guard[mcp]`.
+- `guard-results-v0.1` gains `with_guard` (additive); run directories gain `guard` in
+  `manifest.json` and `result.json` (additive). `sandbox export` refuses guarded runs.
+
 ### Added — Phase 7: guard-model dataset, baselines and evaluation
 
 - `guard/`: the decision interface (`DecisionRequest`, `Decision` with its strict JSON Schema,

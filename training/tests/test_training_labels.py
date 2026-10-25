@@ -2,10 +2,10 @@
 
 import pytest
 
+from guard.actions import actions
 from kit.scripted import Run, RunFile, Step, load_runs
 from kit.world import worlds
 from training.data.labels import broken_checks, golden_asks, label, walk
-from training.world import actions
 
 
 def _runs(world: str, task_id: str) -> tuple:

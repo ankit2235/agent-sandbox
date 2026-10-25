@@ -6,7 +6,7 @@ normalised over the three, so the backend has a probability for each decision (w
 (block, then ask_user, then allow). The reason codes are then generated after the
 chosen opening; a malformed generation fails closed.
 
-The real scorer is :class:`training.guard_model.hf.HFScorer` (transformers, local
+The real scorer is :class:`guard.backends.guard_model.hf.HFScorer` (transformers, local
 inference); tests use a fake one.
 """
 
@@ -16,6 +16,7 @@ import math
 from collections.abc import Sequence
 from typing import Protocol
 
+from guard.actions import ActionsRegistry, actions
 from guard.decision import (
     BackendResult,
     Decision,
@@ -24,7 +25,6 @@ from guard.decision import (
     fail_closed,
 )
 
-from ..world import ActionsRegistry, actions
 from .format import opening, prompt, reasons_after, reasons_for
 
 CAUTION: tuple[DecisionLabel, ...] = ("block", "ask_user", "allow")

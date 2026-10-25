@@ -1,7 +1,7 @@
-"""The security world's high-impact actions, for the guard-model dataset and the rules baseline.
+"""The security world's high-impact actions, for the guard, its dataset and the rules backend.
 
 Registered through the ``agent_sandbox.training`` entry point; read by
-``training.world``. This module imports nothing from the training package. ``context``
+``guard.actions``. This module imports nothing from the guard or the training package. ``context``
 reads only what the analyst could see through the tools (the asset's record, its
 alerts, approved changes, scheduled jobs, the business's own indicators, what is
 already contained, whether evidence was collected), never a story's ground truth,
@@ -167,3 +167,45 @@ RULES = [
         "check": _no_alert_on_target,
     },
 ]
+
+
+# --------------------------------------------------------------------- guard
+def guard_fields(request: dict[str, Any]) -> dict[str, Any]:
+    """The policy fields of one attempt: the asset acted on, and its kind.
+
+    The counterparty is the host, the account or the indicator. The category is the
+    host's criticality, ``privileged`` or ``standard`` for an account, or the indicator's
+    kind. A containment action has no amount.
+    """
+    tool, args, state = request["action"]["tool"], request["action"]["args"], request["state"]
+    if tool in HOST_ACTIONS:
+        host = state.get("host") or {}
+        target = args.get("host_id")
+        return {
+            "counterparty": target if isinstance(target, str) else None,
+            "category": host.get("criticality"),
+        }
+    if tool in ACCOUNT_ACTIONS:
+        account = state.get("account")
+        target = args.get("user_id")
+        kind = (
+            None if account is None else ("privileged" if account.get("privileged") else "standard")
+        )
+        return {"counterparty": target if isinstance(target, str) else None, "category": kind}
+    if tool == "block_indicator":
+        value, kind = args.get("value"), args.get("kind")
+        return {
+            "counterparty": value if isinstance(value, str) else None,
+            "category": kind if isinstance(kind, str) else None,
+        }
+    return {}
+
+
+def guard_delegation(request: dict[str, Any]) -> dict[str, Any]:
+    """Nothing beyond the allowed tools: a security task delegates no numeric limits.
+
+    The operator's own constraints ("do not take the website down without asking") are
+    in the instruction's words, for the backend to read; the allowed tools are checked by
+    the guard itself.
+    """
+    return {}

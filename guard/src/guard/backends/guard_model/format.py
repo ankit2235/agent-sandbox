@@ -12,11 +12,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from guard.actions import WorldActions
 from guard.decision import DecisionLabel, DecisionRequest
-
-from ..data.example import ActionExample
-from ..render import render
-from ..world import WorldActions
+from guard.render import render
 
 ANSWER_CUE = "Answer (JSON):"
 
@@ -50,14 +48,6 @@ def completion(decision: DecisionLabel, reason_codes: list[str]) -> str:
     return json.dumps({"decision": decision, "reason_codes": reason_codes})
 
 
-def sft_row(example: ActionExample, reasons: dict[str, str]) -> dict[str, str]:
-    """One prompt-completion row for TRL's SFTTrainer."""
-    return {
-        "prompt": prompt(example.request, reasons),
-        "completion": completion(example.label.decision, example.label.reason_codes),
-    }
-
-
 def reasons_after(decision: DecisionLabel, generated: str) -> list[str] | None:
     """The reason codes in a completion that started with :func:`opening`; None if malformed."""
     text = opening(decision) + generated
@@ -81,5 +71,4 @@ __all__ = [
     "prompt",
     "reasons_after",
     "reasons_for",
-    "sft_row",
 ]

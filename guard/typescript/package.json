@@ -1,0 +1,23 @@
+{
+  "name": "@agent-sandbox/guard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The agent-sandbox guard in TypeScript: the same policy format, hard rules, layered decision and hash-chained decision records as the Python SDK, held to the same shared test vectors.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": ["dist/src", "dist/schemas"],
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "build": "node scripts/copy-schemas.mjs && tsc -p tsconfig.json",
+    "test": "node --test \"dist/test/**/*.test.js\""
+  },
+  "dependencies": {
+    "ajv": "8.17.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -12,11 +12,18 @@ from pathlib import Path
 import pytest
 
 import guard
+from guard.actions import actions
+from guard.backends.guard_model.backend import GuardModelBackend
+from guard.backends.guard_model.format import (
+    completion,
+    opening,
+    prompt,
+    reasons_after,
+    reasons_for,
+)
 from training.data.build import read_split
 from training.guard_model import grpo, sft
-from training.guard_model.backend import GuardModelBackend
 from training.guard_model.export import export
-from training.guard_model.format import completion, opening, prompt, reasons_after, reasons_for
 from training.guard_model.reward import (
     DECISIONS,
     RewardWeights,
@@ -24,7 +31,6 @@ from training.guard_model.reward import (
     reward,
     trl_reward,
 )
-from training.world import actions
 
 CONFIGS = Path(__file__).parents[1] / "src" / "training" / "guard_model" / "configs"
 REQUIREMENTS = CONFIGS.parent / "requirements-train.txt"

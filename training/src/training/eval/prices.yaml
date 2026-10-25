@@ -1,4 +1,4 @@
-# Prices for cost per 1,000 decisions, by backend name (training/baselines/configs/<name>.yaml).
+# Prices for cost per 1,000 decisions, by backend name (guard/src/guard/backends/configs/<name>.yaml).
 # Each was read from the provider's page on the date given. No cost or latency has been
 # measured yet: every cost and latency in a report is pending until real runs.
 # An entry marked `unknown: true` has no published price we could check; it gets no cost.
@@ -40,6 +40,6 @@ strands-decider:
 guard-qwen2.5-0.5b:
   unknown: true
   note: Self-hosted; give per_hour_usd for the machine it runs on.
-rules:
+rules_only:
   unknown: true
   note: No model; runs in-process.

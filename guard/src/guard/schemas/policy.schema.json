@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/prarabdha-soni/agent-sandbox/guard/policy.schema.json",
+  "title": "Guard policy (guard-policy-v1)",
+  "description": "What a user delegated: per-tool hard rules, the default for other tools and how the decision backend is asked. Shared by the Python and TypeScript SDKs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "version", "actions"],
+  "properties": {
+    "format": {"const": "guard-policy-v1"},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.\\-]*$", "maxLength": 100},
+    "version": {"type": "integer", "minimum": 1},
+    "world": {"type": ["string", "null"]},
+    "description": {"type": "string"},
+    "default": {"enum": ["allow", "block", "ask_user"]},
+    "model_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "timeout_s": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "actions": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[A-Za-z0-9_.\\-]+$"},
+      "additionalProperties": {"$ref": "#/$defs/rules"}
+    }
+  },
+  "$defs": {
+    "amount": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "values": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "hold": {"enum": ["block", "ask_user"]},
+    "list_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allow": {"$ref": "#/$defs/values"},
+        "block": {"$ref": "#/$defs/values"},
+        "confirm": {"$ref": "#/$defs/values"},
+        "unlisted": {"$ref": "#/$defs/hold"}
+      }
+    },
+    "time": {"type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$|^24:00$"},
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "budget": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "per_action": {"$ref": "#/$defs/amount"},
+            "daily": {"$ref": "#/$defs/amount"},
+            "monthly": {"$ref": "#/$defs/amount"}
+          }
+        },
+        "confirm_above": {"$ref": "#/$defs/amount"},
+        "counterparties": {"$ref": "#/$defs/list_rule"},
+        "categories": {"$ref": "#/$defs/list_rule"},
+        "mandate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "required": {"type": "boolean"},
+            "allow": {"$ref": "#/$defs/values"}
+          }
+        },
+        "time_windows": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["windows"],
+          "properties": {
+            "windows": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["days", "start", "end"],
+                "properties": {
+                  "days": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {"enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]}
+                  },
+                  "start": {"$ref": "#/$defs/time"},
+                  "end": {"$ref": "#/$defs/time"}
+                }
+              }
+            },
+            "outside": {"$ref": "#/$defs/hold"}
+          }
+        },
+        "checks": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_\\-]*(\\.[a-z0-9][a-z0-9_\\-]*)+$"}
+        },
+        "model_check": {"type": "boolean"}
+      }
+    }
+  }
+}

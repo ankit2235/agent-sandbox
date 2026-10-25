@@ -99,15 +99,28 @@ name = "agent-sandbox-bench-guard"
 version = "0.1.0"
 source = { editable = "guard" }
 dependencies = [
+    { name = "agent-sandbox-bench-kit" },
+    { name = "httpx" },
     { name = "jsonschema" },
     { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.optional-dependencies]
+mcp = [
+    { name = "agent-sandbox-bench-kit", extra = ["mcp"] },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "agent-sandbox-bench-kit", editable = "kit" },
+    { name = "agent-sandbox-bench-kit", extras = ["mcp"], marker = "extra == 'mcp'", editable = "kit" },
+    { name = "httpx", specifier = ">=0.28" },
     { name = "jsonschema", specifier = ">=4.23" },
     { name = "pydantic", specifier = ">=2.9" },
+    { name = "pyyaml", specifier = ">=6.0" },
 ]
+provides-extras = ["mcp"]
 
 [[package]]
 name = "agent-sandbox-bench-kit"
@@ -140,6 +153,7 @@ name = "agent-sandbox-bench-runner"
 version = "0.1.0"
 source = { editable = "runner" }
 dependencies = [
+    { name = "agent-sandbox-bench-guard", extra = ["mcp"] },
     { name = "agent-sandbox-bench-kit", extra = ["mcp"] },
     { name = "agent-sandbox-bench-stress" },
     { name = "httpx" },
@@ -157,6 +171,7 @@ otlp = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agent-sandbox-bench-guard", extras = ["mcp"], editable = "guard" },
     { name = "agent-sandbox-bench-kit", extras = ["mcp"], editable = "kit" },
     { name = "agent-sandbox-bench-stress", editable = "stress" },
     { name = "httpx", specifier = ">=0.28" },

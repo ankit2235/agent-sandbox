@@ -1,13 +1,25 @@
 [project]
 name = "agent-sandbox-bench-guard"
 version = "0.1.0"
-description = "The guard's decision interface: DecisionRequest, Decision and the DecisionBackend protocol."
+description = "The guard library: policies, hard rules, decision backends, hash-chained decision records, a decorator and an MCP proxy."
 requires-python = ">=3.12"
 license = "Apache-2.0"
+# The kit is a dependency for the world registry and the request builder; its own
+# dependencies are the guard's (pydantic, jsonschema, httpx, pyyaml).
 dependencies = [
+  "agent-sandbox-bench-kit==0.1.0",
   "pydantic>=2.9",
   "jsonschema>=4.23",
+  "httpx>=0.28",
+  "pyyaml>=6.0",
 ]
+
+[project.optional-dependencies]
+# The MCP proxy (guard.mcp_proxy) needs the official MCP SDK, as the kit's bridge does.
+mcp = ["agent-sandbox-bench-kit[mcp]==0.1.0"]
+
+[project.scripts]
+sandbox-guard = "guard.cli:main"
 
 [build-system]
 requires = ["hatchling>=1.27"]
@@ -15,3 +27,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/guard"]
+
+[tool.uv.sources]
+agent-sandbox-bench-kit = { workspace = true }
+
+[tool.hatch.build.targets.sdist]
+# The TypeScript SDK (and its node_modules and build output) is not part of the Python
+# distribution; hatch, building from this folder, does not apply typescript/.gitignore.
+exclude = ["typescript"]

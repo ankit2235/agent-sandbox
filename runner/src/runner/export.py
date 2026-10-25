@@ -334,6 +334,15 @@ def _check_no_hidden(export: WorldExport, run_dirs: Sequence[RunDir]) -> None:
 def export(run_paths: Sequence[Path], out: Path, updated: dt.date) -> list[Path]:
     """Build, validate and write every leaderboard file. Returns the paths written."""
     run_dirs = [load_run_dir(path) for path in run_paths]
+    guarded = [
+        str(path) for path, d in zip(run_paths, run_dirs, strict=True) if d.manifest.config.guard
+    ]
+    if guarded:
+        msg = (
+            f"guarded runs never go on the main leaderboard: {guarded}; "
+            "their scores go in guards/results.json (sandbox-train report --runs)"
+        )
+        raise ValueError(msg)
     grouped: dict[str, list[RunDir]] = defaultdict(list)
     for run_dir in run_dirs:
         grouped[run_dir.manifest.config.world].append(run_dir)

@@ -7,7 +7,7 @@ section says what will go in it and how it is produced.
 
 The agent-sandbox maintainers built the guard model and the benchmark it is scored on.
 Every backend gets identical inputs and the results reproduce from the published configs
-(`training/src/training/baselines/configs/`, `training/src/training/guard_model/configs/`).
+(`guard/src/guard/backends/configs/`, `training/src/training/guard_model/configs/`).
 
 ## Where our model loses
 
@@ -33,7 +33,7 @@ set. Drug safety is pending: that world does not exist yet.
 
 | Backend | Kind | Model and version | Status |
 |---|---|---|---|
-| rules | the worlds' deterministic rules | `rules` | runs locally; pending a report |
+| rules_only | the worlds' deterministic rules (named `rules` before Phase 8) | `rules` | measured below |
 | judge-a, judge-b | LLM judges through LiteLLM | chosen at run time, two providers | pending |
 | jev | TypeSafe Jev, System One API | `jev-latest`; version as served | pending (key) |
 | openai-decisions | OpenAI Decisions API | `gpt-6-luna` | pending (key) |

@@ -15,8 +15,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from guard.decision import DecisionLabel, DecisionRequest
-
-from ..render import render
+from guard.render import render
 
 Split = Literal["train", "validation", "test"]
 SPLITS: tuple[Split, ...] = ("train", "validation", "test")

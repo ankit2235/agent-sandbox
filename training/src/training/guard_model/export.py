@@ -14,9 +14,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from guard.actions import ActionsRegistry, actions
+from guard.backends.guard_model.format import completion, prompt, reasons_for
+
 from ..data.build import read_split
-from ..world import ActionsRegistry, actions
-from .format import completion, prompt, reasons_for
 
 MAX_PROMPT_CHARS = 12000
 """About 3,400 to 4,000 tokens for these JSON-heavy prompts (estimated at 3 to 3.5 characters a

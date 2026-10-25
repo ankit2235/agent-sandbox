@@ -3,7 +3,9 @@
 - ``worlds``: list installed worlds;
 - ``tasks validate``: check task files, including each world's ``schema.json``;
 - ``example``: run one scripted episode;
-- ``run``: run a model over a task set (:mod:`runner.runs`), resumable;
+- ``run``: run a model over a task set (:mod:`runner.runs`), resumable; with
+  ``--guard <policy> --backend <name>``, the guard stands in front of the world's
+  high-impact tools (:mod:`runner.guarding`);
 - ``verify``: replay a run directory's recorded actions and confirm its grades;
 - ``export``: write leaderboard files from one or more run directories;
 - ``stress list | calibrate | report``: the stress modifiers and their calibration;
@@ -35,6 +37,7 @@ from . import DISTRIBUTION, hidden, reference, release, submission
 from .calibrate import calibrate, write_report
 from .calibrate import markdown as calibration_markdown
 from .export import export
+from .guarding import GuardSetup
 from .models import model_factory
 from .runs import RunConfig, RunRecord, execute, load_records, slug, task_set_version
 from .score import score, summary_lines
@@ -181,6 +184,17 @@ def _provider(model: str, given: str | None) -> str:
 def cmd_run(args: argparse.Namespace) -> int:
     """Run a model over a task set; resumable. Exit 1 if any run errored."""
     provider = _provider(args.model, args.provider)
+    if (args.guard is None) != (args.backend is None):
+        _print("--guard and --backend go together")
+        return 2
+    guard = (
+        GuardSetup.from_names(args.guard, args.backend, args.set)
+        if args.guard is not None
+        else None
+    )
+    if guard is not None and guard.policy.world not in (None, args.world):
+        _print(f"policy {guard.policy.id} is for {guard.policy.world}, not {args.world}")
+        return 2
     config = RunConfig(
         world=args.world,
         tasks=args.tasks,
@@ -196,9 +210,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         max_cost=args.max_cost,
         temperature=args.temperature,
         retries=args.retries,
+        guard=guard.config if guard is not None else None,
     )
     out = Path(args.out)
-    manifest = execute(config, out, concurrency=args.concurrency, report=_report)
+    manifest = execute(config, out, concurrency=args.concurrency, report=_report, guard=guard)
     status = manifest.status
     _print()
     _print(
@@ -209,7 +224,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     if any(record.status == "completed" for record in records):
         for line in summary_lines(worlds.get(config.world), records):
             _print(line)
-    if args.updated is not None:
+    if args.updated is not None and guard is not None:
+        _print("guarded runs are not exported to the main leaderboard: see sandbox-train report")
+    elif args.updated is not None:
         written = export([out], out / "export", args.updated)
         _print(f"leaderboard files: {len(written)} written under {out / 'export'}")
     return 1 if status.errored or status.pending else 0
@@ -522,6 +539,13 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--open-weight", action="store_true")
     run_parser.add_argument(
         "--updated", type=_date, default=None, help="also export, dated YYYY-MM-DD"
+    )
+    run_parser.add_argument(
+        "--guard", default=None, help="a policy pack (payments/default) or file: guard the run"
+    )
+    run_parser.add_argument("--backend", default=None, help="the guard's backend config")
+    run_parser.add_argument(
+        "--set", action="append", default=[], metavar="KEY=VALUE", help="backend config field"
     )
     run_parser.set_defaults(func=cmd_run)
 

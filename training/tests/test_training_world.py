@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from guard.actions import TrainingError, actions, from_module
 from kit.world import worlds
-from training.world import TrainingError, actions, from_module
 
 
 def test_both_worlds_register_a_training_module() -> None:

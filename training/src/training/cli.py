@@ -6,10 +6,12 @@
     sandbox-train dataset card training/data/out/actions-v0.1 --into training/data/actions-v0.1
     sandbox-train dataset sft training/data/out/actions-v0.1 --out training/data/out/sft
     sandbox-train backends
-    sandbox-train eval --backend rules --data training/data/out/actions-v0.1 --out r.json
+    sandbox-train eval --backend rules_only --data training/data/out/actions-v0.1 --out r.json
     sandbox-train eval --backend jev --data ... --hidden --out jev-hidden.json   (aggregates only)
     sandbox-train calibrate --predictions val.jsonl --out calibration.json
     sandbox-train report r.json ... --out training/data/out/report --updated 2026-11-01
+    sandbox-train eval --backend rules_only --guard '{world}/default' --data ... --out g.json
+    sandbox-train report g.json --runs runs/guarded-* --baseline-runs runs/plain-* --out ...
 
 Hidden-set commands print and write counts and aggregate scores only.
 """
@@ -25,16 +27,21 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from guard.backends.calibration import CalibratedBackend, Calibration
+from guard.backends.config import build_backend, configs, describe, load_config
+from guard.backends.system_one import ConfigError
+from guard.guarded_backend import GuardedBackend
+from guard.policy import PolicyError, load_policy
+from guard.records import DecisionLog
 from kit.rng import SeededRNG
+from runner.guarding import judge_chat_model
 
-from .baselines.config import build_backend, configs, describe, load_config
-from .baselines.system_one import ConfigError
 from .data.build import BuildConfig, build, read_manifest, read_split
 from .data.card import render_card
 from .data.example import SPLITS, ActionExample
 from .data.hidden import HiddenRowsError, hidden_rows
 from .data.leaks import check_dataset, check_hidden
-from .eval.calibration import CalibratedBackend, Calibration, fit
+from .eval.calibration import fit
 from .eval.metrics import breakdown, robustness
 from .eval.prices import load_prices
 from .eval.report import EVAL_FORMAT, write_report
@@ -144,14 +151,37 @@ def _bucket(members: list[Prediction], price: Any) -> dict[str, Any]:
 def _eval(args: argparse.Namespace) -> int:
     try:
         config = load_config(args.backend, args.set)
-        backend = build_backend(config)
+        backend = build_backend(config, chat=judge_chat_model)
     except ConfigError as error:
         _say(str(error))
         return 2
     calibration = Calibration.read(args.calibration) if args.calibration else None
     if calibration is not None:
         backend = CalibratedBackend(backend, calibration)
+    if args.decisions and (args.hidden or not args.guard):
+        _say("--decisions needs --guard, and is refused with --hidden (aggregates only)")
+        return 2
     manifest = read_manifest(args.data)
+    guard: dict[str, Any] | None = None
+    if args.guard:
+        try:
+            policies = {
+                world: load_policy(args.guard.replace("{world}", world))
+                for world in manifest["config"]["worlds"]
+            }
+        except (PolicyError, FileNotFoundError) as error:
+            _say(str(error))
+            return 2
+        if args.decisions:
+            args.decisions.parent.mkdir(parents=True, exist_ok=True)
+            args.decisions.unlink(missing_ok=True)
+        log = DecisionLog(args.decisions) if args.decisions else DecisionLog()
+        backend = GuardedBackend(policies, backend, log=log)
+        guard = {
+            world: {"id": p.id, "version": p.version, "hash": p.hash}
+            for world, p in policies.items()
+        }
+    suffix = "+guard" if guard is not None else ""
     price = load_prices().get(config.name)
     result: dict[str, Any] = {
         "format": EVAL_FORMAT,
@@ -159,6 +189,7 @@ def _eval(args: argparse.Namespace) -> int:
         "dataset": manifest["name"],
         "calibration": calibration.model_dump(mode="json") if calibration else None,
         "price": price.model_dump(mode="json") if price else None,
+        "guard": guard,
     }
     if args.hidden:
         if args.predictions:
@@ -181,7 +212,7 @@ def _eval(args: argparse.Namespace) -> int:
         for prediction in predictions:
             by_bucket[bucket.get(prediction.family, "no_rows")].append(prediction)
         result |= {
-            "set": "hidden",
+            "set": f"hidden{suffix}",
             "rows": len(predictions),
             "metrics": {
                 "all": breakdown(predictions, price),
@@ -193,7 +224,7 @@ def _eval(args: argparse.Namespace) -> int:
         rows = _sample(read_split(args.data, args.split), args.limit, args.seed)
         predictions = predict(backend, rows)
         result |= {
-            "set": args.split,
+            "set": f"{args.split}{suffix}",
             "rows": len(predictions),
             "metrics": breakdown(predictions, price),
             "robustness": robustness(predictions),
@@ -237,7 +268,16 @@ def _calibrate(args: argparse.Namespace) -> int:
 
 
 def _report(args: argparse.Namespace) -> int:
-    written = write_report(args.results, args.out, args.updated)
+    if not args.results and not args.runs:
+        _say("give eval result files, guarded run directories (--runs), or both")
+        return 2
+    try:
+        written = write_report(
+            args.results, args.out, args.updated, runs=args.runs, baselines=args.baseline_runs
+        )
+    except ValueError as error:
+        _say(str(error))
+        return 2
     for kind, path in written.items():
         _say(f"{kind}: {path}")
     return 0
@@ -290,6 +330,12 @@ def parser() -> argparse.ArgumentParser:
     one.add_argument("--seed", type=int, default=0)
     one.add_argument("--calibration", type=Path, default=None)
     one.add_argument("--predictions", type=Path, default=None)
+    one.add_argument(
+        "--guard",
+        default=None,
+        help="score it behind each world's policy: '{world}/default', or one file for one world",
+    )
+    one.add_argument("--decisions", type=Path, default=None, help="with --guard: the decision log")
     one.add_argument("--out", type=Path, required=True)
     one.set_defaults(run=_eval)
 
@@ -300,9 +346,19 @@ def parser() -> argparse.ArgumentParser:
     one.set_defaults(run=_calibrate)
 
     one = commands.add_parser("report", help="the eval report and guards/results.json")
-    one.add_argument("results", type=Path, nargs="+")
+    one.add_argument("results", type=Path, nargs="*", help="eval result files")
     one.add_argument("--out", type=Path, required=True)
     one.add_argument("--updated", type=dt.date.fromisoformat, required=True)
+    one.add_argument(
+        "--runs", type=Path, nargs="*", default=[], help="guarded run directories (with_guard)"
+    )
+    one.add_argument(
+        "--baseline-runs",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="unguarded runs of the same agents and task sets: task success without the guard",
+    )
     one.set_defaults(run=_report)
     return top
 

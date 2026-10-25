@@ -9,6 +9,7 @@ a file.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -17,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from guard.decision import DecisionBackend
 
+from .llm_judge import ChatModel
 from .system_one import ConfigError, secret
 
 CONFIGS = Path(__file__).parent / "configs"
@@ -30,9 +32,9 @@ class _Config(BaseModel):
 
 
 class RulesConfig(_Config):
-    """The rules-only baseline."""
+    """The rules-only backend."""
 
-    kind: Literal["rules"]
+    kind: Literal["rules_only"]
 
 
 class JudgeConfig(_Config):
@@ -121,12 +123,17 @@ def configs() -> list[str]:
     return sorted(p.stem for p in CONFIGS.glob("*.yaml"))
 
 
-def build_backend(config: BackendConfig) -> DecisionBackend:
+ChatFactory = Callable[["JudgeConfig"], ChatModel]
+"""Makes the judge's chat model from its config; the sandbox passes
+``runner.guarding.judge_chat_model`` (LiteLLM). The guard itself calls no model library."""
+
+
+def build_backend(config: BackendConfig, *, chat: ChatFactory | None = None) -> DecisionBackend:
     """A backend from its config. Raises :class:`ConfigError` for anything missing."""
     if isinstance(config, RulesConfig):
-        from .rules import RulesBackend
+        from .rules_only import RulesOnlyBackend
 
-        return RulesBackend(config.name)
+        return RulesOnlyBackend(config.name)
     if isinstance(config, JudgeConfig):
         if not config.model:
             msg = (
@@ -134,12 +141,12 @@ def build_backend(config: BackendConfig) -> DecisionBackend:
                 "give it with --set model=<provider>/<model>"
             )
             raise ConfigError(msg)
-        from runner.models import LiteLLMModel
+        if chat is None:
+            msg = f"{config.name}: a judge needs a chat model factory (chat=...)"
+            raise ConfigError(msg)
+        from .llm_judge import LLMJudge
 
-        from .judge import LLMJudge
-
-        model = LiteLLMModel(config.model, temperature=config.temperature, timeout=config.timeout_s)
-        return LLMJudge(config.name, model, prompt_version=config.prompt_version)
+        return LLMJudge(config.name, chat(config), prompt_version=config.prompt_version)
     if isinstance(config, SystemOneConfig):
         from .system_one import SystemOneBackend
 
@@ -171,8 +178,8 @@ def build_backend(config: BackendConfig) -> DecisionBackend:
             timeout_s=config.timeout_s,
             reason_threshold=config.reason_threshold,
         )
-    from ..guard_model.backend import GuardModelBackend
-    from ..guard_model.hf import HFScorer
+    from .guard_model.backend import GuardModelBackend
+    from .guard_model.hf import HFScorer
 
     scorer = HFScorer(
         config.base_model,
@@ -195,6 +202,7 @@ def describe(config: BackendConfig) -> dict[str, Any]:
 __all__ = [
     "CONFIGS",
     "BackendConfig",
+    "ChatFactory",
     "GuardModelConfig",
     "JudgeConfig",
     "OpenAIDecisionsConfig",

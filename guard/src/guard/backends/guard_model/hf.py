@@ -1,9 +1,9 @@
 """Local inference for our model with transformers: the :class:`~.backend.Scorer` it runs on.
 
-Needs ``requirements-train.txt`` (torch, transformers, PEFT); imported only when the
-``guard_model`` backend is built. The base model is loaded at a pinned revision, the
-LoRA adapter from a local folder; nothing is downloaded unless the base model is not
-already in the local Hugging Face cache.
+Needs ``training/src/training/guard_model/requirements-train.txt`` (torch, transformers,
+PEFT); imported only when the ``guard_model`` backend is built. The base model is loaded at
+a pinned revision, the LoRA adapter from a local folder; nothing is downloaded unless the
+base model is not already in the local Hugging Face cache.
 """
 
 from __future__ import annotations

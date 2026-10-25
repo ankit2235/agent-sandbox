@@ -17,6 +17,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 
+from guard.actions import actions
+from guard.requests import MAX_RESPONSE_CHARS, RECENT_STEPS
 from kit.scripted import GOLDEN, load_runs
 from kit.world import worlds
 from runner.hidden import (
@@ -30,9 +32,8 @@ from runner.hidden import (
 )
 
 from .. import DATASET_VERSION
-from ..world import actions
 from .example import ActionExample, RunKind, Source, example_id
-from .labels import MAX_RESPONSE_CHARS, RECENT_STEPS, golden_asks, label, walk
+from .labels import golden_asks, label, walk
 
 
 class HiddenRowsError(RuntimeError):

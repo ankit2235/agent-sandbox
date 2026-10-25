@@ -1217,3 +1217,158 @@ can still learn a family's look (the split by family keeps it out of the test). 
 reported but not scored in the metrics. The labels rest on graders the worlds' reviewers have
 not signed off. Mistakes of omission are not rows. A held-out family can still share a story or
 merchant profile with a training family below the near-duplicate threshold.
+
+## Phase 8 — guard library, v0.2 (2026-10-25)
+
+### Approved before coding
+
+214. **Layout.** `guard/src/guard` is the Python SDK (`agent-sandbox-bench-guard`, command
+     `sandbox-guard`), with `guard/typescript/` and `guard/test-vectors/` beside it. Policy packs
+     are data in `guard/src/guard/policies/<world>/`, inside the package so they install with it.
+215. **The Phase 7 adapters moved into `guard/`, not copied.** `training/world.py` became
+     `guard/actions.py`, `training/render.py` became `guard/render.py`, `training/baselines/*`
+     became `guard/backends/*` (`rules.py` → `rules_only.py`, `judge.py` → `llm_judge.py`, with
+     `configs/` and `prompts/`), `training/guard_model/{backend,format,hf}.py` became
+     `guard/backends/guard_model/`, the request builder in `training/data/labels.py` became
+     `guard/requests.py`, and calibration's `apply` and `CalibratedBackend` became
+     `guard/backends/calibration.py` (fitting stays in `training/eval/calibration.py`). The one
+     function nothing called, `sft_row`, was dropped. This replaces decision 178's "the guard
+     does not depend on the kit": `guard` now depends on the kit, adding no package, since the
+     kit's dependencies are the guard's. The runner depends on `guard[mcp]`.
+216. **`rules` is `rules_only` everywhere**: the config file, its `kind`, the price entry, the
+     `guard-results-v0.1` kind enum (nothing was published under the old name) and the docs.
+217. **The judge takes a `ChatModel`** (`guard.backends.llm_judge`); `runner.guarding.ChatAdapter`
+     adapts the runner's models and turns provider errors into `ChatModelError`, so the guard
+     never imports the runner.
+218. **TypeScript:** `typescript@5.9.3` and `@types/node@22.19.0` (dev), `ajv@8.17.1` (`Ajv2020`:
+     the schemas are draft 2020-12). Tests use `node:test`. `package-lock.json` is committed;
+     `node_modules/` and `dist/` are ignored. A `guard-typescript` job in `ci.yml`
+     (`actions/setup-node@v7.1.0`, Node 22: `npm ci`, build, test).
+219. **Additive schema changes only**: `with_guard` in `guard-results-v0.1`; `RunConfig.guard` and
+     `RunRecord.guard` in the run directory (still `sandbox-run-v1`; older runs load unchanged).
+     `results-v0.1` is unchanged.
+220. **ask_user in a sandbox run holds the call** and tells the agent it needs the user's
+     confirmation. The agent decides whether to call `ask_user`; the guard never calls it.
+221. **No model download, no paid call.** Our model, every outside backend, the Strands Decider
+     download, model-mode latency and the hidden-set guard runs are the user's to run.
+222. **No kit change.** Every version stays 0.1.0.
+
+### Decided while building
+
+223. **The policy file is `guard-policy-v1`**: per-tool rules (budgets, confirm threshold,
+     counterparties, categories, mandate, time windows, world checks, whether to ask the backend),
+     a `default` for tools it does not name, and `model_check` (`min_confidence` 0.5 and
+     `timeout_s` 10 by default). `version` is an integer the author bumps. The hash is the
+     SHA-256 of the file's RFC 8785 canonical JSON, so YAML and JSON of the same content hash
+     alike.
+224. **How a policy and delegated limits combine: the stricter wins.** Every rule of the policy
+     and every rule of the delegation applies (numbers in effect take the lower cap, lists the
+     tighter one), so a delegation can neither loosen the policy nor be loosened by it. In
+     sandbox runs `pack_limits=False` leaves out the pack's own numbers (`budget`,
+     `confirm_above`), and each task's own limits are used: they are defaults for the decorator
+     and the proxy outside the sandbox. Everything else in the pack still applies.
+225. **The payments delegation reads the caps as they stand** (`state.limits`, which a task's
+     scheduled `rails.limit_change` updates), else the task's starting caps (`policy.limits`).
+     Reading only the starting caps, two golden runs were blocked (`wait-for-limit-raise`,
+     `wait-for-cap-before-order-expires`). Security delegates no numeric limits; its operator's
+     constraints are in the instruction's words, for the backend. Every task delegates its
+     allowed tools: a tool outside them is blocked (`guard.policy.tool-not-delegated`).
+226. **A pack names only the world checks that no public or stressed golden run trips**, measured
+     over all 183 golden runs: in payments all but `mandate-to-non-merchant`, in security the
+     three block checks. The rest run in the `rules_only` backend, where they can be weighed.
+     `test_no_public_golden_run_is_held_by_the_hard_rules` holds this. The packs' numbers are
+     invented (₹15,000 a payment, ₹50,000 a day, ₹2,00,000 a month, confirm above ₹10,000;
+     ₹10,000 a mandate), for the payments reviewer.
+227. **Layering.** A hard block is final and no backend is asked. Otherwise the decision is the
+     stricter of the hard rules and the backend. Confidence is 1 when the hard rules decided,
+     the backend's when it did, 0 when it failed closed. An allow carries no reason codes. Below
+     `min_confidence`, any backend answer (a block too) becomes ask_user with
+     `guard.low_confidence`. A tool the policy does not name gets `default` (ask_user in both
+     packs) and no backend. A record's `layer` is `hard`, `backend`, `fail_closed`, `default` or
+     `user` (the user confirmed an ask_user through the decorator).
+228. **The fail-closed boundary.** The backend runs in its own daemon thread, joined with the
+     policy's timeout; a late answer is discarded (a hung backend keeps its thread, which cannot
+     be killed). Any exception is `guard.backend_error`, the one broad `except` in the guard, and
+     it is recorded. An answer that is not a `BackendResult`, or fails re-validation (a
+     `model_construct` with a confidence of 7), is `guard.invalid_result`.
+229. **A rule that needs a missing field asks** (`guard.policy.missing-amount`, `-counterparty`,
+     `-category`). A malformed amount from a world is no amount. Fields are strict: `"700"` or
+     `true` is not an amount.
+230. **Decision records (`guard-record-v1`)** hold hashes, never the request: `inputs` is the hash
+     of `{request, fields}` (the request in its JSON form), `action.args` the hash of the raw
+     arguments (the request hides opaque idempotency keys). A sandbox run keeps the log's head
+     and length in `result.json`. `sandbox verify` checks the chain, the head, the policy hash,
+     and that the allowed records match the guarded calls in the trace one for one. Every
+     guarded run has a `decisions.jsonl`, empty if nothing was guarded, so a missing log always
+     shows.
+231. **Canonical JSON is RFC 8785, exactly, in Python**: ECMAScript number text from the shortest
+     round-trip digits, keys by UTF-16 code units, an integer written as the double it equals and
+     refused if it is not one, NaN, infinity and lone surrogates refused. TypeScript uses
+     `JSON.stringify`. The shared vectors cover `1e-7`, `1e20`, `1e+21`, `-0`, `5.0`, subnormals,
+     non-BMP keys and escapes. `2**53 + 1` is a Python-only vector: a JavaScript parser rounds
+     it while parsing.
+232. **Time.** A record carries the request's `sim_time` (the episode's SimClock). A `sim_time`
+     without a time zone is refused (the TypeScript schema refuses it too). Windows and budgets
+     are UTC. Latency is measured with `perf_counter` in `guard.engine` (marked `purity-allow`)
+     and recorded, and never decides anything.
+233. **Sandbox runs.** The guard stands in front of the world's `HIGH_IMPACT` tools and the
+     policy's tools; others pass. It is an MCP proxy between the agent's client and the kit's
+     bridge, both in memory, so the kit is unchanged. A held call is not in the trace (as a
+     refused call records nothing, decision 47); it counts toward the turn's tool calls.
+     `sandbox export` refuses guarded runs: their scores go to `guards/results.json`.
+234. **The standalone proxy** (`sandbox-guard proxy`) takes a fixed simulated `--now` (the guard
+     never reads the real clock). Its fields come from `--fields` or the world's own
+     `guard_fields`. With a world module only the world's high-impact and the policy's tools are
+     decided; without one every other tool gets `default`.
+235. **Eval behind the guard** (`sandbox-train eval --guard '{world}/default'`): a policy per
+     world, a fresh guard per row (rows come from different episodes), one shared log
+     (`--decisions`, refused with `--hidden`: hidden decisions are never written). Its sets are
+     named `<split>+guard`.
+236. **`with_guard` is a list of cells**, one per world, task set and agent: task success with the
+     guard (the runner's `overall`, as a share, with its 95% interval), task success without it
+     (given an unguarded run of the same model on the same tasks), the block and ask_user rates
+     over decisions, whether `sandbox verify` passed, and whether the set is hidden. The schema
+     requires task success wherever a block rate is given.
+237. **The 5 ms overhead test** decides 300 rows to warm up, then times 3,000, writing every
+     record to a file, and prints p50, p99 and the machine. It forced two fixes: compiled JSON
+     Schema validators (`jsonschema.validate` re-checked the schema on every call, about 17 ms)
+     and a one-buffer canonical writer with the C string encoder.
+238. **The TypeScript SDK** has canonical JSON, policies, hard rules, the layered decision (async;
+     the timeout is a race), records, verification and a `guardTool` wrapper. No model adapters
+     and no MCP proxy: those are Python only. A backend's answer is checked against
+     `backend-result.schema.json` (new, shared); Python checks it with the pydantic model, and a
+     test holds both to the same verdict on every payload in the vectors.
+239. **Provider terms on publishing benchmark results**, checked 2026-10-25: Cloudflare's
+     Self-Serve Subscription Agreement (section 2.2.2) permits benchmarks, and a disclosure must
+     include everything needed to replicate them. OpenAI's service terms returned 403 and were
+     not read. TypeSafe's terms were not found (its docs index loads; its quick-start pages
+     return 404). Strands Decider is Apache-2.0 and self-hosted. Re-checked API docs: OpenAI
+     Decisions (generally available, `gpt-6-luna`, $0.10 per million input tokens) and Clef (64
+     questions, $0.24 per million input tokens, still no response example) match the Phase 7
+     adapters; Jev's endpoint could not be re-confirmed today. The Strands Decider README names
+     the config's reference checkpoint; older `hobson` checkpoints are still published.
+
+### No-override review (the guard's hard rules against its backends)
+
+Each way a backend could loosen a decision, and what stops it. Tests are in
+`guard/tests/test_no_override.py` unless named.
+
+| # | A backend that ... | What stops it | Test |
+| --- | --- | --- | --- |
+| 1 | answers allow with confidence 1 to a hard block | a hard block is final; the backend is never called | `::test_no_backend_turns_a_hard_block_into_an_allow` (15 backends × 5 blocks) |
+| 2 | answers allow to a hard ask_user | the stricter of the two wins | `::test_no_backend_turns_a_hard_ask_user_into_an_allow` |
+| 3 | answers allow after the timeout | the late answer is discarded: `guard.timeout`, ask_user | `::test_adversarial_answers_on_an_allowed_action_fail_closed`; vectors "late allow ..." |
+| 4 | adds unknown fields (`override_hard_rules`, `force`) | strict result models and schemas: `guard.invalid_result` | same, and the vectors "unknown field ..." |
+| 5 | returns something that is not a result | `guard.invalid_result` | same |
+| 6 | returns a result built without validation | re-validated: `guard.invalid_result` | same (`constructed`) |
+| 7 | raises | `guard.backend_error`, ask_user | same |
+| 8 | answers anything at all | property: never looser than the hard rules | `::test_any_answer_is_never_looser_than_the_hard_rules` (300 cases) |
+| 9 | is our model, a judge, Jev, Clef, Strands, OpenAI | each adapter is in the 15 | as 1 and 2 |
+| 10 | is fed a mistake by a delegation that loosens the pack | every rule of both applies | vectors "a delegation cannot loosen the policy" |
+| 11 | is edited out of the record afterwards | the hash chain and the kept head | `runner/tests/test_guarded_runs.py::test_verify_finds_*`, `guard/tests/test_guard_library.py::test_the_cli_finds_a_tampered_log` |
+
+**Residual risks, accepted for now:** a hung backend keeps a daemon thread until it returns.
+The budgets count what the guard allowed, not what the rails settled (an allowed payment the
+rails then decline still counts). The records name the policy by hash but the world checks by id
+only; a changed check's code is not hashed into the record (the world package's version names
+it).

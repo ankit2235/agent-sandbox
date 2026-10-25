@@ -8,7 +8,10 @@ unchanged, to a fresh world built from the same task and seed, with
 - the replay applied every recorded call;
 - every tool call and world event of the replay matches the recording (tool,
   arguments, response, refusal, rows changed, simulated time);
-- the grade (passed, score, every check, failure type) is identical.
+- the grade (passed, score, every check, failure type) is identical;
+- with a guard: the decision log's chain is intact and ends at the head ``result.json``
+  keeps, and its allowed decisions match the guarded calls in the trace one for one
+  (:func:`runner.guarding.verify_decisions`).
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from kit.trace import Trace
 from kit.types import ToolCall
 from kit.world import worlds
 
+from .guarding import DECISIONS_FILE, verify_decisions
 from .runs import RUNS_DIR, TRACE_FILE, load_records, read_manifest, resolve_task_set, task_hash
 
 
@@ -94,6 +98,15 @@ def verify(run_dir: Path) -> VerifyReport:
             verdict.problems.append(
                 f"world steps differ from step {first + 1} "
                 f"({len(before)} recorded, {len(after)} replayed)"
+            )
+        guard = manifest.config.guard
+        if guard is not None:
+            verdict.problems += verify_decisions(
+                run_dir / RUNS_DIR / record.run_id / DECISIONS_FILE,
+                record.guard,
+                recorded,
+                guard,
+                spec.name,
             )
         if replay.grade is None or replay.grade.model_dump() != record.grade.model_dump():
             got = replay.grade.model_dump() if replay.grade else None

@@ -1,23 +1,25 @@
-"""The rules-only baseline: each world's deterministic checks, and nothing else.
+"""The ``rules_only`` backend: each world's deterministic checks, and no model.
 
 A request that breaks no rule is allowed; one that breaks a ``block`` rule is blocked;
 otherwise one that breaks an ``ask_user`` rule is sent to the user. Reason codes are the
 broken rules' ids. Confidence is 1: the rules are certain of what they check, and
 blind to everything else (look-alike payees named only in the text, planted
-instructions, budgets stated in words), which is what this baseline is here to show.
+instructions, budgets stated in words), which is what this backend is here to show.
+
+In front of a guard, this is the backend that makes it "rules only": the policy's hard
+rules first, then every one of the world's checks, and no model anywhere.
 """
 
 from __future__ import annotations
 
+from guard.actions import ActionsRegistry, actions
 from guard.decision import BackendResult, Decision, DecisionLabel, DecisionRequest
 
-from ..world import ActionsRegistry, actions
 
+class RulesOnlyBackend:
+    """Deterministic checks from each world's module."""
 
-class RulesBackend:
-    """Deterministic checks from each world's training module."""
-
-    def __init__(self, name: str = "rules", registry: ActionsRegistry = actions) -> None:
+    def __init__(self, name: str = "rules_only", registry: ActionsRegistry = actions) -> None:
         self.name = name
         self._registry = registry
 
@@ -45,4 +47,4 @@ class RulesBackend:
         )
 
 
-__all__ = ["RulesBackend"]
+__all__ = ["RulesOnlyBackend"]

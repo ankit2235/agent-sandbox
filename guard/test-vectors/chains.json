@@ -1,0 +1,1310 @@
+{
+  "format": "guard-vectors-chains-v1",
+  "cases": [
+    {
+      "name": "intact",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": true
+    },
+    {
+      "name": "intact, no head given",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": null,
+      "count": null,
+      "ok": true
+    },
+    {
+      "name": "a decision edited",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": false
+    },
+    {
+      "name": "edited and its own hash recomputed",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "204903231319cb457554549740ddda92fed4cf12a02d01177d2a986a5e143852"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": false
+    },
+    {
+      "name": "a confidence edited by one ulp",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 0.9999999999999999,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": false
+    },
+    {
+      "name": "the first record removed",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": false
+    },
+    {
+      "name": "a middle record removed",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": false
+    },
+    {
+      "name": "the last record removed, head kept",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        }
+      ],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": false
+    },
+    {
+      "name": "the last record removed, no head",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        }
+      ],
+      "head": null,
+      "count": null,
+      "ok": true
+    },
+    {
+      "name": "two records swapped",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": false
+    },
+    {
+      "name": "a record duplicated",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": null,
+      "count": null,
+      "ok": false
+    },
+    {
+      "name": "an unknown field added",
+      "records": [
+        {
+          "format": "guard-record-v1",
+          "seq": 0,
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sim_time": "2026-01-01T09:00:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "a442783eeb804b233e59c3e2e9a6322d7dee28e6af8cfc1329ab0860419b2e04",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "note": "added"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 1,
+          "prev": "89a3576d4d8112e50b6024791e7ef403e20348bd4e625893ae747205db0fcc10",
+          "sim_time": "2026-01-01T09:01:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "c52c7c3399acf9d4d22125c551c1b628ef16985a974c2ff71fa721017f56f781",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "block",
+          "reason_codes": [
+            "guard.policy.over-per-action-budget"
+          ],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 2,
+          "prev": "d5172c6971380a7f13466f752b1df3047a62e102db19f46592730a3605b33737",
+          "sim_time": "2026-01-01T09:02:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "8ad4c0284c2e315a4adaccbb3004049cf9412c76c740a4f85cbd43976587e2fb",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8"
+        },
+        {
+          "format": "guard-record-v1",
+          "seq": 3,
+          "prev": "12a51de8f8df204f964cc23a06c0590d6442854a0db8ee93a1ecde1b51409af8",
+          "sim_time": "2026-01-01T09:03:00Z",
+          "policy": {
+            "id": "vectors",
+            "version": 1,
+            "hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+            "delegation": null
+          },
+          "inputs": "2f22bd173a656a182e3fed775cc7bebedb48a7cc6050179946433e7c3e5150a7",
+          "action": {
+            "tool": "pay",
+            "args": "8bec3fbb0659fc2a1ea4b7f54634004afe9083afa6acc287ed32b35613f2fe1a"
+          },
+          "backend": null,
+          "layer": "hard",
+          "decision": "allow",
+          "reason_codes": [],
+          "confidence": 1.0,
+          "latency_ms": 1.0,
+          "tokens": null,
+          "error": null,
+          "hash": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088"
+        }
+      ],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": false
+    },
+    {
+      "name": "empty, no head",
+      "records": [],
+      "head": null,
+      "count": null,
+      "ok": true
+    },
+    {
+      "name": "empty, head kept",
+      "records": [],
+      "head": "47180d9d93c0be221187328c8a3bee631f23a843ddbab2c95a5c6a8fd57cf088",
+      "count": 4,
+      "ok": false
+    }
+  ]
+}

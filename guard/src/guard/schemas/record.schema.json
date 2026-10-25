@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/prarabdha-soni/agent-sandbox/guard/record.schema.json",
+  "title": "Guard decision record (guard-record-v1)",
+  "description": "One line of an append-only, hash-chained decision log. hash is the SHA-256 of the record's RFC 8785 canonical JSON without hash; prev is the previous record's hash (64 zeros for the first).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format", "seq", "prev", "sim_time", "policy", "inputs", "action", "backend", "layer",
+    "decision", "reason_codes", "confidence", "latency_ms", "tokens", "error", "hash"
+  ],
+  "properties": {
+    "format": {"const": "guard-record-v1"},
+    "seq": {"type": "integer", "minimum": 0},
+    "prev": {"$ref": "#/$defs/hex"},
+    "sim_time": {"type": "string", "minLength": 1},
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "hash", "delegation"],
+      "properties": {
+        "id": {"type": "string"},
+        "version": {"type": "integer", "minimum": 1},
+        "hash": {"$ref": "#/$defs/hex"},
+        "delegation": {"oneOf": [{"$ref": "#/$defs/hex"}, {"type": "null"}]}
+      }
+    },
+    "inputs": {"$ref": "#/$defs/hex"},
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "args"],
+      "properties": {"tool": {"type": "string"}, "args": {"$ref": "#/$defs/hex"}}
+    },
+    "backend": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "model", "model_version"],
+          "properties": {
+            "name": {"type": "string"},
+            "model": {"type": ["string", "null"]},
+            "model_version": {"type": ["string", "null"]}
+          }
+        }
+      ]
+    },
+    "layer": {"enum": ["hard", "backend", "fail_closed", "default", "user"]},
+    "decision": {"enum": ["allow", "block", "ask_user"]},
+    "reason_codes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_\\-]*(\\.[a-z0-9][a-z0-9_\\-]*)+$"}
+    },
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "latency_ms": {"type": "number", "minimum": 0},
+    "tokens": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["input", "output"],
+          "properties": {
+            "input": {"type": ["integer", "null"], "minimum": 0},
+            "output": {"type": ["integer", "null"], "minimum": 0}
+          }
+        }
+      ]
+    },
+    "error": {"type": ["string", "null"]},
+    "hash": {"$ref": "#/$defs/hex"}
+  },
+  "$defs": {"hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

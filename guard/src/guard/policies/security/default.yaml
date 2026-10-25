@@ -1,0 +1,28 @@
+# The security world's default policy pack (guard-policy-v1). Containment actions have no
+# amount, so there are no numeric limits; the operator's own constraints are in each task's
+# instruction, for the model check to read.
+#
+# The checks are the world's deterministic block checks (worlds/security/training.py RULES);
+# no public golden run trips them (a test proves it). The world's ask_user checks (critical
+# host, privileged account, approved change, no alert on the target) do trip golden runs, so
+# they are left to the rules_only backend (DECISIONS).
+format: guard-policy-v1
+id: security-default
+version: 1
+world: security
+description: Default hard rules for the security world's containment and blocking tools.
+default: ask_user
+model_check:
+  min_confidence: 0.5
+  timeout_s: 15
+actions:
+  isolate_host:
+    checks: [security.rule.unknown-target]
+  reimage_host:
+    checks: [security.rule.unknown-target, security.rule.reimage-before-evidence]
+  disable_account:
+    checks: [security.rule.unknown-target]
+  reset_credentials:
+    checks: [security.rule.unknown-target]
+  block_indicator:
+    checks: [security.rule.business-indicator]

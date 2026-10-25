@@ -6,14 +6,16 @@ Layout of ``--out``::
     spans.jsonl                OpenTelemetry spans (see :mod:`runner.tracing`)
     runs/<run_id>/trace.jsonl  the full trace, agent messages included
     runs/<run_id>/result.json  the record: grade, usage, stop reason; written last
+    runs/<run_id>/decisions.jsonl  with --guard: the run's hash-chained decision records
 
 A run is finished when its ``result.json`` says ``completed``. Running the same
 command again skips finished runs and redoes the rest: a run killed midway has no
 ``result.json`` and starts again from a fresh world, and an ``error`` run (the
 provider kept failing) is retried. Resuming with different settings is refused.
 
-Wall-clock time is used in exactly one place: the sleep between provider retries.
-Inside an episode, time is the episode's :class:`kit.clock.SimClock`.
+Wall-clock time is used in exactly one place here: the sleep between provider retries
+(a guard's decision latency is measured in :mod:`guard.engine`, and never decides
+anything). Inside an episode, time is the episode's :class:`kit.clock.SimClock`.
 """
 
 from __future__ import annotations
@@ -42,6 +44,7 @@ from kit.world import WorldSpec, load_grader, worlds
 from stress.core import stressed_set
 
 from .agent import CallModel, Caps, run_agent, system_prompt
+from .guarding import GuardRunConfig, GuardSetup, GuardSummary
 from .models import Message, ModelFactory, ModelReply, ProviderError, model_factory
 from .tracing import TRACER_NAME, tracer_provider
 
@@ -83,6 +86,8 @@ class RunConfig(BaseModel):
     retries: int = Field(default=5, ge=0)
     prompt: str = ""
     """The system prompt's id, e.g. ``payments/v1``; filled in by :func:`execute`."""
+    guard: GuardRunConfig | None = None
+    """The guard in front of the world's high-impact tools (``--guard``), if any."""
 
     @property
     def model_slug(self) -> str:
@@ -145,6 +150,8 @@ class RunRecord(BaseModel):
     model_turns: int = 0
     malformed_calls: int = 0
     retries: int = 0
+    guard: GuardSummary | None = None
+    """With a guard: its decision counts and the decision log's head."""
 
     @property
     def passed(self) -> bool:
@@ -317,8 +324,12 @@ def execute(
     sleep: Sleep = time.sleep,  # purity-allow: the backoff between provider retries only
     env: dict[str, str] | None = None,
     report: Callable[[RunRecord], None] | None = None,
+    guard: GuardSetup | None = None,
 ) -> Manifest:
     """Run every unfinished (task, run) pair and return the updated manifest."""
+    if (guard.config if guard is not None else None) != config.guard:
+        msg = "the run's guard settings and the guard given to execute() differ"
+        raise ValueError(msg)
     spec = worlds.get(config.world)
     prompt_id, prompt = system_prompt(spec.name)
     config = config.model_copy(update={"prompt": prompt_id})
@@ -337,7 +348,7 @@ def execute(
     build = factory or model_factory(config.model, temperature=config.temperature)
     provider = tracer_provider(out, env)
     tracer = provider.get_tracer(TRACER_NAME)
-    one = partial(_run_one, spec, config, prompt, build, tracer, sleep, out)
+    one = partial(_run_one, spec, config, prompt, build, tracer, sleep, out, guard)
     pool = ThreadPoolExecutor(max_workers=max(1, concurrency))
     try:
         futures: list[Future[RunRecord]] = [pool.submit(one, task, n) for task, n in pending]
@@ -388,6 +399,7 @@ def _run_one(
     tracer: Tracer,
     sleep: Sleep,
     out: Path,
+    guard: GuardSetup | None,
     task: TaskSpec,
     attempt: int,
 ) -> RunRecord:
@@ -422,6 +434,7 @@ def _run_one(
     with tracer.start_as_current_span("sandbox.run", attributes=attributes) as span:
         try:
             first = episode.reset(task)
+            run_guard = guard.for_run(task, episode, directory) if guard is not None else None
             agent = partial(
                 run_agent,
                 episode,
@@ -431,6 +444,7 @@ def _run_one(
                 prompt=prompt,
                 caps=config.caps,
                 tracer=tracer,
+                guard=run_guard.check if run_guard is not None else None,
             )
             try:
                 result = anyio.run(agent)
@@ -447,6 +461,8 @@ def _run_one(
                 record.model_turns = result.model_turns
                 record.malformed_calls = result.malformed_calls
             record.retries = call.retried
+            if run_guard is not None:
+                record.guard = run_guard.summary()
             trace = episode.trace.model_copy(update={"run_id": run_id})
             trace.write_jsonl(directory / TRACE_FILE)
         finally:

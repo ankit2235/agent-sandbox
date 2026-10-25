@@ -18,7 +18,7 @@
         "required": ["name", "kind", "ours", "model", "model_versions", "price", "sets"],
         "properties": {
           "name": {"type": "string"},
-          "kind": {"enum": ["rules", "llm_judge", "system_one", "openai_decisions", "guard_model"]},
+          "kind": {"enum": ["rules_only", "llm_judge", "system_one", "openai_decisions", "guard_model"]},
           "ours": {"type": "boolean"},
           "model": {"type": ["string", "null"]},
           "model_versions": {"type": "array", "items": {"type": "string"}},
@@ -33,8 +33,56 @@
                 "rows": {"type": "integer", "minimum": 0}
               }
             }
+          },
+          "with_guard": {
+            "description": "Sandbox runs with this backend behind the guard (sandbox run --guard), one per world, task set and agent. Task success is required wherever a block rate is given.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "world", "task_set", "agent", "policy", "runs", "tasks", "task_success",
+                  "task_success_without_guard", "decisions", "block_rate", "ask_user_rate",
+                  "records_verified", "hidden"
+                ],
+                "properties": {
+                  "world": {"type": "string"},
+                  "task_set": {"type": "string"},
+                  "agent": {"type": "string"},
+                  "policy": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["id", "version", "hash"],
+                    "properties": {
+                      "id": {"type": "string"},
+                      "version": {"type": "integer"},
+                      "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+                    }
+                  },
+                  "runs": {"type": "integer", "minimum": 1},
+                  "tasks": {"type": "integer", "minimum": 1},
+                  "task_success": {"$ref": "#/$defs/rate"},
+                  "task_success_without_guard": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}]},
+                  "decisions": {"type": "integer", "minimum": 0},
+                  "block_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+                  "ask_user_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+                  "records_verified": {"type": "boolean"},
+                  "hidden": {"type": "boolean"}
+                }
+            }
           }
         }
+      }
+    }
+  },
+  "$defs": {
+    "rate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "ci"],
+      "properties": {
+        "value": {"type": "number", "minimum": 0, "maximum": 1},
+        "ci": {"type": ["number", "null"], "minimum": 0}
       }
     }
   }

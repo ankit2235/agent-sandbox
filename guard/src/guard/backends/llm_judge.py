@@ -1,10 +1,10 @@
-"""The LLM-judge baseline: a general chat model asked for the decision JSON.
+"""The LLM-judge backend: a general chat model asked for the decision JSON.
 
-The model is reached through :class:`runner.models.LiteLLMModel`, the same adapter the
-runner's agent uses, so any LiteLLM model id works (``<provider>/<model>``). The id is
-a config value with no default (``configs/judge-a.yaml``, ``judge-b.yaml``). The system
-prompt is versioned (``prompts/judge-v<n>.md``) and recorded as the result's model
-version. Tests use :class:`runner.models.FakeModel`.
+The model is anything that speaks :class:`ChatModel`. The sandbox gives it
+``runner.guarding.ChatAdapter`` over the runner's LiteLLM adapter, the same one the
+agent uses, so any LiteLLM model id works (``<provider>/<model>``). The id is a config
+value with no default (``configs/judge-a.yaml``, ``judge-b.yaml``). The system prompt is
+versioned (``prompts/judge-v<n>.md``) and recorded as the result's model version.
 
 A provider failure, a context overflow or an answer that is not a valid decision fails
 closed (``ask_user``, confidence 0) with the error recorded.
@@ -12,8 +12,11 @@ closed (``ask_user``, confidence 0) with the error recorded.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
+from guard.actions import ActionsRegistry, actions
 from guard.decision import (
     BackendResult,
     DecisionError,
@@ -21,13 +24,38 @@ from guard.decision import (
     fail_closed,
     parse_decision,
 )
-from runner.models import ContextWindowExceeded, Model, ProviderError
+from guard.render import render
 
-from ..render import render
-from ..world import ActionsRegistry, actions
 from .questions import DECISION_OPTIONS
 
 PROMPTS = Path(__file__).parent / "prompts"
+
+
+@dataclass(frozen=True, slots=True)
+class ChatAnswer:
+    """What one chat call returned."""
+
+    text: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+
+class ChatModelError(Exception):
+    """A chat call failed; ``code`` is what the judge fails closed with."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class ChatModel(Protocol):
+    """A chat model the judge can ask. Raises :class:`ChatModelError` when a call fails."""
+
+    id: str
+
+    def ask(self, messages: list[dict[str, str]]) -> ChatAnswer:
+        """One call, no tools."""
+        ...
 
 
 def system_prompt(version: str, reasons: dict[str, str]) -> str:
@@ -49,7 +77,7 @@ class LLMJudge:
     def __init__(
         self,
         name: str,
-        model: Model,
+        model: ChatModel,
         *,
         prompt_version: str = "v1",
         registry: ActionsRegistry = actions,
@@ -68,14 +96,12 @@ class LLMJudge:
         ]
         version = f"judge-{self.prompt_version}"
         try:
-            reply = self.model.complete(messages, [])
-        except ProviderError:
-            return fail_closed(self.name, "provider_error", model=self.model.id)
-        except ContextWindowExceeded:
-            return fail_closed(self.name, "context_window", model=self.model.id)
-        used_in, used_out = reply.usage.prompt_tokens, reply.usage.completion_tokens
+            answer = self.model.ask(messages)
+        except ChatModelError as error:
+            return fail_closed(self.name, error.code, model=self.model.id)
+        used_in, used_out = answer.input_tokens, answer.output_tokens
         try:
-            decision = parse_decision(reply.text)
+            decision = parse_decision(answer.text)
         except DecisionError as error:
             return fail_closed(
                 self.name,
@@ -95,4 +121,4 @@ class LLMJudge:
         )
 
 
-__all__ = ["PROMPTS", "LLMJudge", "system_prompt"]
+__all__ = ["PROMPTS", "ChatAnswer", "ChatModel", "ChatModelError", "LLMJudge", "system_prompt"]

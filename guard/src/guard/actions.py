@@ -1,4 +1,4 @@
-"""What a world tells the training code about its high-impact actions.
+"""What a world tells the guard and the training code about its high-impact actions.
 
 A world ships a module and registers it through the ``agent_sandbox.training``
 entry-point group under its own name::
@@ -6,10 +6,11 @@ entry-point group under its own name::
     [project.entry-points."agent_sandbox.training"]
     payments = "worlds.payments.training"
 
-The module imports nothing from this package (a world must stay installable without
-it) and defines, as plain values:
+The module imports nothing from the guard or the training package (a world must stay
+installable without them) and defines, as plain values:
 
-- ``HIGH_IMPACT``: the tools whose attempts become examples;
+- ``HIGH_IMPACT``: the tools the guard stands in front of and whose attempts become
+  examples;
 - ``ASK_TOOL``: the tool the agent asks the user with;
 - ``CAUSED_BY_ACTION``: the failure types an action can cause (a check that starts
   failing with one of these right after an attempt is that attempt's doing);
@@ -20,10 +21,17 @@ it) and defines, as plain values:
 - ``OPAQUE_ARGS`` (optional): argument names whose values the run authors chose freely
   (an idempotency key such as ``kettle-retry``); in a request each value becomes a
   neutral token, numbered by first use, so a key can say nothing about the label;
-- ``RULES``: the rules-only baseline's checks, as dicts with ``id``, ``decision``
+- ``RULES``: the world's deterministic checks, as dicts with ``id``, ``decision``
   (``block`` or ``ask_user``), ``summary`` and ``check(request: dict) -> bool``
   (true when the attempt breaks the rule; ``request`` is a
-  :class:`guard.DecisionRequest` as JSON).
+  :class:`guard.DecisionRequest` as JSON). The ``rules_only`` backend applies all of
+  them; a policy pack names the ones that are hard rules;
+- ``guard_fields(request: dict) -> dict`` (optional): the policy fields of one attempt
+  (``amount``, ``counterparty``, ``category``, ``mandate``), read from the request;
+- ``guard_delegation(request: dict) -> dict`` (optional): the per-tool limits the task
+  delegated (``{"pay": {"budget": {"per_action": ...}}}``), in the policy file's
+  ``actions`` format, read from the request: its ``policy`` (``policy(task)``) and, for a
+  limit the task changes while it runs, the current value in its ``state``.
 """
 
 from __future__ import annotations
@@ -53,6 +61,16 @@ RULE_DECISIONS = ("block", "ask_user")
 
 Context = Callable[[TaskSpec, StateView, str, dict[str, Any]], dict[str, Any]]
 Policy = Callable[[TaskSpec], dict[str, Any]]
+Fields = Callable[[dict[str, Any]], dict[str, Any]]
+Delegation = Callable[[dict[str, Any]], dict[str, Any]]
+
+
+def _no_fields(request: dict[str, Any]) -> dict[str, Any]:
+    return {}
+
+
+def _no_delegation(request: dict[str, Any]) -> dict[str, Any]:
+    return {}
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +96,8 @@ class WorldActions:
     context: Context
     rules: tuple[Rule, ...]
     opaque_args: tuple[str, ...] = ()
+    fields: Fields = _no_fields
+    delegation: Delegation = _no_delegation
 
     def reason_vocabulary(self) -> dict[str, str]:
         """The reason codes a backend may give for this world: id -> description."""
@@ -87,7 +107,7 @@ class WorldActions:
 
 
 class TrainingError(ValueError):
-    """A world's training module is missing something or contradicts its WorldSpec."""
+    """A world's module is missing something or contradicts its WorldSpec."""
 
 
 def from_module(world: str, module: ModuleType | Any) -> WorldActions:
@@ -126,6 +146,8 @@ def from_module(world: str, module: ModuleType | Any) -> WorldActions:
         context=module.context,
         rules=rules,
         opaque_args=tuple(getattr(module, "OPAQUE_ARGS", ())),
+        fields=getattr(module, "guard_fields", _no_fields),
+        delegation=getattr(module, "guard_delegation", _no_delegation),
     )
 
 

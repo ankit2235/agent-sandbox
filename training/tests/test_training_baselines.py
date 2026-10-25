@@ -10,13 +10,14 @@ from pathlib import Path
 import httpx
 import pytest
 
+from guard.backends.config import build_backend, configs, load_config
+from guard.backends.llm_judge import LLMJudge, system_prompt
+from guard.backends.openai_decisions import OpenAIDecisionsBackend
+from guard.backends.rules_only import RulesOnlyBackend
+from guard.backends.system_one import ConfigError, SystemOneBackend
 from guard.decision import ActionCall, DecisionRequest
+from runner.guarding import ChatAdapter
 from runner.models import ContextWindowExceeded, FakeModel, ModelReply, ProviderError
-from training.baselines.config import build_backend, configs, load_config
-from training.baselines.judge import LLMJudge, system_prompt
-from training.baselines.openai_decisions import OpenAIDecisionsBackend
-from training.baselines.rules import RulesBackend
-from training.baselines.system_one import ConfigError, SystemOneBackend
 from training.data.build import read_split
 
 NOW = "2026-01-01T09:00:00Z"
@@ -38,7 +39,7 @@ def test_rules_allow_a_payment_that_breaks_nothing() -> None:
         {"tool": "pay", "args": {"payee": "a@sandbox", "amount_paise": 100}},
         {"limits": {"per_txn_paise": 1000}, "payee": {"exists": True}, "payments_to_payee": []},
     )
-    result = RulesBackend().decide(request)
+    result = RulesOnlyBackend().decide(request)
     assert result.decision.decision == "allow"
     assert result.decision.reason_codes == []
 
@@ -48,12 +49,14 @@ def test_rules_block_over_the_cap_and_ask_for_an_unknown_payee() -> None:
         {"tool": "pay", "args": {"payee": "a@sandbox", "amount_paise": 5000}},
         {"limits": {"per_txn_paise": 1000}, "payee": {"exists": True}},
     )
-    assert RulesBackend().decide(over).decision.reason_codes == ["payments.rule.over-per-txn-cap"]
+    assert RulesOnlyBackend().decide(over).decision.reason_codes == [
+        "payments.rule.over-per-txn-cap"
+    ]
     unknown = _payments(
         {"tool": "pay", "args": {"payee": "x@sandbox", "amount_paise": 1}},
         {"payee": {"exists": False}},
     )
-    decided = RulesBackend().decide(unknown).decision
+    decided = RulesOnlyBackend().decide(unknown).decision
     assert decided.decision == "ask_user"
     assert decided.reason_codes == ["payments.rule.unknown-payee"]
 
@@ -76,7 +79,9 @@ def test_rules_block_a_repeat_payment_within_a_day() -> None:
             ],
         },
     )
-    assert "payments.rule.repeat-payment" in RulesBackend().decide(request).decision.reason_codes
+    assert (
+        "payments.rule.repeat-payment" in RulesOnlyBackend().decide(request).decision.reason_codes
+    )
 
 
 def test_rules_block_reimaging_before_evidence_and_blocking_a_supplier() -> None:
@@ -91,7 +96,7 @@ def test_rules_block_reimaging_before_evidence_and_blocking_a_supplier() -> None
         action=ActionCall(tool="reimage_host", args={"host_id": "ws-001"}),
         sim_time=NOW,
     )
-    assert RulesBackend().decide(reimage).decision.reason_codes == [
+    assert RulesOnlyBackend().decide(reimage).decision.reason_codes == [
         "security.rule.reimage-before-evidence"
     ]
     supplier = DecisionRequest(
@@ -103,12 +108,12 @@ def test_rules_block_reimaging_before_evidence_and_blocking_a_supplier() -> None
         ),
         sim_time=NOW,
     )
-    assert RulesBackend().decide(supplier).decision.decision == "block"
+    assert RulesOnlyBackend().decide(supplier).decision.decision == "block"
 
 
 def test_rules_run_on_real_rows(small_build: Path) -> None:
     rows = read_split(small_build, "test")
-    decisions = {RulesBackend().decide(row.request).decision.decision for row in rows}
+    decisions = {RulesOnlyBackend().decide(row.request).decision.decision for row in rows}
     assert decisions <= {"allow", "block", "ask_user"}
 
 
@@ -120,7 +125,7 @@ def _request() -> DecisionRequest:
 def test_the_judge_reads_one_json_decision() -> None:
     reply = '{"decision": "block", "reason_codes": ["payments.overspend"], "confidence": 0.8}'
     model = FakeModel([ModelReply(text=reply)], model_id="fake:judge")
-    result = LLMJudge("judge-a", model).decide(_request())
+    result = LLMJudge("judge-a", ChatAdapter(model)).decide(_request())
     assert result.decision.decision == "block"
     assert result.model == "fake:judge"
     assert result.model_version == "judge-v1"
@@ -139,7 +144,7 @@ def test_the_judge_reads_one_json_decision() -> None:
     ],
 )
 def test_the_judge_fails_closed(turn: object, error: str) -> None:
-    result = LLMJudge("judge-a", FakeModel([turn])).decide(_request())
+    result = LLMJudge("judge-a", ChatAdapter(FakeModel([turn]))).decide(_request())
     assert result.decision.decision == "ask_user"
     assert result.decision.confidence == 0.0
     assert result.error == error
@@ -280,7 +285,7 @@ def test_openai_decisions_treats_a_refusal_as_fail_closed() -> None:
 # ---------------------------------------------------------------- configs
 def test_every_packaged_config_validates() -> None:
     names = configs()
-    assert {"rules", "judge-a", "judge-b", "jev", "clef", "openai-decisions"} <= set(names)
+    assert {"rules_only", "judge-a", "judge-b", "jev", "clef", "openai-decisions"} <= set(names)
     for name in names:
         assert load_config(name).name == name
 

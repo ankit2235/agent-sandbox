@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from guard.actions import actions
 from kit.tasks import load_tasks
 from kit.world import worlds
 from runner.cli import main as sandbox
@@ -12,7 +13,6 @@ from runner.hidden import generate
 from runner.validate import task_files
 from training.data import templates
 from training.data.labels import walk
-from training.world import actions
 
 WORLDS = ("payments", "security")
 

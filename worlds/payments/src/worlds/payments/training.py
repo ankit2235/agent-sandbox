@@ -1,8 +1,8 @@
-"""The payments world's high-impact actions, for the guard-model dataset and the rules baseline.
+"""The payments world's high-impact actions, for the guard, its dataset and the rules backend.
 
 Registered through the ``agent_sandbox.training`` entry point; read by
-``training.world``. This module imports nothing from the training package, so the world
-stays installable without it. ``context`` reads only what the agent could see through
+``guard.actions``. This module imports nothing from the guard or the training package,
+so the world stays installable without them. ``context`` reads only what the agent could see through
 its tools (balances, caps, mandates, orders, payees, past payments), never a merchant's
 hidden behaviour profile and never a task's expected outcome.
 """
@@ -311,3 +311,70 @@ RULES = [
         "check": _mandate_to_non_merchant,
     },
 ]
+
+
+# --------------------------------------------------------------------- guard
+def _paise(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _text(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def guard_fields(request: dict[str, Any]) -> dict[str, Any]:
+    """The policy fields of one attempt: its amount, the payee, the payee's kind, the mandate.
+
+    A malformed amount (not a whole, non-negative number of paise) is no amount: a rule
+    that needs one then asks the user, and the rails refuse the call anyway.
+    """
+    tool, args, state = request["action"]["tool"], request["action"]["args"], request["state"]
+    payee = state.get("payee") or {}
+    if tool == "pay":
+        return {
+            "amount": _paise(args.get("amount_paise")),
+            "counterparty": _text(args.get("payee")),
+            "category": payee.get("kind"),
+            "mandate": _text(args.get("mandate_id")),
+        }
+    if tool == "create_mandate":
+        return {
+            "amount": _paise(args.get("max_amount_paise")),
+            "counterparty": _text(args.get("payee")),
+            "category": payee.get("kind"),
+        }
+    if tool == "checkout":
+        return {"counterparty": (state.get("merchant") or {}).get("handle")}
+    if tool == "request_refund":
+        return {
+            "amount": _paise(args.get("amount_paise")),
+            "counterparty": (state.get("order") or {}).get("merchant_handle"),
+        }
+    return {}
+
+
+def guard_delegation(request: dict[str, Any]) -> dict[str, Any]:
+    """The task's own caps on the user's payments, as the guard's ``pay`` budget.
+
+    The caps are the user's per-payment, daily and monthly limits: the current ones the
+    rails hold (``state.limits``, which a task's scheduled limit change updates), else the
+    ones the task starts with (``policy.limits``). The rails still enforce their limits;
+    the guard holds a payment above them before it reaches the rails.
+    """
+    policy, state = request.get("policy") or {}, request.get("state") or {}
+    mine = state.get("limits")
+    if not isinstance(mine, dict):
+        limits = policy.get("limits")
+        mine = limits.get(policy.get("user")) if isinstance(limits, dict) else None
+    if not isinstance(mine, dict):
+        return {}
+    budget = {
+        name: mine[key]
+        for name, key in (
+            ("per_action", "per_txn_paise"),
+            ("daily", "daily_paise"),
+            ("monthly", "monthly_paise"),
+        )
+        if isinstance(mine.get(key), int) and not isinstance(mine.get(key), bool)
+    }
+    return {"pay": {"budget": budget}} if budget else {}

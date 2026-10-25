@@ -129,7 +129,7 @@ scores decision backends (allow, block or ask the user) on it. Nothing in CI cal
 uv run sandbox-train dataset build --config ci --out training/data/out --workers 4
 uv run sandbox-train dataset check training/data/out/actions-v0.1-ci       # what CI checks
 uv run sandbox-train backends                                               # the packaged configs
-uv run sandbox-train eval --backend rules --data training/data/out/actions-v0.1-ci --out rules.json
+uv run sandbox-train eval --backend rules_only --data training/data/out/actions-v0.1-ci --out rules.json
 # A judge needs its model id at run time (and the litellm extra and a key):
 uv run sandbox-train eval --backend judge-a --set model=<provider>/<model> --data ... --out judge-a.json
 ```
@@ -140,6 +140,24 @@ The full build, decontaminated against the hidden set, needs `HIDDEN_TASKS_DIR`
 The dataset card is [training/data/actions-v0.1/DATASET_CARD.md](training/data/actions-v0.1/DATASET_CARD.md);
 the evaluation report, pending real runs, is [docs/blog/guard-model.md](docs/blog/guard-model.md).
 
+## The guard (Phase 8)
+
+`guard/` checks every high-impact action an agent attempts against what the user delegated,
+decides allow, block or ask the user, and keeps a hash-chained record of why. Hard rules come
+first and no model can loosen them; a decision backend (rules only, our model, or an outside
+decision model) is asked about the rest. It never moves money or touches a real system.
+
+```bash
+uv run sandbox-guard policy check payments/default
+uv run sandbox run --world payments --model fake:golden --tasks payments-v0.1 \
+    --guard payments/default --backend rules_only --out runs/guarded
+uv run sandbox verify --run runs/guarded          # grades and decision records
+cd guard/typescript && npm ci && npm run build && npm test   # the TypeScript SDK
+```
+
+The outside backends need keys and our model needs training: see
+[docs/site/guard.md](docs/site/guard.md).
+
 ## Layout
 
 ```
@@ -147,7 +165,8 @@ kit/          core types, episode loop, trace, clock, rng, world registry, OpenE
 worlds/       one directory per domain; nothing outside worlds/ imports them
 stress/       generic, seeded modifiers that make any task harder
 runner/       the `sandbox` CLI: agent loop, runs, traces, scoring, export, verify
-guard/        the decision interface every guard backend speaks (the guard library is Phase 8)
+guard/        the guard library: policies, hard rules, backends, decision records, decorator,
+              MCP proxy, the TypeScript SDK and the shared test vectors
 training/     the `sandbox-train` CLI: action dataset, baselines, guard-model training, evaluation
 docs/         DECISIONS.md, PROGRESS.md, RELEASING.md, the docs site (site/) and the write-up (blog/)
 submissions/  results submissions: one small file per model, never the run directories
@@ -155,10 +174,11 @@ submissions/  results submissions: one small file per model, never the run direc
 
 ## Status
 
-Phases 0–7 of the build plan: the core kit, the payments and security worlds with 50 tasks each,
+Phases 0–8 of the build plan: the core kit, the payments and security worlds with 50 tasks each,
 the runner, the stress library and hidden sets, the v0.1 release tooling (packages, Docker
-image, docs site, release gate, results submission, OpenEnv packaging), and the guard-model
-dataset, baselines, training configs and evaluation (no model trained or run yet). The release gate does not
+image, docs site, release gate, results submission, OpenEnv packaging), the guard-model
+dataset, baselines, training configs and evaluation, and the guard library with its Python and
+TypeScript SDKs (no guard model trained and no outside backend run yet). The release gate does not
 pass yet: no grader is signed off by a domain reviewer, so both worlds are listed as `preview`,
 and no real model has been run. See [docs/PROGRESS.md](docs/PROGRESS.md) for what exists and what
 waits on whom, and [docs/DECISIONS.md](docs/DECISIONS.md) for why.

@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from guard.actions import actions
+from guard.backends.guard_model.format import completion
 from guard.decision import BackendResult, Decision, DecisionRequest
 from kit.scripted import load_runs
 from kit.world import worlds
@@ -17,9 +19,7 @@ from training.data.example import SPLITS
 from training.data.labels import golden_asks, label, walk
 from training.eval.metrics import summarize
 from training.eval.run import predict
-from training.guard_model.format import completion
 from training.guard_model.reward import RewardWeights, reward
-from training.world import actions
 
 
 class Constant:

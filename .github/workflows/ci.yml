@@ -32,6 +32,23 @@ jobs:
       - name: tests
         run: uv run pytest
 
+  guard-typescript:
+    # The guard's TypeScript SDK: built and held to the same shared test vectors as Python.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: guard/typescript
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: guard/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
   package:
     # A stranger's install: the six wheels, built here, into a clean virtualenv, then the
     # quickstart with the fake model. Nothing is published.

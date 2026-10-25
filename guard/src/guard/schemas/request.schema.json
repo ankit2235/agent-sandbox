@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/prarabdha-soni/agent-sandbox/guard/request.schema.json",
+  "title": "Guard decision request",
+  "description": "Everything a guard and its backend see about one attempted action, and (under $defs/fields) the fields its hard rules read. The JSON form of guard.DecisionRequest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["world", "instruction", "action", "sim_time"],
+  "properties": {
+    "world": {"type": "string"},
+    "instruction": {"type": "string"},
+    "policy": {"type": "object"},
+    "state": {"type": "object"},
+    "recent_steps": {"type": "array", "items": {"$ref": "#/$defs/step"}},
+    "read": {"type": "array", "items": {"$ref": "#/$defs/step"}},
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool"],
+      "properties": {"tool": {"type": "string"}, "args": {"type": "object"}}
+    },
+    "sim_time": {"$ref": "#/$defs/time"}
+  },
+  "$defs": {
+    "time": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sim_time"],
+      "properties": {
+        "kind": {"enum": ["tool_call", "event"]},
+        "sim_time": {"$ref": "#/$defs/time"},
+        "tool": {"type": ["string", "null"]},
+        "event": {"type": ["string", "null"]},
+        "args": {"type": "object"},
+        "response": true,
+        "error": {"type": ["string", "null"]}
+      }
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "amount": {"type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991},
+        "counterparty": {"type": ["string", "null"]},
+        "category": {"type": ["string", "null"]},
+        "mandate": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

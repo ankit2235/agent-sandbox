@@ -7,16 +7,16 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from guard.decision import BackendResult, Decision
-from training.cli import main as train_cli
-from training.eval.calibration import (
+from guard.backends.calibration import (
     LOW_CONFIDENCE,
     CalibratedBackend,
     Calibration,
     apply,
-    fit,
     scaled,
 )
+from guard.decision import BackendResult, Decision
+from training.cli import main as train_cli
+from training.eval.calibration import fit
 from training.eval.metrics import (
     breakdown,
     cost_per_1000,
@@ -223,7 +223,8 @@ def test_the_report_says_where_our_model_loses_first() -> None:
 
 def test_the_leaderboard_file_validates_and_discloses() -> None:
     data = leaderboard(
-        [_result("ours", "guard_model", 0.6), _result("rules", "rules", 0.4)], dt.date(2026, 11, 1)
+        [_result("ours", "guard_model", 0.6), _result("rules_only", "rules_only", 0.4)],
+        dt.date(2026, 11, 1),
     )
     jsonschema.validate(data, json.loads(SCHEMA.read_text()))
     assert data["updated"] == "2026-11-01"
@@ -239,7 +240,7 @@ def test_eval_calibrate_and_report_end_to_end(small_build: Path, tmp_path: Path)
             [
                 "eval",
                 "--backend",
-                "rules",
+                "rules_only",
                 "--data",
                 str(small_build),
                 "--split",
@@ -263,7 +264,7 @@ def test_eval_calibrate_and_report_end_to_end(small_build: Path, tmp_path: Path)
             [
                 "eval",
                 "--backend",
-                "rules",
+                "rules_only",
                 "--data",
                 str(small_build),
                 "--calibration",
@@ -278,7 +279,7 @@ def test_eval_calibrate_and_report_end_to_end(small_build: Path, tmp_path: Path)
     )
     result = json.loads((out / "test.json").read_text())
     assert result["rows"] == 5
-    assert result["calibration"]["backend"] == "rules"
+    assert result["calibration"]["backend"] == "rules_only"
     assert result["model_versions"]
     assert (
         train_cli(
@@ -301,7 +302,7 @@ def test_calibrating_on_test_predictions_is_refused(small_build: Path, tmp_path:
         [
             "eval",
             "--backend",
-            "rules",
+            "rules_only",
             "--data",
             str(small_build),
             "--predictions",
@@ -323,7 +324,7 @@ def test_hidden_eval_writes_no_predictions(small_build: Path, tmp_path: Path) ->
         [
             "eval",
             "--backend",
-            "rules",
+            "rules_only",
             "--data",
             str(small_build),
             "--hidden",
@@ -348,7 +349,7 @@ def test_hidden_eval_without_the_private_repository_stops_cleanly(
         [
             "eval",
             "--backend",
-            "rules",
+            "rules_only",
             "--data",
             str(small_build),
             "--hidden",

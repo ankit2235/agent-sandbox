@@ -1,3 +1,0 @@
-# The rules-only baseline: each world's deterministic checks (worlds/<name>/training.py).
-kind: rules
-name: rules
