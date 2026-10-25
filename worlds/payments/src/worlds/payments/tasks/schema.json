@@ -265,6 +265,13 @@
       "additionalProperties": false,
       "description": "The ``commerce`` part of a payments task's ``initial_state``.",
       "properties": {
+        "deals": {
+          "items": {
+            "$ref": "#/$defs/DealSeed"
+          },
+          "title": "Deals",
+          "type": "array"
+        },
         "merchants": {
           "items": {
             "$ref": "#/$defs/MerchantSeed"
@@ -328,6 +335,38 @@
       "title": "CommerceSettings",
       "type": "object"
     },
+    "CounterpartConfig": {
+      "additionalProperties": false,
+      "description": "The other agent in a multi-agent task: a seller acting for one merchant.",
+      "properties": {
+        "brief": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Brief",
+          "type": "string"
+        },
+        "merchant_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "role": {
+          "const": "seller",
+          "default": "seller",
+          "title": "Role",
+          "type": "string"
+        },
+        "scripted": {
+          "$ref": "#/$defs/ScriptedSeller"
+        }
+      },
+      "required": [
+        "merchant_id",
+        "brief"
+      ],
+      "title": "CounterpartConfig",
+      "type": "object"
+    },
     "DailyWindow": {
       "description": "How a \"daily\" cap is counted. Public sources disagree, so a task chooses.",
       "enum": [
@@ -336,6 +375,66 @@
       ],
       "title": "DailyWindow",
       "type": "string"
+    },
+    "DealSeed": {
+      "additionalProperties": false,
+      "description": "A deal between the user and a seller agent, for multi-agent tasks (Phase 9).\n\nOpen by default: the price is still to be agreed. With ``agreed_price_paise`` the price\nwas agreed before the task starts (a quote), and the seller invoices it.",
+      "properties": {
+        "agreed_price_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agreed Price Paise"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "merchant_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "opening_message": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Opening Message",
+          "type": "string"
+        },
+        "opening_price_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opening Price Paise"
+        },
+        "product_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+          "title": "Product Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "merchant_id",
+        "product_id"
+      ],
+      "title": "DealSeed",
+      "type": "object"
     },
     "DisputeSettings": {
       "additionalProperties": false,
@@ -501,6 +600,29 @@
         "body"
       ],
       "title": "InboxSeed",
+      "type": "object"
+    },
+    "InvoiceLine": {
+      "additionalProperties": false,
+      "description": "A line the seller adds to an invoice beside the item: delivery, a fee.",
+      "properties": {
+        "amount_paise": {
+          "exclusiveMinimum": 0,
+          "title": "Amount Paise",
+          "type": "integer"
+        },
+        "label": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "amount_paise"
+      ],
+      "title": "InvoiceLine",
       "type": "object"
     },
     "LimitChange": {
@@ -1154,6 +1276,17 @@
         "commerce": {
           "$ref": "#/$defs/CommerceConfig"
         },
+        "counterpart": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CounterpartConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "disputes": {
           "$ref": "#/$defs/DisputesConfig"
         },
@@ -1417,6 +1550,95 @@
       "title": "ScheduledChange",
       "type": "object"
     },
+    "ScriptedSeller": {
+      "additionalProperties": false,
+      "description": "How the world's scripted seller plays (multi-agent tasks). It reads only its desk.\n\nOn an open deal it accepts a buyer offer at or above ``floor_paise`` and otherwise\ncounters, coming down ``step_paise`` a round from the list price, never below the floor.\nIt invoices an agreed deal; it answers a dispute by correcting a wrong invoice (if it\n``concedes``) or by standing by it.",
+      "properties": {
+        "collect_under": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Collect Under"
+        },
+        "concedes": {
+          "default": true,
+          "title": "Concedes",
+          "type": "boolean"
+        },
+        "duplicate": {
+          "default": false,
+          "title": "Duplicate",
+          "type": "boolean"
+        },
+        "floor_paise": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Floor Paise"
+        },
+        "included_fees": {
+          "items": {
+            "$ref": "#/$defs/InvoiceLine"
+          },
+          "maxItems": 3,
+          "title": "Included Fees",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Note",
+          "type": "string"
+        },
+        "overcharge_paise": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Overcharge Paise",
+          "type": "integer"
+        },
+        "padding": {
+          "items": {
+            "$ref": "#/$defs/InvoiceLine"
+          },
+          "maxItems": 3,
+          "title": "Padding",
+          "type": "array"
+        },
+        "reply_after_seconds": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Reply After Seconds",
+          "type": "integer"
+        },
+        "silent": {
+          "default": false,
+          "title": "Silent",
+          "type": "boolean"
+        },
+        "step_paise": {
+          "default": 10000,
+          "exclusiveMinimum": 0,
+          "title": "Step Paise",
+          "type": "integer"
+        }
+      },
+      "title": "ScriptedSeller",
+      "type": "object"
+    },
     "Settings": {
       "additionalProperties": false,
       "description": "Rules public sources leave open. See docs/DECISIONS.md.",
@@ -1536,7 +1758,17 @@
           "send_message",
           "change_subscription",
           "wait",
-          "ask_user"
+          "ask_user",
+          "list_deals",
+          "make_offer",
+          "accept_offer",
+          "dispute_invoice",
+          "seller_desk",
+          "seller_counter",
+          "seller_accept",
+          "seller_invoice",
+          "seller_withdraw",
+          "seller_message"
         ]
       },
       "type": "array",
@@ -1547,7 +1779,8 @@
         "rails",
         "commerce",
         "disputes",
-        "multi"
+        "multi",
+        "agents"
       ]
     },
     "difficulty": {

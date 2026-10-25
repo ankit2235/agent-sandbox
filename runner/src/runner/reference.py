@@ -59,6 +59,7 @@ def _cell(text: str) -> str:
 def markdown(spec: WorldSpec) -> str:
     """The reference page for one world."""
     tools = tool_list(spec)
+    owners = {tool: role.name for role in spec.roles for tool in role.tools}
     lines = [
         f"# Tool reference: {spec.name}",
         "",
@@ -73,6 +74,12 @@ def markdown(spec: WorldSpec) -> str:
         required = set(schema.get("required", []))
         defs: dict[str, Any] = schema.get("$defs", {})
         lines += [f"## `{tool['name']}`", "", tool["description"].strip(), ""]
+        if tool["name"] in owners:
+            lines += [
+                f"Only the counterpart role `{owners[tool['name']]}` calls this tool, in "
+                "multi-agent tasks; the agent under test is never offered it.",
+                "",
+            ]
         if properties:
             lines += ["| argument | type | required | description |", "| --- | --- | --- | --- |"]
             for arg, prop in properties.items():

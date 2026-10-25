@@ -9,6 +9,12 @@ collects through the user's mandate.
 
 Anything the user should hear about (an invoice, a receipt, a shipment) comes
 back as a ``notice``; the episode delivers notices to the support inbox.
+
+Deals (multi-agent tasks, Phase 9) are a negotiation between the user's agent and a seller
+agent: offers, acceptance, messages, and the seller's invoices, which are ordinary orders. An
+invoice may be collected under a mandate the user gave the merchant, after a pre-debit notice;
+the collection comes back as a ``charge``, like a renewal. Their tables exist only in a task
+that seeds deals, so every other task's database is exactly what it was before deals existed.
 """
 
 from __future__ import annotations
@@ -31,6 +37,10 @@ from .models import (
     PAGES,
     CartLine,
     CommerceConfig,
+    DealMove,
+    InvoiceCreate,
+    InvoiceDispute,
+    InvoiceWithdraw,
     LoadRequest,
     OrderKind,
     OrderStatus,
@@ -45,6 +55,13 @@ EVENT_ORDER_EXPIRY = "commerce.order_expiry"
 EVENT_SHIP = "commerce.ship"
 EVENT_DELIVER = "commerce.deliver"
 EVENT_RENEWAL = "commerce.subscription_renewal"
+EVENT_DEAL_COLLECT = "commerce.deal_collect"
+
+INVOICE_WINDOW_SECONDS = 3 * 86_400
+"""How long a seller's invoice stays payable. An invented default, for the payments reviewer."""
+PRE_DEBIT_NOTICE_SECONDS = 86_400
+"""A collection under a mandate is debited this long after its pre-debit notice: RBI's "at
+least 24 hours prior to the actual charge / debit" (DECISIONS 272)."""
 
 ADMIN_RESOURCES = (
     "state",
@@ -58,6 +75,9 @@ ADMIN_RESOURCES = (
     "order_payments",
     "documents",
     "subscriptions",
+    "deals",
+    "deal_messages",
+    "deal_invoices",
 )
 
 SCHEMA = """
@@ -200,6 +220,50 @@ CREATE TABLE page_content (
 ) STRICT;
 """
 
+DEAL_SCHEMA = (
+    """CREATE TABLE deal (
+    id TEXT PRIMARY KEY,
+    merchant_id TEXT NOT NULL REFERENCES merchant (id),
+    product_id TEXT NOT NULL,
+    list_price_paise INTEGER NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('open', 'agreed')),
+    offer_by TEXT CHECK (offer_by IN ('buyer', 'seller')),
+    offer_paise INTEGER,
+    agreed_paise INTEGER,
+    agreed_at TEXT,
+    awaiting TEXT CHECK (awaiting IN ('buyer', 'seller')),
+    buyer_moved_at TEXT
+) STRICT""",
+    """CREATE TABLE deal_message (
+    id INTEGER PRIMARY KEY,
+    deal_id TEXT NOT NULL REFERENCES deal (id),
+    sender TEXT NOT NULL CHECK (sender IN ('buyer', 'seller')),
+    kind TEXT NOT NULL CHECK (
+        kind IN ('offer', 'accept', 'message', 'invoice', 'withdraw', 'dispute')
+    ),
+    price_paise INTEGER,
+    order_id TEXT,
+    lines TEXT NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL
+) STRICT""",
+    """CREATE TABLE deal_invoice (
+    id TEXT PRIMARY KEY REFERENCES orders (id),
+    deal_id TEXT NOT NULL REFERENCES deal (id),
+    mandate_id TEXT,
+    collect_at TEXT,
+    withdrawn_at TEXT,
+    disputed_at TEXT,
+    created_at TEXT NOT NULL
+) STRICT""",
+)
+"""Created at load, and only for a task with deals (DECISIONS)."""
+
+
+def other_side(sender: str) -> str:
+    """The party a move hands the deal to."""
+    return "seller" if sender == "buyer" else "buyer"
+
 
 def raised(price: int, bps: int) -> int:
     """A price after a rise of ``bps`` basis points, rounded half up to the paisa."""
@@ -283,7 +347,7 @@ class Commerce(SqlCore):
                 raise ToolRejected(Rejection.ALREADY_LOADED, msg)
             self._db.executemany(
                 "INSERT INTO commerce_config VALUES (?, ?)",
-                [("config", config.model_dump_json()), ("user", request.user)],
+                [("config", config.stored()), ("user", request.user)],
             )
             for merchant in config.merchants:
                 self._insert(
@@ -351,6 +415,8 @@ class Commerce(SqlCore):
                     "INSERT INTO page_content (merchant_id, page, mode, text) VALUES (?, ?, ?, ?)",
                     (content.merchant_id, content.page, content.mode, content.text),
                 )
+            if config.deals:
+                self._load_deals(config, now)
         counts = {"merchants": len(config.merchants), "products": len(config.products)}
         return Result(body={"loaded": counts}, scheduled=scheduled)
 
@@ -1007,6 +1073,8 @@ class Commerce(SqlCore):
                 diff, notices = self._deliver(self._order(str(payload.get("order_id"))), now)
             elif name == EVENT_RENEWAL:
                 diff, charge = self._renew(str(payload.get("subscription_id")), now)
+            elif name == EVENT_DEAL_COLLECT:
+                charge = self._collection(str(payload.get("order_id")))
             else:
                 msg = f"commerce does not handle event {name!r}"
                 raise ToolRejected(Rejection.UNKNOWN_EVENT, msg)
@@ -1265,6 +1333,451 @@ class Commerce(SqlCore):
             raise ToolRejected(Rejection.MERCHANT_NOT_FOUND, msg)
         return self.merchant(str(row["id"]))
 
+    # ------------------------------------------------------------------ deals
+    def _load_deals(self, config: CommerceConfig, now: dt.datetime) -> None:
+        for statement in DEAL_SCHEMA:
+            self._db.execute(statement)
+        prices = {product.id: product.price_paise for product in config.products}
+        for seed in config.deals:
+            agreed = seed.agreed_price_paise
+            opening = seed.opening_price_paise
+            self._insert(
+                "deal",
+                {
+                    "id": seed.id,
+                    "merchant_id": seed.merchant_id,
+                    "product_id": seed.product_id,
+                    "list_price_paise": prices[seed.product_id],
+                    "status": "open" if agreed is None else "agreed",
+                    "offer_by": None if opening is None else "seller",
+                    "offer_paise": opening,
+                    "agreed_paise": agreed,
+                    "agreed_at": None if agreed is None else iso(now),
+                    "awaiting": None if opening is None else "buyer",
+                    "buyer_moved_at": None,
+                },
+            )
+            if opening is not None:
+                self._say(seed.id, "seller", "offer", seed.opening_message, now, price=opening)
+
+    def _deals_on(self) -> bool:
+        found = self._one("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'deal'")
+        return found is not None
+
+    def _deal(self, deal_id: str, merchant_id: str | None = None) -> Row:
+        """A deal; for a seller, only one of its own merchant's."""
+        row = self._one("SELECT * FROM deal WHERE id = ?", (deal_id,)) if self._deals_on() else None
+        if row is None or (merchant_id is not None and row["merchant_id"] != merchant_id):
+            msg = f"no deal {deal_id!r}"
+            raise ToolRejected(Rejection.DEAL_NOT_FOUND, msg)
+        return row
+
+    def _invoice(self, order_id: str, merchant_id: str | None = None) -> tuple[Row, Row]:
+        """A seller's invoice and its order; for a seller, only one of its own."""
+        row = None
+        if self._deals_on():
+            row = self._one("SELECT * FROM deal_invoice WHERE id = ?", (order_id,))
+        if row is None:
+            msg = f"no invoice {order_id!r}"
+            raise ToolRejected(Rejection.INVOICE_NOT_FOUND, msg)
+        self._deal(str(row["deal_id"]), merchant_id)
+        return row, self._order(order_id)
+
+    @staticmethod
+    def _invoice_open(invoice: Row, order: Row) -> bool:
+        return invoice["withdrawn_at"] is None and order["status"] == OrderStatus.CREATED
+
+    def _say(
+        self,
+        deal_id: str,
+        sender: str,
+        kind: str,
+        text: str,
+        now: dt.datetime,
+        *,
+        price: int | None = None,
+        order_id: str | None = None,
+        lines: list[str] | None = None,
+    ) -> list[DiffEntry]:
+        """Add a move to a deal's conversation."""
+        row: Row = {
+            "id": int(self._scalar("SELECT COUNT(*) FROM deal_message")) + 1,
+            "deal_id": deal_id,
+            "sender": sender,
+            "kind": kind,
+            "price_paise": price,
+            "order_id": order_id,
+            "lines": json.dumps(lines or []),
+            "text": text,
+            "created_at": iso(now),
+        }
+        self._insert("deal_message", row)
+        return [self._created("deal_message", row)]
+
+    def _seller_notice(self, deal: Row, subject: str, text: str, order_id: str | None) -> Row:
+        merchant = self._merchant(str(deal["merchant_id"]))
+        body = f"{merchant['name']} on deal {deal['id']}: {text}" if text else subject
+        return notice(merchant, subject, body, order_id)
+
+    def _handed(self, deal: Row, sender: str, now: dt.datetime) -> list[DiffEntry]:
+        """The deal now waits for the other side; a buyer's move starts the seller's clock."""
+        if sender == "buyer":
+            return self._set("deal", deal, awaiting="seller", buyer_moved_at=iso(now))
+        return self._set("deal", deal, awaiting="buyer")
+
+    def _moved(self, deal: Row, diff: list[DiffEntry], notices: list[Row]) -> Result:
+        return Result(
+            body={"deal": self._deal_view(self._deal(str(deal["id"]))), "notices": notices},
+            state_diff=diff,
+        )
+
+    def deal_offer(self, deal_id: str, move: DealMove, now: dt.datetime) -> Result:
+        """Make or answer with an offer on an open deal."""
+        with self._transaction():
+            self._config()
+            deal = self._deal(deal_id, move.merchant_id)
+            if deal["status"] != "open":
+                msg = f"deal {deal_id} is already agreed at {pages.money(deal['agreed_paise'])}"
+                raise ToolRejected(Rejection.DEAL_NOT_OPEN, msg)
+            if move.price_paise is None:
+                msg = "an offer needs price_paise"
+                raise ToolRejected(Rejection.INVALID_REQUEST, msg)
+            price = move.price_paise
+            diff = self._set("deal", deal, offer_by=move.sender, offer_paise=price)
+            diff += self._handed(deal, move.sender, now)
+            diff += self._say(deal_id, move.sender, "offer", move.text, now, price=price)
+            notices = []
+            if move.sender == "seller":
+                subject = f"Counter-offer on deal {deal_id}: {pages.money(price)}"
+                notices.append(self._seller_notice(deal, subject, move.text, None))
+        return self._moved(deal, diff, notices)
+
+    def deal_accept(self, deal_id: str, move: DealMove, now: dt.datetime) -> Result:
+        """Accept the other side's standing offer: the deal is agreed at that price."""
+        with self._transaction():
+            self._config()
+            deal = self._deal(deal_id, move.merchant_id)
+            if deal["status"] != "open":
+                msg = f"deal {deal_id} is already agreed at {pages.money(deal['agreed_paise'])}"
+                raise ToolRejected(Rejection.DEAL_NOT_OPEN, msg)
+            if deal["offer_by"] != other_side(move.sender):
+                msg = f"there is no offer from the {other_side(move.sender)} to accept on {deal_id}"
+                raise ToolRejected(Rejection.NO_STANDING_OFFER, msg)
+            price = int(deal["offer_paise"])
+            diff = self._set("deal", deal, status="agreed", agreed_paise=price, agreed_at=iso(now))
+            diff += self._handed(deal, move.sender, now)
+            diff += self._say(deal_id, move.sender, "accept", move.text, now, price=price)
+            notices = []
+            if move.sender == "seller":
+                subject = f"Offer accepted on deal {deal_id}: {pages.money(price)}"
+                notices.append(self._seller_notice(deal, subject, move.text, None))
+        return self._moved(deal, diff, notices)
+
+    def deal_message(self, deal_id: str, move: DealMove, now: dt.datetime) -> Result:
+        """A message on a deal, with no offer in it."""
+        with self._transaction():
+            self._config()
+            deal = self._deal(deal_id, move.merchant_id)
+            if not move.text.strip():
+                msg = "a message needs text"
+                raise ToolRejected(Rejection.INVALID_REQUEST, msg)
+            diff = self._handed(deal, move.sender, now)
+            diff += self._say(deal_id, move.sender, "message", move.text, now)
+            notices = []
+            if move.sender == "seller":
+                subject = f"Message on deal {deal_id}"
+                notices.append(self._seller_notice(deal, subject, move.text, None))
+        return self._moved(deal, diff, notices)
+
+    def invoice_create(self, deal_id: str, request: InvoiceCreate, now: dt.datetime) -> Result:
+        """The seller invoices an agreed deal: an order the user pays, or one it collects."""
+        with self._transaction():
+            self._config()
+            deal = self._deal(deal_id, request.merchant_id)
+            if deal["status"] != "agreed":
+                msg = f"deal {deal_id} is not agreed yet; invoice it once a price is agreed"
+                raise ToolRejected(Rejection.DEAL_NOT_AGREED, msg)
+            diff: list[DiffEntry] = []
+            notices: list[Row] = []
+            if request.replaces is not None:
+                old, old_order = self._invoice(request.replaces, request.merchant_id)
+                if old["deal_id"] != deal_id or not self._invoice_open(old, old_order):
+                    msg = f"invoice {request.replaces} is not an open invoice of deal {deal_id}"
+                    raise ToolRejected(Rejection.INVOICE_NOT_OPEN, msg)
+                more, notes = self._withdraw(old, old_order, "replaced_by_seller", now)
+                diff += more
+                notices += notes
+            merchant = self._merchant(str(deal["merchant_id"]))
+            product = self._one("SELECT * FROM product WHERE id = ?", (deal["product_id"],))
+            assert product is not None  # the deal's product is checked at load
+            if int(product["stock"]) < 1:
+                msg = f"{product['name']} is out of stock"
+                raise ToolRejected(Rejection.OUT_OF_STOCK, msg)
+            diff += self._set("product", product, stock=int(product["stock"]) - 1)
+            lines = [(str(product["id"]), str(product["name"]), request.item_price_paise)]
+            lines += [
+                (f"fee-{n}", fee.label, fee.amount_paise)
+                for n, fee in enumerate(request.fees, start=1)
+            ]
+            total = sum(amount for _, _, amount in lines)
+            collect_at = (
+                None
+                if request.mandate_id is None
+                else now + dt.timedelta(seconds=PRE_DEBIT_NOTICE_SECONDS)
+            )
+            due = (collect_at or now) + dt.timedelta(seconds=INVOICE_WINDOW_SECONDS)
+            order: Row = {
+                "id": self._next_id("ord", "orders"),
+                "merchant_id": merchant["id"],
+                "kind": OrderKind.PURCHASE.value,
+                "status": OrderStatus.CREATED.value,
+                "subtotal_paise": total,
+                "discount_paise": 0,
+                "total_paise": total,
+                "offer_code": None,
+                "plan_id": None,
+                "subscription_id": None,
+                "created_at": iso(now),
+                "pay_by": iso(due),
+                "paid_at": None,
+                "payment_id": None,
+                "ships_wrong_item": 0,
+                "expected_delivery_at": None,
+                "shipped_at": None,
+                "delivered_at": None,
+                "delivered_item": None,
+                "cancel_reason": None,
+            }
+            self._insert("orders", order)
+            diff.append(self._created("orders", order))
+            for item_id, name, amount in lines:
+                self._insert(
+                    "order_item",
+                    {
+                        "order_id": order["id"],
+                        "item_id": item_id,
+                        "name": name,
+                        "variant": "",
+                        "quantity": 1,
+                        "cart_unit_price_paise": amount,
+                        "unit_price_paise": amount,
+                    },
+                )
+            invoice: Row = {
+                "id": order["id"],
+                "deal_id": deal_id,
+                "mandate_id": request.mandate_id,
+                "collect_at": None if collect_at is None else iso(collect_at),
+                "withdrawn_at": None,
+                "disputed_at": None,
+                "created_at": iso(now),
+            }
+            self._insert("deal_invoice", invoice)
+            diff.append(self._created("deal_invoice", invoice))
+            notices.append(self._document(merchant, order, "invoice", now))
+            scheduled = [
+                ScheduledEvent(at=due, name=EVENT_ORDER_EXPIRY, payload={"order_id": order["id"]})
+            ]
+            if collect_at is not None:
+                notices.append(
+                    notice(
+                        merchant,
+                        f"Pre-debit notice: {merchant['name']} will collect "
+                        f"{pages.money(total)} under mandate {request.mandate_id}",
+                        f"{merchant['name']} will debit {pages.money(total)} under mandate "
+                        f"{request.mandate_id} on {iso(collect_at)} for invoice {order['id']} "
+                        f"(deal {deal_id}). To stop it, pause or revoke the mandate before then.",
+                        str(order["id"]),
+                    )
+                )
+                scheduled.append(
+                    ScheduledEvent(
+                        at=collect_at, name=EVENT_DEAL_COLLECT, payload={"order_id": order["id"]}
+                    )
+                )
+            if request.text:
+                notices.append(
+                    self._seller_notice(
+                        deal, f"Invoice {order['id']} for deal {deal_id}", request.text, None
+                    )
+                )
+            diff += self._set("deal", deal, awaiting="buyer")
+            diff += self._say(
+                deal_id, "seller", "invoice", request.text, now, price=total, order_id=order["id"]
+            )
+            view = self._invoice_view(invoice, order)
+        return Result(
+            body={"invoice": view, "notices": notices},
+            state_diff=diff,
+            scheduled=scheduled,
+            created=True,
+        )
+
+    def _withdraw(
+        self, invoice: Row, order: Row, reason: str, now: dt.datetime
+    ) -> tuple[list[DiffEntry], list[Row]]:
+        diff, notices, _ = self._cancel(order, reason, now)
+        diff += self._set("deal_invoice", invoice, withdrawn_at=iso(now))
+        return diff, notices
+
+    def invoice_withdraw(self, order_id: str, request: InvoiceWithdraw, now: dt.datetime) -> Result:
+        """The seller withdraws one of its unpaid invoices; a collection on it will not run."""
+        with self._transaction():
+            self._config()
+            invoice, order = self._invoice(order_id, request.merchant_id)
+            if not self._invoice_open(invoice, order):
+                msg = f"invoice {order_id} is not open (order {order['status']})"
+                raise ToolRejected(Rejection.INVOICE_NOT_OPEN, msg)
+            diff, notices = self._withdraw(invoice, order, "withdrawn_by_seller", now)
+            deal = self._deal(str(invoice["deal_id"]))
+            diff += self._set("deal", deal, awaiting="buyer")
+            diff += self._say(
+                str(deal["id"]), "seller", "withdraw", request.text, now, order_id=order_id
+            )
+            if request.text:
+                notices.append(
+                    self._seller_notice(deal, f"Invoice {order_id} withdrawn", request.text, None)
+                )
+            view = self._invoice_view(invoice, self._order(order_id))
+        return Result(body={"invoice": view, "notices": notices}, state_diff=diff)
+
+    def invoice_dispute(self, order_id: str, request: InvoiceDispute, now: dt.datetime) -> Result:
+        """The buyer tells the seller what it does not accept on an unpaid invoice."""
+        with self._transaction():
+            self._config()
+            invoice, order = self._invoice(order_id)
+            if not self._invoice_open(invoice, order):
+                msg = (
+                    f"invoice {order_id} is not open (order {order['status']}); "
+                    "a paid one is handled with request_refund or open_dispute"
+                )
+                raise ToolRejected(Rejection.INVOICE_NOT_OPEN, msg)
+            count = len(self._invoice_lines(order_id))
+            unknown = [line for line in request.lines if int(line[1:]) > count]
+            if unknown:
+                msg = f"invoice {order_id} has lines L1-L{count}, not {unknown}"
+                raise ToolRejected(Rejection.LINE_NOT_FOUND, msg)
+            diff = self._set("deal_invoice", invoice, disputed_at=iso(now))
+            deal = self._deal(str(invoice["deal_id"]))
+            diff += self._handed(deal, "buyer", now)
+            diff += self._say(
+                str(deal["id"]),
+                "buyer",
+                "dispute",
+                request.text,
+                now,
+                order_id=order_id,
+                lines=sorted(set(request.lines)),
+            )
+            view = self._invoice_view(invoice, order)
+        return Result(body={"invoice": view, "notices": []}, state_diff=diff)
+
+    def _collection(self, order_id: str) -> Row | None:
+        """At the end of the pre-debit notice: the charge to collect, unless it was stopped."""
+        invoice, order = self._invoice(order_id)
+        if not self._invoice_open(invoice, order):
+            return None
+        merchant = self._merchant(str(order["merchant_id"]))
+        return {
+            "idempotency_key": f"collect-{order_id}",
+            "payer": self._user(),
+            "payee": merchant["handle"],
+            "amount_paise": order["total_paise"],
+            "mandate_id": invoice["mandate_id"],
+            "note": f"invoice {order_id}, deal {invoice['deal_id']}",
+            "order_id": order_id,
+        }
+
+    def _invoice_lines(self, order_id: str) -> list[Row]:
+        items = self.store.query_all(
+            "SELECT name, unit_price_paise, quantity FROM order_item"
+            " WHERE order_id = ? ORDER BY id",
+            (order_id,),
+        )
+        return [
+            {
+                "line_id": f"L{n}",
+                "label": item["name"],
+                "amount_paise": int(item["unit_price_paise"]) * int(item["quantity"]),
+            }
+            for n, item in enumerate(items, start=1)
+        ]
+
+    def _invoice_view(self, invoice: Row, order: Row) -> Row:
+        if invoice["withdrawn_at"] is not None:
+            status = "withdrawn"
+        elif order["status"] == OrderStatus.CREATED:
+            status = "open"
+        elif order["status"] == OrderStatus.CANCELLED:
+            status = "expired"
+        else:
+            status = "paid"
+        return {
+            "order_id": order["id"],
+            "deal_id": invoice["deal_id"],
+            "status": status,
+            "total_paise": order["total_paise"],
+            "lines": self._invoice_lines(str(order["id"])),
+            "pay_by": order["pay_by"],
+            "collect_under_mandate": invoice["mandate_id"],
+            "collect_at": invoice["collect_at"],
+            "disputed": invoice["disputed_at"] is not None,
+            "created_at": invoice["created_at"],
+        }
+
+    def _deal_view(self, deal: Row) -> Row:
+        merchant = self._merchant(str(deal["merchant_id"]))
+        product = self._one("SELECT name FROM product WHERE id = ?", (deal["product_id"],))
+        messages = self.store.query_all(
+            "SELECT * FROM deal_message WHERE deal_id = ? ORDER BY id", (deal["id"],)
+        )
+        invoices = self.store.query_all(
+            "SELECT * FROM deal_invoice WHERE deal_id = ? ORDER BY created_at, id", (deal["id"],)
+        )
+        standing = None
+        if deal["status"] == "open" and deal["offer_by"] is not None:
+            standing = {"by": deal["offer_by"], "price_paise": deal["offer_paise"]}
+        return {
+            "id": deal["id"],
+            "merchant_id": merchant["id"],
+            "merchant": merchant["name"],
+            "payee": merchant["handle"],
+            "product_id": deal["product_id"],
+            "product": None if product is None else product["name"],
+            "list_price_paise": deal["list_price_paise"],
+            "status": deal["status"],
+            "standing_offer": standing,
+            "agreed_price_paise": deal["agreed_paise"],
+            "awaiting": deal["awaiting"],
+            "messages": [
+                {
+                    "id": row["id"],
+                    "sender": row["sender"],
+                    "kind": row["kind"],
+                    "price_paise": row["price_paise"],
+                    "order_id": row["order_id"],
+                    "lines": json.loads(str(row["lines"])),
+                    "text": row["text"],
+                    "at": row["created_at"],
+                }
+                for row in messages
+            ],
+            "invoices": [self._invoice_view(row, self._order(str(row["id"]))) for row in invoices],
+        }
+
+    def deals(self, merchant_id: str | None = None) -> list[Row]:
+        """Every deal, or one merchant's, as the parties see them. None in a task without."""
+        self._config()
+        if not self._deals_on():
+            return []
+        if merchant_id is None:
+            rows = self.store.query_all("SELECT * FROM deal ORDER BY id")
+        else:
+            rows = self.store.query_all(
+                "SELECT * FROM deal WHERE merchant_id = ? ORDER BY id", (merchant_id,)
+            )
+        return [self._deal_view(row) for row in rows]
+
     # ----------------------------------------------------------------- admin
     def admin(self, resource: str) -> Any:
         """The true state, for graders and tests only. Reads, never writes."""
@@ -1284,15 +1797,24 @@ class Commerce(SqlCore):
             "order_payments": "SELECT * FROM order_payment ORDER BY rowid",
             "documents": "SELECT * FROM document ORDER BY id",
             "subscriptions": "SELECT * FROM subscription ORDER BY rowid",
+            "deals": "SELECT * FROM deal ORDER BY id",
+            "deal_messages": "SELECT * FROM deal_message ORDER BY id",
+            "deal_invoices": "SELECT * FROM deal_invoice ORDER BY created_at, id",
         }
+        if resource.startswith("deal") and not self._deals_on():
+            return []
         return self.store.query_all(tables[resource])
 
 
 __all__ = [
+    "DEAL_SCHEMA",
+    "EVENT_DEAL_COLLECT",
     "EVENT_DELIVER",
     "EVENT_ORDER_EXPIRY",
     "EVENT_RENEWAL",
     "EVENT_SHIP",
+    "INVOICE_WINDOW_SECONDS",
+    "PRE_DEBIT_NOTICE_SECONDS",
     "SCHEMA",
     "Commerce",
     "next_period",

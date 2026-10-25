@@ -6,8 +6,8 @@ a test fails if the code and the file disagree.
 
 from pathlib import Path
 
-from .handlers import TOOL_NAMES, TOOLS, build_router, schema_document
+from .handlers import SELLER_TOOLS, TOOL_NAMES, TOOLS, build_router, schema_document
 
 SCHEMAS_FILE = Path(__file__).with_name("schemas.json")
 
-__all__ = ["SCHEMAS_FILE", "TOOLS", "TOOL_NAMES", "build_router", "schema_document"]
+__all__ = ["SCHEMAS_FILE", "SELLER_TOOLS", "TOOLS", "TOOL_NAMES", "build_router", "schema_document"]

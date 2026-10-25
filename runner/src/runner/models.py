@@ -10,6 +10,8 @@ Model ids:
 - ``fake:golden`` replays each task's golden run from the world's run files,
   filling ``$refs`` from the tool results it was sent; ``fake:wrong`` replays
   the task's first wrong run; ``fake:idle`` stops at once without a tool call.
+  In a multi-agent task they replay only the agent's steps: the run file's
+  counterpart steps are the counterparts' own (:mod:`runner.counterpart`).
   A stressed task's runs are built from its base task's; a hidden task's come
   from the private repository (:func:`task_runs`).
 - anything else is a LiteLLM model id, e.g. ``openai/gpt-4.1-mini`` or
@@ -120,9 +122,9 @@ class ReplayModel:
     every task whose golden run passes, through the whole runner.
     """
 
-    def __init__(self, model_id: str, run: Run | None) -> None:
+    def __init__(self, model_id: str, run: Run | None, skip: frozenset[str] = frozenset()) -> None:
         self.id = model_id
-        self._run = run
+        self._steps = [] if run is None else [step for step in run.steps if step.tool not in skip]
 
     def complete(self, messages: Sequence[Message], tools: Sequence[Message]) -> ModelReply:
         """The run's next step, given the conversation so far."""
@@ -132,7 +134,7 @@ class ReplayModel:
             if message["role"] == "assistant"
             for call in message.get("tool_calls") or []
         ]
-        steps = self._run.steps if self._run is not None else []
+        steps = self._steps
         if len(issued) >= len(steps):
             return ModelReply(text="Done.")
         results = {
@@ -170,7 +172,9 @@ def replay_model(model_id: str, spec: WorldSpec, task: TaskSpec) -> ReplayModel:
         msg = f"world {spec.name!r} ships no run files, so {model_id} cannot replay its tasks"
         raise ValueError(msg)
     runs = task_runs(spec, task)
-    return ReplayModel(model_id, runs.runs["golden" if which == "golden" else runs.wrong[0]])
+    skip = frozenset(spec.counterpart_tools()) if spec.is_multi_agent(task) else frozenset()
+    run = runs.runs["golden" if which == "golden" else runs.wrong[0]]
+    return ReplayModel(model_id, run, skip)
 
 
 def task_runs(spec: WorldSpec, task: TaskSpec) -> RunFile:

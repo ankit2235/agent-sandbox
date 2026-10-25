@@ -12,9 +12,9 @@ from typing import Any
 import anyio
 from mcp.client.session import ClientSession
 from mcp.shared.memory import create_connected_server_and_client_session
-from payments_testkit import PROFILES, USER, Session, base_state, handle, make_task
+from payments_testkit import AGENT_TOOLS, PROFILES, USER, Session, base_state, handle, make_task
 
-from worlds.payments.tools import TOOL_NAMES
+from worlds.payments.tools import SELLER_TOOLS, TOOL_NAMES
 from worlds.payments.tools.server import bridge_for
 
 
@@ -80,7 +80,8 @@ def with_behaviour(merchant_id: str, **behaviour: Any) -> dict[str, Any]:
 
 def test_the_bridge_lists_every_tool_with_its_schema() -> None:
     session = Session()
-    assert run_over_mcp(session, lambda agent: anyio.sleep(0)) == TOOL_NAMES
+    assert run_over_mcp(session, lambda agent: anyio.sleep(0)) == AGENT_TOOLS
+    assert [name for name in TOOL_NAMES if name not in SELLER_TOOLS] == AGENT_TOOLS
 
 
 def test_honest_merchant_buy_with_a_valid_offer_arrives_as_ordered() -> None:

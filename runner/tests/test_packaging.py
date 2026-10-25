@@ -145,7 +145,10 @@ def test_the_world_wheels_carry_their_tasks_runs_and_schemas(built) -> None:
         base = f"worlds/{world}/"
         tasks = [m for m in members if m.startswith(base + "tasks/") and m.endswith(".yaml")]
         runs = [m for m in members if m.startswith(base + "graders/runs/")]
+        extra = [m for m in members if m.startswith(base + "agent_tasks/") and m.endswith(".yaml")]
         assert len(tasks) == 50
-        assert len(runs) == 50
+        # payments also ships payments-v0.1-agents (12 tasks, their runs beside the others)
+        assert len(extra) == (12 if world == "payments" else 0)
+        assert len(runs) == 50 + len(extra)
         for needed in ("tasks/schema.json", "tasks/hidden-v0.1.json", "tools/schemas.json"):
             assert base + needed in members

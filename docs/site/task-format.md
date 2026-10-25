@@ -77,6 +77,26 @@ runs:
 `expect` checks a step's response contains what is written. An argument can refer to an earlier
 response with `$` references, so a run can use an id the world created during the run.
 
+In a multi-agent task the run lists both agents' steps in order: the counterpart's steps (in
+payments, the `seller_*` tools) are what the world's scripted counterpart does at that point, and a
+test checks it. The agent's steps may only refer to the agent's own earlier steps.
+
+## Multi-agent tasks
+
+A payments task with a seller agent adds two fields to `initial_state` (see
+[Multi-agent tasks](multi-agent.md)):
+
+- `commerce.deals`: the deals with the seller, each open (with the seller's opening offer, if any)
+  or agreed at a price before the task starts;
+- `counterpart`: the seller's merchant, the `brief` a model playing the seller is told, and
+  `scripted`, how the world's scripted seller plays (`floor_paise`, `step_paise`,
+  `reply_after_seconds`, `silent`, `note`, `included_fees`, `padding`, `overcharge_paise`,
+  `collect_under`, `duplicate`, `concedes`).
+
+Its `allowed_tools` list both agents' tools; the agent under test is offered only its own. Such
+tasks live in an extra task set beside the world's public one (`WorldSpec.task_sets`), never in
+`tasks/`: `payments-v0.1-agents` is `worlds/payments/src/worlds/payments/agent_tasks/`.
+
 ## Versions and freezing
 
 A task set's content is frozen at release: `worlds/<world>/src/worlds/<world>/tasks/frozen-<version>.json`

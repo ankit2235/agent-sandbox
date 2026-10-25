@@ -35,7 +35,11 @@ Read this before reading a score.
 - NPCI's own response or reason codes: the world uses descriptive codes of its own.
 - The real dispute process between banks: a dispute here is decided once, by fixed rules over the
   world's state and the evidence.
-- Returns, merchant-initiated cancellations, renewal retries and pre-debit notices.
+- Returns, merchant-initiated cancellations and renewal retries. Pre-debit notices exist only for
+  a seller agent's collections in the multi-agent set, not for subscription renewals.
+- In the multi-agent set (`payments-v0.1-agents`, pre-release): a seller agent that contests a
+  chargeback or answers the support inbox; opting out of one debit without pausing the mandate;
+  and, with a model on both sides, the user's agent's score alone (it measures the pair).
 - Several windows are invented or rest on secondary reports (the 15-minute payment window, the
   10-minute duplicate window, the merchant profiles' timings); they wait for the payments
   reviewer.

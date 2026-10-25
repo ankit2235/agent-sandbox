@@ -9,6 +9,10 @@ unchanged, to a fresh world built from the same task and seed, with
 - every tool call and world event of the replay matches the recording (tool,
   arguments, response, refusal, rows changed, simulated time);
 - the grade (passed, score, every check, failure type) is identical;
+- in a multi-agent task played by the scripted counterparts: at every point where the
+  runner played them, they make exactly the recorded calls again
+  (:class:`runner.counterpart.ScriptedReplay`); a model counterpart's calls are replayed
+  as recorded, like the agent's;
 - with a guard: the decision log's chain is intact and ends at the head ``result.json``
   keeps, and its allowed decisions match the guarded calls in the trace one for one
   (:func:`runner.guarding.verify_decisions`).
@@ -27,12 +31,15 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from kit.clock import EPOCH, SimClock
+from kit.rng import SeededRNG
 from kit.scripted import run_script
 from kit.tasks import HIDDEN_TASKS_ENV, hidden_tasks_dir
 from kit.trace import Trace
 from kit.types import ToolCall
 from kit.world import worlds
 
+from .counterpart import SCRIPTED, ScriptedReplay
 from .guarding import DECISIONS_FILE, verify_decisions
 from .isolation import (
     HIDDEN_MOUNT,
@@ -110,7 +117,13 @@ def verify(run_dir: Path) -> VerifyReport:
         calls = [
             ToolCall(tool=step.tool or "", args=step.args or {}) for step in recorded.tool_calls()
         ]
-        replay = run_script(spec, task, calls, seed=record.seed)
+        if spec.is_multi_agent(task) and manifest.config.counterpart == SCRIPTED:
+            episode = spec.make_episode(task, SimClock(EPOCH), SeededRNG(record.seed))
+            checked = ScriptedReplay(calls, episode, spec.counterpart_tools())
+            replay = run_script(spec, task, checked, seed=record.seed, episode=episode)
+            verdict.problems += checked.problems
+        else:
+            replay = run_script(spec, task, calls, seed=record.seed)
         if replay.steps != len(calls):
             verdict.problems.append(
                 f"the replay ended after {replay.steps} of {len(calls)} recorded calls"

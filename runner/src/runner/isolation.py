@@ -88,6 +88,11 @@ GUARD_REFUSAL = (
     "--guard cannot be combined with --isolation container yet: the guard reads the live "
     "episode state, which stays inside the container (DECISIONS)"
 )
+MULTI_AGENT_REFUSAL = (
+    "multi-agent tasks cannot run with --isolation container yet: the runner plays their "
+    "counterparts from the episode's turn state, which stays inside the container (DECISIONS "
+    "271); run them in process, and check them with `sandbox verify --isolation container`"
+)
 CONTAINER_ERRORS: tuple[type[BaseException], ...] = (
     McpError,
     anyio.BrokenResourceError,
@@ -642,6 +647,7 @@ __all__ = [
     "GUARD_REFUSAL",
     "IMAGE",
     "LABEL",
+    "MULTI_AGENT_REFUSAL",
     "SCRATCH_DIR",
     "Contained",
     "ContainerEpisode",

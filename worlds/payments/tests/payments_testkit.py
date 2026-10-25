@@ -8,6 +8,7 @@ from kit.rng import SeededRNG
 from kit.types import GradeResult, StepResult, TaskSpec, ToolCall
 from worlds.payments import world_spec
 from worlds.payments.episode import PaymentsEpisode
+from worlds.payments.tools import SELLER_TOOLS, TOOL_NAMES
 
 USER = "asha@sandbox"
 HOUR = 3_600
@@ -116,6 +117,11 @@ def base_state(**overrides: Any) -> dict[str, Any]:
     return state
 
 
+AGENT_TOOLS = [name for name in TOOL_NAMES if name not in SELLER_TOOLS]
+"""Every tool but the seller's. A world with counterpart roles needs tasks to list their tools
+(kit.roles); these Phase 2 flows allowed every tool, which is this list."""
+
+
 def make_task(
     state: dict[str, Any] | None = None,
     *,
@@ -132,7 +138,7 @@ def make_task(
         difficulty="medium",
         instruction="Scripted flow used by the Phase 2 tests.",
         initial_state=state if state is not None else base_state(),
-        allowed_tools=allowed_tools or [],
+        allowed_tools=allowed_tools or AGENT_TOOLS,
         max_steps=max_steps,
         grader="payments_testkit:not_graded",
         seed=seed,

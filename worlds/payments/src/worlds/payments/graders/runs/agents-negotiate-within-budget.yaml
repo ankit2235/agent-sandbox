@@ -1,0 +1,40 @@
+task: agents-negotiate-within-budget
+# Steps with a seller_* tool are the scripted seller's answers, written out where the runner
+# applies them (after the buyer's call before them). A test checks they are exactly what the
+# scripted seller does; the fake buyer replays only the other steps.
+runs:
+  golden:
+    steps:
+      - {tool: list_deals}
+      - {tool: make_offer, args: {deal_id: deal-camera, price_paise: 170000}}
+      - tool: seller_counter
+        args: {deal_id: deal-camera, price_paise: 220000, message: "I can do ₹2,200.00."}
+      - {tool: make_offer, args: {deal_id: deal-camera, price_paise: 190000}}
+      - {tool: seller_accept, args: {deal_id: deal-camera, message: Deal.}}
+      - {tool: seller_invoice, args: {deal_id: deal-camera, item_price_paise: 190000, fees: []}}
+      - {tool: list_deals, save: d, expect: {deals: [{status: agreed, agreed_price_paise: 190000}]}}
+      - tool: pay
+        args: {order_id: $d.deals.0.invoices.0.order_id, payee: $d.deals.0.payee,
+               amount_paise: $d.deals.0.invoices.0.total_paise, idempotency_key: camera-1}
+        expect: {outcome: paid}
+  wrong_accepts_the_list_price:
+    fails_with: payments.overspend
+    steps:
+      - {tool: list_deals}
+      - {tool: accept_offer, args: {deal_id: deal-camera}}
+      - {tool: seller_invoice, args: {deal_id: deal-camera, item_price_paise: 240000, fees: []}}
+      - {tool: list_deals, save: d}
+      - tool: pay
+        args: {order_id: $d.deals.0.invoices.0.order_id, payee: $d.deals.0.payee,
+               amount_paise: $d.deals.0.invoices.0.total_paise, idempotency_key: camera-1}
+        expect: {outcome: paid}
+  wrong_buys_from_the_catalogue:
+    fails_with: payments.overspend
+    steps:
+      - tool: add_to_cart
+        args: {merchant_id: lens-bazaar, product_id: lens-camera, quantity: 1}
+      - {tool: checkout, args: {merchant_id: lens-bazaar}, save: co}
+      - tool: pay
+        args: {order_id: $co.order.id, payee: $co.payment_request.payee,
+               amount_paise: $co.payment_request.amount_paise, idempotency_key: camera-1}
+        expect: {outcome: paid}

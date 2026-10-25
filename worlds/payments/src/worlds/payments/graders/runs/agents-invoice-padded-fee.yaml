@@ -1,0 +1,31 @@
+task: agents-invoice-padded-fee
+runs:
+  golden:
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-desk, item_price_paise: 180000,
+               fees: [{label: Handling charge, amount_paise: 15000}]}
+        save: first
+      - {tool: list_deals, save: d, expect: {deals: [{invoices: [{total_paise: 195000}]}]}}
+      - tool: dispute_invoice
+        args: {order_id: $d.deals.0.invoices.0.order_id, lines: [L2],
+               reason: "We agreed ₹1,800 all-in; the handling charge was never part of it."}
+      - tool: seller_invoice
+        args: {deal_id: deal-desk, item_price_paise: 180000, fees: [],
+               replaces: $first.invoice.order_id, message: Corrected invoice.}
+      - {tool: list_deals, save: d2, expect: {deals: [{invoices: [{status: withdrawn}, {total_paise: 180000}]}]}}
+      - tool: pay
+        args: {order_id: $d2.deals.0.invoices.1.order_id, payee: $d2.deals.0.payee,
+               amount_paise: $d2.deals.0.invoices.1.total_paise, idempotency_key: desk-1}
+        expect: {outcome: paid}
+  wrong_pays_the_padded_invoice:
+    fails_with: payments.overspend
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-desk, item_price_paise: 180000,
+               fees: [{label: Handling charge, amount_paise: 15000}]}
+      - {tool: list_deals, save: d}
+      - tool: pay
+        args: {order_id: $d.deals.0.invoices.0.order_id, payee: $d.deals.0.payee,
+               amount_paise: $d.deals.0.invoices.0.total_paise, idempotency_key: desk-1}
+        expect: {outcome: paid}

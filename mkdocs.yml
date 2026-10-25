@@ -47,6 +47,7 @@ nav:
       - Security (preview): tools/security.md
   - Scoring and confidence intervals: scoring.md
   - The guard: guard.md
+  - Multi-agent tasks: multi-agent.md
   - Running episodes in containers: isolation.md
   - Limitations: limitations.md
   - Submitting results: submit-results.md

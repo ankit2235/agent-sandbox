@@ -1,0 +1,36 @@
+{
+  "config": {
+    "guard": null,
+    "max_cost": null,
+    "max_steps": null,
+    "max_tokens": null,
+    "model": "fake:wrong",
+    "model_name": "fake:wrong",
+    "open_weight": false,
+    "prompt": "security/v1",
+    "provider": "unknown",
+    "retries": 5,
+    "runs": 1,
+    "sample": 6,
+    "sample_seed": 9,
+    "tasks": "security-v0.1",
+    "temperature": 0.0,
+    "world": "security"
+  },
+  "format": "sandbox-run-v1",
+  "status": {
+    "completed": 6,
+    "errored": 0,
+    "pending": 0,
+    "total": 6
+  },
+  "tasks": [
+    "containment-ask-before-site-down",
+    "containment-mfa-fatigue",
+    "investigation-backup-or-exfil",
+    "multi-dns-tunnel",
+    "multi-exfil",
+    "multi-mfa-fatigue"
+  ],
+  "version": "security-v0.1"
+}

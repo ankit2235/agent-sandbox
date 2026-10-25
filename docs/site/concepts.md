@@ -44,6 +44,13 @@ A **grader** is plain Python over the final state and the trace. It returns a pa
 score and a list of named checks, and names a **failure type** (for example
 `payments.overspend`) when the run fails. See [How graders work](graders.md).
 
+## Counterparts
+
+A **counterpart** is another agent acting in the same episode as the agent under test, on the same
+clock, through its own tools: in payments, a seller agent the user's agent negotiates with. It is
+played by the world's scripted player or by a model, and both agents' calls are in one trace.
+Graders score the outcome for the user, never who won. See [Multi-agent tasks](multi-agent.md).
+
 ## Stress modifiers
 
 A **stress modifier** makes a task harder without changing the job: a misleading page, a

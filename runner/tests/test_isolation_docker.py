@@ -232,3 +232,25 @@ def test_every_task_runs_the_same_in_a_container_and_verifies_both_ways(
         for report in (verify(directory), verify_isolated(directory, settings)):
             assert report.ok
             assert len(report.verdicts) == 50
+
+
+@pytest.mark.parametrize("model", ["fake:golden", "fake:wrong"])
+def test_a_multi_agent_run_verifies_in_a_container_and_an_edited_seller_move_does_not(
+    tmp_path, model
+) -> None:
+    """Multi-agent tasks run in process only (DECISIONS 271); their verify runs in a container,
+    including the scripted seller's re-derivation."""
+    settings = Isolation(image=IMAGE)
+    config = world_config("payments", model=model, tasks="payments-v0.1-agents")
+    out = tmp_path / "agents"
+    execute(config, out, concurrency=4)
+    report = verify_isolated(out, settings)
+    assert report.ok and len(report.verdicts) == 12
+    trace = next((out / "runs").glob("*-agents-negotiate-within-budget-r1")) / "trace.jsonl"
+    text = trace.read_text(encoding="utf-8")
+    assert '"tool":"seller_' in text
+    edited = text.replace('"price_paise":220000', '"price_paise":200000', 1)
+    if edited != text:
+        trace.write_text(edited, encoding="utf-8")
+        report = verify_isolated(out, settings)
+        assert not report.ok

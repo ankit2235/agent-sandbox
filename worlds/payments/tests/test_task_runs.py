@@ -16,7 +16,12 @@ from kit.types import TaskSpec
 from runner.cli import main
 from worlds.payments import world_spec
 from worlds.payments.graders.runs import GOLDEN, RUNS_DIR, load_runs, play
-from worlds.payments.task_format import TASK_SCHEMA_FILE, TASKS_DIR, schema_document
+from worlds.payments.task_format import (
+    AGENT_TASKS_DIR,
+    TASK_SCHEMA_FILE,
+    TASKS_DIR,
+    schema_document,
+)
 
 TASKS = load_tasks(TASKS_DIR)
 CASES = [
@@ -42,7 +47,8 @@ def test_golden_passes_and_wrong_runs_fail_as_declared(task: TaskSpec, name: str
 
 
 def test_every_task_has_runs_and_every_run_file_has_a_task() -> None:
-    task_ids = {task.id for task in TASKS}
+    """The run files of payments-v0.1-agents sit beside these; ``test_agents.py`` plays them."""
+    task_ids = {task.id for task in TASKS} | {task.id for task in load_tasks(AGENT_TASKS_DIR)}
     run_ids = {path.stem for path in RUNS_DIR.glob("*.yaml")}
     assert task_ids == run_ids
 

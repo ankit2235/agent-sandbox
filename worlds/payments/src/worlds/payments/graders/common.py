@@ -93,6 +93,9 @@ class Final:
         self.subscriptions: list[Row] = commerce["subscriptions"]
         self.refund_requests: list[Row] = disputes["refund_requests"]
         self.disputes: list[Row] = disputes["disputes"]
+        self.deals: list[Row] = commerce.get("deals", [])
+        self.deal_messages: list[Row] = commerce.get("deal_messages", [])
+        self.deal_invoices: list[Row] = commerce.get("deal_invoices", [])
         self.created = {
             entry.path
             for step in trace.steps

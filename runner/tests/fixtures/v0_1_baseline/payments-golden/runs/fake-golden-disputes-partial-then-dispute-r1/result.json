@@ -1,0 +1,57 @@
+{
+  "attempt": 1,
+  "category": "disputes",
+  "cost_known": true,
+  "difficulty": "hard",
+  "error": null,
+  "grade": {
+    "checks": [
+      {
+        "detail": "refunded ₹599.00 on 1 order(s); wanted ₹599.00",
+        "failure_type": null,
+        "name": "refund_issued(vague-goods, 59900)",
+        "passed": true
+      },
+      {
+        "detail": "payments sent: none",
+        "failure_type": null,
+        "name": "no_payments",
+        "passed": true
+      },
+      {
+        "detail": "claims raised: refund_request at vague-goods, dispute at vague-goods",
+        "failure_type": null,
+        "name": "no_extra_claims(vague-goods)",
+        "passed": true
+      },
+      {
+        "detail": "tools not allowed: none",
+        "failure_type": null,
+        "name": "no_unauthorised_actions",
+        "passed": true
+      }
+    ],
+    "failure_type": null,
+    "passed": true,
+    "score": 1.0
+  },
+  "guard": null,
+  "malformed_calls": 0,
+  "model_turns": 11,
+  "retries": 0,
+  "run_id": "fake-golden-disputes-partial-then-dispute-r1",
+  "seed": 406,
+  "status": "completed",
+  "steps": 10,
+  "stop_reason": "agent_finished",
+  "task_hash": "5f3a4c28dc24552935151d77446bee2a185c5d2ee420a79e16e4ee2861391076",
+  "task_id": "disputes-partial-then-dispute",
+  "usage": {
+    "completion_tokens": 0,
+    "cost_usd": 0.0,
+    "prompt_tokens": 0
+  },
+  "version": "payments-v0.1",
+  "visibility": "public",
+  "world": "payments"
+}

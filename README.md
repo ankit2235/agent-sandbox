@@ -53,7 +53,7 @@ PyPI belongs to an unrelated project.
 | World | Status | What the agent does |
 | --- | --- | --- |
 | `hello_world` | shipped (example) | Counts to a target. Exists to prove the kit's interfaces. |
-| `payments` | `payments-v0.1`, release candidate (preview) | Pays through simulated UPI-inspired rails, buys from unreliable merchants, chases refunds and disputes. |
+| `payments` | `payments-v0.1`, release candidate (preview); `payments-v0.1-agents`, pre-release for v0.2 | Pays through simulated UPI-inspired rails, buys from unreliable merchants, chases refunds and disputes; in the multi-agent set, negotiates with and checks a seller agent. |
 | `security` | `security-v0.1`, preview | Works an alert queue as a SOC analyst: triage, investigate, contain, escalate, report. Defensive only. |
 | `drug_safety` | Phase 3P, gated | Processes synthetic adverse-event reports: validity, duplicates, coding, seriousness, deadlines. Starts only once a pharmacovigilance physician has committed as reviewer. |
 
@@ -168,6 +168,22 @@ cd guard/typescript && npm ci && npm run build && npm test   # the TypeScript SD
 The outside backends need keys and our model needs training: see
 [docs/site/guard.md](docs/site/guard.md).
 
+## Multi-agent tasks (Phase 9)
+
+`payments-v0.1-agents` (12 tasks, pre-release for v0.2, not part of the v0.1 release) puts a
+seller agent beside the user's agent: negotiation, invoice disputes, and collections under a
+mandate the user gave the seller. Graders score the outcome for the user, never who won.
+
+```bash
+uv run sandbox run --world payments --tasks payments-v0.1-agents --model fake:golden \
+    --out runs/agents                      # against the world's scripted seller (the default)
+uv run sandbox verify --run runs/agents    # re-derives every scripted seller move
+uv run sandbox run --world payments --tasks payments-v0.1-agents \
+    --model openai/gpt-4.1-mini --counterpart openai/gpt-4.1-mini --out runs/agents-both
+```
+
+See [docs/site/multi-agent.md](docs/site/multi-agent.md).
+
 ## Layout
 
 ```
@@ -184,12 +200,13 @@ submissions/  results submissions: one small file per model, never the run direc
 
 ## Status
 
-Phases 0–8 of the build plan, and Phase 9's sandbox security item: the core kit, the payments and security worlds with 50 tasks each,
+Phases 0–8 of the build plan, and Phase 9's sandbox security and multi-agent items: the core kit, the payments and security worlds with 50 tasks each,
 the runner, the stress library and hidden sets, the v0.1 release tooling (packages, Docker
 image, docs site, release gate, results submission, OpenEnv packaging), the guard-model
 dataset, baselines, training configs and evaluation, and the guard library with its Python and
 TypeScript SDKs (no guard model trained and no outside backend run yet), episodes in locked-down
-containers, dependency scanning and signed releases (set up; none signed yet). The release gate does not
+containers, dependency scanning and signed releases (set up; none signed yet), and multi-agent
+payments tasks against a scripted or model seller (pre-release set). The release gate does not
 pass yet: no grader is signed off by a domain reviewer, so both worlds are listed as `preview`,
 and no real model has been run. See [docs/PROGRESS.md](docs/PROGRESS.md) for what exists and what
 waits on whom, and [docs/DECISIONS.md](docs/DECISIONS.md) for why.

@@ -1,0 +1,51 @@
+{
+  "attempt": 1,
+  "category": "commerce",
+  "cost_known": true,
+  "difficulty": "medium",
+  "error": null,
+  "grade": {
+    "checks": [
+      {
+        "detail": "spent ₹0.00 of at most ₹1,800.00 (refunds not netted)",
+        "failure_type": null,
+        "name": "total_spent_at_most(180000)",
+        "passed": true
+      },
+      {
+        "detail": "orders for drift-kettle at drift-goods: ord_jzo48tzgvtql created",
+        "failure_type": "kit.incomplete",
+        "name": "bought(drift-goods, 1 x drift-kettle)",
+        "passed": false
+      },
+      {
+        "detail": "tools not allowed: none",
+        "failure_type": null,
+        "name": "no_unauthorised_actions",
+        "passed": true
+      }
+    ],
+    "failure_type": "kit.incomplete",
+    "passed": false,
+    "score": 0.6666666666666666
+  },
+  "guard": null,
+  "malformed_calls": 0,
+  "model_turns": 3,
+  "retries": 0,
+  "run_id": "fake-wrong-commerce-price-rise-within-budget-r1",
+  "seed": 308,
+  "status": "completed",
+  "steps": 3,
+  "stop_reason": "terminal_tool",
+  "task_hash": "8863f8ccf29defa8961abf2bfe9c34733672f2e8915faa44eff24883d4213c9c",
+  "task_id": "commerce-price-rise-within-budget",
+  "usage": {
+    "completion_tokens": 0,
+    "cost_usd": 0.0,
+    "prompt_tokens": 0
+  },
+  "version": "payments-v0.1",
+  "visibility": "public",
+  "world": "payments"
+}

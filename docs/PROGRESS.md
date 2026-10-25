@@ -237,6 +237,38 @@ the disclosure contact wait on the repo owner.** No kit change (decisions 240–
 Also: the Docker image had not built since Phase 7 (`.dockerignore` left out `guard/` and
 `training/`); fixed (decision 252).
 
+**Phase 9, item 1 — multi-agent tasks: built and green; runs with real models on both sides and
+the reviewer's sign-off are pending.** Two additive kit changes, approved (K4 `kit.roles`, K5
+`WorldSpec.task_sets`; decisions 261-283). Of its "Done when" list:
+
+- [x] Tests and docs are updated, the CHANGELOG has an entry, and the release check passes what it
+  passed: `sandbox release-check payments-v0.1` (with `HIDDEN_TASKS_DIR`) passes the same 5 of 9
+  conditions (`public-tasks` 50 tasks, `hidden-set` 17 tasks and 41 runs, `grader-runs` 189 runs,
+  `frozen`, `no-hidden`); `signoff`, `calibration`, `results` and `published` still wait on a
+  reviewer and real model runs.
+- [x] Scores from older versions still reproduce: all 270 scripted runs of both worlds reproduce
+  traces, grades and every service's snapshot byte for byte against fingerprints taken with the
+  code before this item, and four run directories made then verify and are written again byte for
+  byte (`runner/tests/test_v0_1_baseline.py`). Outside the tests, full `fake:golden` and
+  `fake:wrong` directories of both worlds made with the old code verify 50/50 each with the new
+  code, and the same runs made with the new code are byte-identical to them.
+- [x] Multi-agent payments tasks run end to end with scripted counterparts: `payments-v0.1-agents`,
+  12 tasks (5 negotiation, 3 invoice disputes, 4 agent-to-agent payments under mandates), 12
+  golden and 18 wrong runs, every one played in CI (`worlds/payments/tests/test_agents.py`) and
+  through the runner with `fake:golden` / `fake:wrong` against the scripted seller; graded on the
+  outcome for the user; `sandbox verify` reproduces their grades and re-derives every scripted
+  seller move (an edited, dropped or invented one fails; `runner/tests/test_counterparts.py`).
+- [ ] **Pending, the user's:** runs with real models on both sides (`--model <id> --counterpart
+  <id>`), and real models against the scripted seller. Commands in `docs/site/multi-agent.md`.
+- [ ] **Pending, needs the payments reviewer:** sign-off of the 12 new graders, the scripted
+  sellers' behaviours and the invented defaults (invoices payable 3 days; the pre-debit notice
+  is RBI's 24 hours, checked); `reviewer_signoff` is `null` on all 12.
+
+The reward-hacking review of the new tasks (14 rows, each with its test) found and fixed two
+holes in the new graders before commit: a correct collection could be disputed in
+`agents-mandate-collect-as-agreed` without penalty, and a collection declined while the mandate
+was paused counted as still due.
+
 ## What exists
 
 | Area | State |
@@ -261,7 +293,8 @@ Also: the Docker image had not built since Phase 7 (`.dockerignore` left out `gu
 | CI | `ci.yml` (lint, strict types on the kit on `worlds.payments` and `worlds.security`, tests; `guard-typescript`: the TypeScript SDK's build and tests; `package`: the built wheels in a clean virtualenv, quickstart), `core-isolation.yml` (purity + no world imports), `no-hidden-leak.yml` (no canary or hidden task in any tracked file, no copy of a published hidden task; `training-data`: a CI-sized action dataset and its leakage check), `docs.yml` (strict site build; Pages from main), `results-submission.yml` (results pull requests, replayed in a container; maintainer spot-check), `release.yml` (version tag: PyPI trusted publishing, GHCR image, Sigstore attestations; owner's repository only), `dependency-scan.yml` (uv and npm audits, weekly) and `ci.yml`'s `container` job (the image, the probes, every task in a container) |
 | Payments services | `services/rails` (Phase 1 + mandate creation, statement), `services/commerce`, `services/disputes` (with `reconcile.py`), shared `services/common.py` |
 | Payments world | `merchants.py` (profiles), `state.py` (`initial_state` model with `history`, and schema), `links.py` (the only cross-service code), `episode.py` (`PaymentsEpisode`, `wait`, history replay), `tools/` (25 tools with `ask_user`, `schemas.json`, stdio server), `task_format.py` (task file schema), `stress/` (7 modifiers, `initial_state.stress_checks`); registered as world `payments` with `tasks_dir` set |
-| Payments tasks | 50 in `tasks/<category>/` (15 rails, 15 commerce, 12 disputes, 8 multi; 15 easy, 20 medium, 15 hard), `tasks/schema.json` |
+| Payments tasks | 50 in `tasks/<category>/` (15 rails, 15 commerce, 12 disputes, 8 multi; 15 easy, 20 medium, 15 hard), `tasks/schema.json`; the pre-release set `payments-v0.1-agents`, 12 in `agent_tasks/` (category `agents`; 3 easy, 6 medium, 3 hard) |
+| Multi-agent | Kit: `kit.roles` (`Role`, `TurnTaking`), `WorldSpec.roles` and `task_sets`. Runner: `runner/counterpart.py` (counterparts played by the scripted players or a model, `ScriptedReplay` for verify), prompt `counterpart/v1`, `--counterpart`. Payments: deals, invoices and collections under mandates in commerce, 4 buyer and 6 seller tools, the scripted seller (`counterpart.py`), `graders/agents.py`; `docs/site/multi-agent.md` |
 | Payments graders | `graders/common.py` (18 checks and `grade()`), one grader per task in `graders/{rails,commerce,disputes,multi}.py`, runs in `graders/runs/<id>.yaml` played by `graders/runs.py` |
 | Security services | `services/{org,telemetry,alerts,response,tickets}` over the world's own `services/common.py`; containment logged with actor and impact; SLA timers on the clock |
 | Security world | `vocab.py` (id patterns, enums, weights, RFC 5737/2606 checks), `scenarios/` (story format with ground truth, default company, seeded noise, 21 stories), `state.py`, `episode.py` (one simulated minute per call), `tools/` (17 tools, `schemas.json`, stdio server), `task_format.py`, `stress/` (5 modifiers, with runs and three guards in `grade()`) |
@@ -273,13 +306,22 @@ Also: the Docker image had not built since Phase 7 (`.dockerignore` left out `gu
 | Release | `runner/release.py` (nine named conditions), `sandbox freeze` and `payments/tasks/frozen-v0.1.json`, `runner/validate.py` (shared task-file and run checks), `docs/RELEASING.md` |
 | Submissions | `runner/submission.py` (`submission-v1` files, safe fetch, check, spot-check), `submissions/`, `.github/PULL_REQUEST_TEMPLATE/results_submission.md` |
 | Docs | `mkdocs.yml`, `docs/site/` (quickstart, concepts, task format, graders, generated tool reference for both worlds, scoring, limitations, submitting results, contributing tasks, citation), `runner/reference.py`, `docs/blog/v0.1.md`, `docs/calibration/` |
-| Tests | 2,931 in all: 2,921 pass with the openenv extra installed and the 10 Docker tests are skipped unless `SANDBOX_TEST_IMAGE` names a built image (they pass against `agent-sandbox:0.1.0`, and CI's `container` job runs them). New in Phase 9 item 6: `test_isolation.py` 38, `test_isolation_docker.py` 10, `test_supply_chain.py` 13, and 2 purity and core-isolation checks over `isolation.py`. Before Phase 9: 2,868 in all, all passing with the openenv extra installed (CI, without it, skips the 7 OpenEnv adapter and 5 Space tests), 149 more than Phase 7: `guard/tests/test_vectors.py` 63 (the shared vectors), `test_guard_library.py` 18, `test_no_override.py` 9 (15 backends, plus a 300-case property test), `test_mcp_proxy.py` 2 (in memory and over stdio), `runner/tests/test_guarded_runs.py` 25, `training/tests/test_guard_eval.py` 6 (with the 5 ms overhead test), the rest the purity and core-isolation checks over the new source files; the TypeScript SDK's 8 tests run the same vectors. Before Phase 8: 2,719, 242 more than Phase 6: 164 in `guard/` and `training/` (`test_decision.py` 16, baselines 26, guard model 25, eval 20, templates 16, world 13, reward hacking 11, labels 10, leaks 10, similarity and splits 9, build 8), the rest the purity and core-isolation checks over the new source files. Before Phase 7: 2,477, 72 more than Phase 5. New in Phase 6: `test_release.py` (20: every gate condition passing and failing, freeze, quickstart, spot-check CLI), `test_submission.py` (20: every way of tampering with a submission, safe fetch, size cap, spot-check), `test_packaging.py` (6: names, versions, pins, what each built archive holds), `test_reference.py` (6), `test_openenv_space.py` (5), 2 in `test_openenv_adapter.py` (K1), 1 in `test_verify.py` (a run made before sign-off still verifies). Before Phase 6: 2,405 (2,404 pass, 1 skipped without the openenv extra), 700 more than Phase 4. New in Phase 5: `test_payments_stress.py` (381: every task × modifier, plus each modifier's content and edge cases), `test_security_stress_runs.py` (257), `test_hidden.py` (27), `stress/tests/test_stress_core.py` (15), `test_calibrate.py` (7). Before Phase 5: 1,705 (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
+| Tests | 3,412 in all: 3,400 pass with the openenv extra installed and the 12 Docker tests are skipped unless `SANDBOX_TEST_IMAGE` names a built image (all 12 pass against a freshly built `agent-sandbox:0.1.0`; CI's `container` job runs them). New in Phase 9 item 1: `test_v0_1_baseline.py` 275 (every scripted run and four run directories from before the item, byte for byte), `test_agents.py` 114, `test_agents_reward_hacking.py` 34, `test_counterparts.py` 20, `kit/tests/test_roles.py` 12, 2 Docker tests (the set verified in a container), the rest the purity and core-isolation checks over the new source files. Before Phase 9 item 1: 2,931. New in Phase 9 item 6: `test_isolation.py` 38, `test_isolation_docker.py` 10, `test_supply_chain.py` 13, and 2 purity and core-isolation checks over `isolation.py`. Before Phase 9: 2,868 in all, all passing with the openenv extra installed (CI, without it, skips the 7 OpenEnv adapter and 5 Space tests), 149 more than Phase 7: `guard/tests/test_vectors.py` 63 (the shared vectors), `test_guard_library.py` 18, `test_no_override.py` 9 (15 backends, plus a 300-case property test), `test_mcp_proxy.py` 2 (in memory and over stdio), `runner/tests/test_guarded_runs.py` 25, `training/tests/test_guard_eval.py` 6 (with the 5 ms overhead test), the rest the purity and core-isolation checks over the new source files; the TypeScript SDK's 8 tests run the same vectors. Before Phase 8: 2,719, 242 more than Phase 6: 164 in `guard/` and `training/` (`test_decision.py` 16, baselines 26, guard model 25, eval 20, templates 16, world 13, reward hacking 11, labels 10, leaks 10, similarity and splits 9, build 8), the rest the purity and core-isolation checks over the new source files. Before Phase 7: 2,477, 72 more than Phase 5. New in Phase 6: `test_release.py` (20: every gate condition passing and failing, freeze, quickstart, spot-check CLI), `test_submission.py` (20: every way of tampering with a submission, safe fetch, size cap, spot-check), `test_packaging.py` (6: names, versions, pins, what each built archive holds), `test_reference.py` (6), `test_openenv_space.py` (5), 2 in `test_openenv_adapter.py` (K1), 1 in `test_verify.py` (a run made before sign-off still verifies). Before Phase 6: 2,405 (2,404 pass, 1 skipped without the openenv extra), 700 more than Phase 4. New in Phase 5: `test_payments_stress.py` (381: every task × modifier, plus each modifier's content and edge cases), `test_security_stress_runs.py` (257), `test_hidden.py` (27), `stress/tests/test_stress_core.py` (15), `test_calibrate.py` (7). Before Phase 5: 1,705 (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
 
 ## Decisions made
 
-See `docs/DECISIONS.md`, entries 1–260, the two reward-hacking reviews, the leakage and
-reward-hacking review of the guard-model data, and the guard's no-override review. Phase 8's
-that later phases depend on:
+See `docs/DECISIONS.md`, entries 1–283, the three reward-hacking reviews, the leakage and
+reward-hacking review of the guard-model data, and the guard's no-override review. Phase 9 item
+1's that later phases depend on:
+
+- Roles by tool name; turns after each of the agent's calls; one trace for both agents; verify
+  re-derives scripted counterparts (261-265, 280).
+- `payments-v0.1-agents` is a pre-release set outside the frozen one, not exported; item 4 folds
+  it into `payments-v0.2` (266).
+- Outcome-for-the-user grading; money still due counts as spent (270, 281, 282).
+- Deal tables only for tasks with deals; single-agent run directories byte-identical (273, 274).
+
+Phase 8's that later phases depend on:
 
 - The policy format and its hash; the stricter of a policy and delegated limits wins; in sandbox
   runs each task's own limits replace the pack's numbers (223–226).
@@ -520,6 +562,21 @@ Phase 2's that later phases depend on:
     repository; the first release is the first real test. `docs/RELEASING.md` has the checks.
 47. **Docs say "six distributions", the build writes eight** (`guard` and `training` became
     workspace packages in Phases 7 and 8). Seen while testing the package; not changed here.
+48. **Multi-agent runs do not run in containers yet** (decision 271): the runner plays the
+    counterparts from the episode's turn state. `sandbox verify --isolation container` works. To
+    fix before v0.2 results are checked in containers.
+49. **`payments-v0.1-agents` is not on the leaderboard and has no stressed or hidden version**;
+    item 4 folds it into `payments-v0.2`. The scripted seller is public and predictable (its floors
+    are in the task files), so a hidden variant is needed before its scores mean much.
+50. **With a model on both sides a score measures the pair** (the two could collude); comparisons
+    between agents use the scripted seller. A model counterpart's moves are replayed, not
+    re-derived.
+51. **Not modelled**: the RBI e-mandate texts' opt-out of one particular debit (the world has
+    pause and revoke only), a seller that contests a chargeback or answers the support inbox, and
+    a seller agent on the 50 existing tasks. The guard does not stand in front of `accept_offer`
+    or `dispute_invoice` (the guard's `HIGH_IMPACT` list is unchanged).
+52. **New seller and deal tools are unreviewed** additions to `tools-payments-v0.1`, which is
+    still not frozen.
 
 ## Next step
 
@@ -553,6 +610,10 @@ outside backend and our model behind the guard on the dataset (test split and hi
 in sandbox runs of both worlds, with the scripted agents and one real agent model; model-mode
 latency on CPU and on a GPU; then `sandbox-train report ... --runs ... --baseline-runs ...` and,
 after checking the providers' terms, the owner publishes `guards/results.json`.
+
+For Phase 9 item 1, the user's to run (`docs/site/multi-agent.md`): `payments-v0.1-agents` with
+real models against the scripted seller, and with models on both sides; then the payments
+reviewer signs off the 12 graders. The release table puts item 2 (long-horizon tasks) next in v0.2.
 
 For Phase 9 item 6, the owner's: turn on private vulnerability reporting (or name a security
 address) and update `SECURITY.md`; the first signed release comes with the `v0.1.0` tag

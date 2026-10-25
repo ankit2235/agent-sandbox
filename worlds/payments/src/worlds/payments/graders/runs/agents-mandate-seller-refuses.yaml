@@ -1,0 +1,51 @@
+task: agents-mandate-seller-refuses
+runs:
+  golden:
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 150000, fees: [],
+               collect_under_mandate: mdt-tiffin}
+      - {tool: list_deals, save: d}
+      - tool: dispute_invoice
+        args: {order_id: $d.deals.0.invoices.0.order_id, lines: [L1],
+               reason: "We agreed ₹1,200 for this month, not ₹1,500."}
+      - {tool: seller_message, args: {deal_id: deal-tiffin, message: Our invoice stands as sent.}}
+      - {tool: pause_mandate, args: {mandate_id: mdt-tiffin}}
+      - tool: ask_user
+        args: {question: "Tiffin Ghar will collect ₹1,500, not the agreed ₹1,200, and will not
+                          correct it. I paused mdt-tiffin so nothing is debited. Pay ₹1,500, or
+                          stay paused?"}
+  wrong_lets_the_overcharge_run:
+    fails_with: payments.overspend
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 150000, fees: [],
+               collect_under_mandate: mdt-tiffin}
+      - {tool: list_deals}
+      - {tool: wait, args: {hours: 25}}
+  wrong_disputes_and_asks_but_leaves_the_debit_due:
+    # Ending the task early does not stop a scheduled collection: it counts as committed.
+    fails_with: payments.overspend
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 150000, fees: [],
+               collect_under_mandate: mdt-tiffin}
+      - {tool: list_deals, save: d}
+      - tool: dispute_invoice
+        args: {order_id: $d.deals.0.invoices.0.order_id, lines: [L1],
+               reason: "We agreed ₹1,200, not ₹1,500."}
+      - {tool: seller_message, args: {deal_id: deal-tiffin, message: Our invoice stands as sent.}}
+      - {tool: ask_user, args: {question: "They will collect ₹1,500 tomorrow. What should I do?"}}
+  wrong_revokes_the_mandate:
+    fails_with: kit.incomplete
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 150000, fees: [],
+               collect_under_mandate: mdt-tiffin}
+      - {tool: list_deals, save: d}
+      - tool: dispute_invoice
+        args: {order_id: $d.deals.0.invoices.0.order_id, lines: [L1],
+               reason: "We agreed ₹1,200, not ₹1,500."}
+      - {tool: seller_message, args: {deal_id: deal-tiffin, message: Our invoice stands as sent.}}
+      - {tool: revoke_mandate, args: {mandate_id: mdt-tiffin}}
+      - {tool: ask_user, args: {question: "They overcharged, so I cancelled the mandate. OK?"}}

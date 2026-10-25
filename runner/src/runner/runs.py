@@ -19,6 +19,11 @@ With ``--isolation container`` each run's world lives in its own locked-down con
 (:mod:`runner.isolation`); the run directory comes out the same, byte for byte, so the
 setting is not part of :class:`RunConfig` and a directory may be resumed either way.
 
+A multi-agent task (:mod:`kit.roles`) is run with its counterparts (``--counterpart``,
+:mod:`runner.counterpart`): the world's scripted players by default, or a model. Their calls
+are in the same trace; the record's ``counterpart`` says who played them and what they used.
+Multi-agent tasks do not run in containers yet (DECISIONS 271).
+
 Wall-clock time is used in exactly one place here: the sleep between provider retries
 (a guard's decision latency is measured in :mod:`guard.engine`, and never decides
 anything). Inside an episode, time is the episode's :class:`kit.clock.SimClock`.
@@ -50,17 +55,26 @@ from kit.world import WorldSpec, load_grader, worlds
 from stress.core import stressed_set
 
 from .agent import AgentResult, CallModel, Caps, LocalEpisode, run_agent, system_prompt
+from .counterpart import SCRIPTED, Counterparts, CounterpartSummary
 from .guarding import GuardRunConfig, GuardSetup, GuardSummary
 from .isolation import (
     CONTAINER_ERRORS,
     GUARD_REFUSAL,
+    MULTI_AGENT_REFUSAL,
     ContainerEpisode,
     EpisodeFailed,
     Isolation,
     IsolationError,
     preflight,
 )
-from .models import Message, ModelFactory, ModelReply, ProviderError, model_factory
+from .models import (
+    FAKE_PREFIX,
+    Message,
+    ModelFactory,
+    ModelReply,
+    ProviderError,
+    model_factory,
+)
 from .tracing import TRACER_NAME, tracer_provider
 
 RUN_FORMAT = "sandbox-run-v1"
@@ -103,6 +117,8 @@ class RunConfig(BaseModel):
     """The system prompt's id, e.g. ``payments/v1``; filled in by :func:`execute`."""
     guard: GuardRunConfig | None = None
     """The guard in front of the world's high-impact tools (``--guard``), if any."""
+    counterpart: str = SCRIPTED
+    """Who plays the other agents of a multi-agent task: ``scripted`` or a model id."""
 
     @property
     def model_slug(self) -> str:
@@ -167,6 +183,8 @@ class RunRecord(BaseModel):
     retries: int = 0
     guard: GuardSummary | None = None
     """With a guard: its decision counts and the decision log's head."""
+    counterpart: CounterpartSummary | None = None
+    """In a multi-agent task: who played the other agents, and what they did and used."""
 
     @property
     def passed(self) -> bool:
@@ -211,8 +229,11 @@ def resolve_task_set(spec: WorldSpec, value: str) -> list[TaskSpec]:
     from .hidden import load_hidden
 
     base = task_set_version(spec)
+    extra = extra_set(spec, value)
     if value == base:
         tasks = spec.task_source().split(spec.version)
+    elif extra is not None:
+        tasks = load_tasks(spec.task_sets[extra])
     elif value == base + STRESSED_SUFFIX:
         tasks = list(_stressed_set(spec))
     elif value == base + HIDDEN_SUFFIX:
@@ -220,9 +241,10 @@ def resolve_task_set(spec: WorldSpec, value: str) -> list[TaskSpec]:
     elif Path(value).is_dir():
         tasks = load_tasks(value)
     else:
+        extras = "".join(f", {base}-{name}" for name in spec.task_sets)
         msg = (
             f"unknown task set {value!r}; use {base}, {base}{STRESSED_SUFFIX}, "
-            f"{base}{HIDDEN_SUFFIX} or a task directory"
+            f"{base}{HIDDEN_SUFFIX}{extras} or a task directory"
         )
         raise ValueError(msg)
     for task in tasks:
@@ -236,6 +258,15 @@ def resolve_task_set(spec: WorldSpec, value: str) -> list[TaskSpec]:
         msg = f"task set {value!r} is empty"
         raise ValueError(msg)
     return tasks
+
+
+def extra_set(spec: WorldSpec, value: str) -> str | None:
+    """The name of the extra task set (``WorldSpec.task_sets``) ``value`` names, if it does."""
+    base = task_set_version(spec)
+    for name in spec.task_sets:
+        if value == f"{base}-{name}":
+            return name
+    return None
 
 
 _STRESSED: dict[str, tuple[TaskSpec, ...]] = {}
@@ -313,6 +344,26 @@ def write_json(path: Path, payload: Any) -> None:
     os.replace(temporary, path)
 
 
+def manifest_json(manifest: Manifest) -> dict[str, Any]:
+    """``manifest.json``'s content.
+
+    ``counterpart`` is written only when a model played it, so a single-agent run directory
+    is byte for byte what it was before counterparts existed.
+    """
+    payload: dict[str, Any] = manifest.model_dump(mode="json")
+    if manifest.config.counterpart == SCRIPTED:
+        del payload["config"]["counterpart"]
+    return payload
+
+
+def record_json(record: RunRecord) -> dict[str, Any]:
+    """``result.json``'s content; ``counterpart`` only in a multi-agent run."""
+    payload: dict[str, Any] = record.model_dump(mode="json")
+    if record.counterpart is None:
+        del payload["counterpart"]
+    return payload
+
+
 def load_records(out: Path) -> list[RunRecord]:
     """Every run record in a run directory, sorted by run id."""
     worlds.discover()  # records name failure types, which worlds register
@@ -341,11 +392,14 @@ def execute(
     report: Callable[[RunRecord], None] | None = None,
     guard: GuardSetup | None = None,
     isolation: Isolation | None = None,
+    counterpart_factory: ModelFactory | None = None,
 ) -> Manifest:
     """Run every unfinished (task, run) pair and return the updated manifest.
 
     With ``isolation``, every run's world runs in a locked-down container; Docker and the
-    image are checked first (:class:`runner.isolation.IsolationError`).
+    image are checked first (:class:`runner.isolation.IsolationError`). A multi-agent task's
+    counterparts are the scripted ones, or ``config.counterpart``'s model, built with
+    ``counterpart_factory`` when one is given (tests).
     """
     if (guard.config if guard is not None else None) != config.guard:
         msg = "the run's guard settings and the guard given to execute() differ"
@@ -358,6 +412,10 @@ def execute(
     prompt_id, prompt = system_prompt(spec.name)
     config = config.model_copy(update={"prompt": prompt_id})
     tasks = select_tasks(spec, config)
+    multi = [task.id for task in tasks if spec.is_multi_agent(task)]
+    if isolation is not None and multi:
+        raise IsolationError(MULTI_AGENT_REFUSAL)
+    others = _counterpart_factory(config, counterpart_factory) if multi else None
     manifest = _start(out, config, spec, tasks)
     done = {record.run_id: record for record in load_records(out)}
     pending: list[tuple[TaskSpec, int]] = []
@@ -372,7 +430,9 @@ def execute(
     build = factory or model_factory(config.model, temperature=config.temperature)
     provider = tracer_provider(out, env)
     tracer = provider.get_tracer(TRACER_NAME)
-    one = partial(_run_one, spec, config, prompt, build, tracer, sleep, out, guard, isolation)
+    one = partial(
+        _run_one, spec, config, prompt, build, tracer, sleep, out, guard, isolation, others
+    )
     pool = ThreadPoolExecutor(max_workers=max(1, concurrency))
     try:
         futures: list[Future[RunRecord]] = [pool.submit(one, task, n) for task, n in pending]
@@ -381,7 +441,7 @@ def execute(
             record = future.result()
             # Kept current after every run, so it is right even if the process is killed.
             manifest.status = run_status(total, load_records(out))
-            write_json(out / MANIFEST, manifest.model_dump(mode="json"))
+            write_json(out / MANIFEST, manifest_json(manifest))
             if report is not None:
                 report(record)
     except BaseException:
@@ -391,8 +451,22 @@ def execute(
         pool.shutdown(wait=True)
         provider.shutdown()
         manifest.status = run_status(len(tasks) * config.runs, load_records(out))
-        write_json(out / MANIFEST, manifest.model_dump(mode="json"))
+        write_json(out / MANIFEST, manifest_json(manifest))
     return manifest
+
+
+def _counterpart_factory(config: RunConfig, given: ModelFactory | None) -> ModelFactory | None:
+    """The model factory for model counterparts; ``None`` for the scripted ones."""
+    if config.counterpart == SCRIPTED:
+        return None
+    if given is not None:
+        return given
+    if config.counterpart.startswith(FAKE_PREFIX):
+        msg = (
+            f"--counterpart {config.counterpart}: use scripted (the fake counterpart) or a model id"
+        )
+        raise ValueError(msg)
+    return model_factory(config.counterpart, temperature=config.temperature)
 
 
 def _start(out: Path, config: RunConfig, spec: WorldSpec, tasks: list[TaskSpec]) -> Manifest:
@@ -411,7 +485,7 @@ def _start(out: Path, config: RunConfig, spec: WorldSpec, tasks: list[TaskSpec])
         return existing
     manifest = Manifest(config=config, version=task_set_version(spec), tasks=ids)
     manifest.status = run_status(len(ids) * config.runs, [])
-    write_json(out / MANIFEST, manifest.model_dump(mode="json"))
+    write_json(out / MANIFEST, manifest_json(manifest))
     return manifest
 
 
@@ -425,6 +499,7 @@ def _run_one(
     out: Path,
     guard: GuardSetup | None,
     isolation: Isolation | None,
+    others: ModelFactory | None,
     task: TaskSpec,
     attempt: int,
 ) -> RunRecord:
@@ -433,6 +508,9 @@ def _run_one(
     directory = out / RUNS_DIR / run_id
     model = build(spec, task)
     call = RetryingModel(model.complete, config.retries, sleep)
+    other: RetryingModel | None = None
+    if others is not None and spec.is_multi_agent(task):
+        other = RetryingModel(others(spec, task).complete, config.retries, sleep)
     record = RunRecord(
         run_id=run_id,
         task_id=task.id,
@@ -454,7 +532,10 @@ def _run_one(
     }
     with tracer.start_as_current_span("sandbox.run", attributes=attributes) as span:
         if isolation is None:
-            _in_process(spec, task, prompt, config.caps, tracer, guard, call, record, directory)
+            players = Players(config.counterpart, other)
+            _in_process(
+                spec, task, prompt, config.caps, tracer, guard, call, record, directory, players
+            )
         else:
             _in_container(task, prompt, config.caps, tracer, isolation, call, record, directory)
         span.set_attribute("sandbox.status", record.status)
@@ -463,7 +544,7 @@ def _run_one(
             span.set_attribute("sandbox.score", record.grade.score)
             span.set_attribute("sandbox.stop_reason", str(record.stop_reason))
         span.set_attribute("sandbox.cost_usd", record.usage.cost_usd)
-    write_json(directory / RESULT_FILE, record.model_dump(mode="json"))
+    write_json(directory / RESULT_FILE, record_json(record))
     return record
 
 
@@ -478,6 +559,14 @@ def _completed(record: RunRecord, grade: GradeResult, result: AgentResult) -> No
     record.malformed_calls = result.malformed_calls
 
 
+class Players:
+    """Who plays a run's counterparts: the scripted players, or a model's calls."""
+
+    def __init__(self, player: str, call: RetryingModel | None) -> None:
+        self.player = player
+        self.call = call
+
+
 def _in_process(
     spec: WorldSpec,
     task: TaskSpec,
@@ -488,6 +577,7 @@ def _in_process(
     call: RetryingModel,
     record: RunRecord,
     directory: Path,
+    players: Players | None = None,
 ) -> None:
     """The world in this process, reached over the in-memory MCP transport."""
     episode = spec.make_episode(task, SimClock(EPOCH), SeededRNG(task.seed))
@@ -497,9 +587,17 @@ def _in_process(
     try:
         first = episode.reset(task)
         run_guard = guard.for_run(task, episode, directory) if guard is not None else None
+        counterparts: Counterparts | None = None
+        listed: TaskSpec | None = None
+        if spec.is_multi_agent(task):
+            players = players or Players(SCRIPTED, None)
+            counterparts = Counterparts(
+                spec, task, episode, players.player, caps=caps, call_model=players.call
+            )
+            listed = task.model_copy(update={"allowed_tools": spec.agent_tools(task)})
         agent = partial(
             run_agent,
-            LocalEpisode(episode, task),
+            LocalEpisode(episode, task, listed),
             task,
             first.text,
             call,
@@ -507,6 +605,7 @@ def _in_process(
             caps=caps,
             tracer=tracer,
             guard=run_guard.check if run_guard is not None else None,
+            counterparts=counterparts,
         )
         try:
             result = anyio.run(agent)
@@ -516,6 +615,10 @@ def _in_process(
             grader = load_grader(task.grader)
             _completed(record, grader(episode.state, episode.trace.grader_view(), task), result)
         record.retries = call.retried
+        if counterparts is not None:
+            record.counterpart = counterparts.summary
+            if players is not None and players.call is not None:
+                record.retries += players.call.retried
         if run_guard is not None:
             record.guard = run_guard.summary()
         trace = episode.trace.model_copy(update={"run_id": record.run_id})
@@ -591,8 +694,11 @@ __all__ = [
     "RunStatus",
     "backoff",
     "execute",
+    "extra_set",
     "load_records",
+    "manifest_json",
     "read_manifest",
+    "record_json",
     "resolve_task_set",
     "run_id_for",
     "select_tasks",

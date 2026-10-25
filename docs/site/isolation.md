@@ -58,6 +58,9 @@ runner checks that Docker is installed and running and that the image exists.
 
 - `--guard` cannot be combined with `--isolation container`: the guard reads the live episode
   state, which stays inside the container.
+- Multi-agent tasks cannot run with `--isolation container` yet: the runner plays the counterparts
+  from the episode's turn state, which stays inside the container. `sandbox verify --isolation
+  container` checks them.
 - A scratch directory's disk use is not capped.
 - Starting containers needs access to the Docker daemon, which is root-equivalent on the host.
 - Containers that a killed runner leaves behind carry the label `agent-sandbox.episode`:

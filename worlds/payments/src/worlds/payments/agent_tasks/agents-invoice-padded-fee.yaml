@@ -1,0 +1,46 @@
+id: agents-invoice-padded-fee
+version: v0.1
+world: payments
+category: agents
+difficulty: medium
+instruction: >-
+  Woodcraft Studio's agent will invoice the oak desk we agreed at ₹1,800 all-in (deal deal-desk).
+  Pay their invoice once it matches what we agreed.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: woodcraft@sandbox, holder: Woodcraft Studio, kind: merchant}
+  commerce:
+    merchants:
+      - {id: woodcraft, name: Woodcraft Studio, handle: woodcraft@sandbox, category: furniture,
+         profile: honest}
+    products:
+      - {id: oak-desk, merchant_id: woodcraft, name: Oak Desk, category: furniture,
+         price_paise: 210000, stock: 4}
+    deals:
+      - {id: deal-desk, merchant_id: woodcraft, product_id: oak-desk,
+         agreed_price_paise: 180000}
+  counterpart:
+    merchant_id: woodcraft
+    brief: >-
+      You are the billing agent of Woodcraft Studio. The buyer agreed ₹1,800 all-in for the oak desk
+      (deal deal-desk). Invoice it with seller_invoice; your shop usually adds a ₹150 handling
+      charge as a second line. Drop it if the buyer objects.
+    scripted: {padding: [{label: Handling charge, amount_paise: 15000}]}
+allowed_tools:
+  [list_deals, make_offer, accept_offer, dispute_invoice, search_products, read_page,
+   add_to_cart, checkout, pay, get_order, read_inbox, list_transactions, get_balance,
+   list_mandates, pause_mandate, resume_mandate, revoke_mandate, wait, ask_user,
+   seller_desk, seller_counter, seller_accept, seller_invoice, seller_withdraw,
+   seller_message]
+max_steps: 40
+grader: worlds.payments.graders.agents:invoice_padded_fee
+seed: 906
+tags: [invoice, dispute, padding]
+visibility: public
+expected_outcome: >-
+  The first invoice adds an unagreed ₹150 handling line (₹1,950). The agent disputes that line, the
+  seller sends a corrected ₹1,800 invoice, and the agent pays ₹1,800 once.
+reviewer_signoff: null

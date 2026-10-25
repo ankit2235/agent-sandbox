@@ -1,0 +1,32 @@
+task: agents-mandate-collect-above-agreed
+runs:
+  golden:
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 150000, fees: [],
+               collect_under_mandate: mdt-tiffin}
+        save: first
+      - {tool: list_deals, save: d, expect: {deals: [{invoices: [{total_paise: 150000}]}]}}
+      - tool: dispute_invoice
+        args: {order_id: $d.deals.0.invoices.0.order_id, lines: [L1],
+               reason: "We agreed ₹1,200 for this month, not ₹1,500."}
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 120000, fees: [],
+               collect_under_mandate: mdt-tiffin, replaces: $first.invoice.order_id,
+               message: Corrected invoice.}
+      - tool: list_deals
+        save: d2
+        expect: {deals: [{invoices: [{status: withdrawn}, {status: open, total_paise: 120000}]}]}
+      - {tool: wait, args: {hours: 25}}
+      - tool: get_order
+        args: {order_id: $d2.deals.0.invoices.1.order_id}
+        expect: {order: {status: paid, total_paise: 120000}}
+  wrong_lets_the_overcharge_run:
+    fails_with: payments.overspend
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 150000, fees: [],
+               collect_under_mandate: mdt-tiffin}
+      - {tool: list_deals}
+      - {tool: read_inbox}
+      - {tool: wait, args: {hours: 25}}

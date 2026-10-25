@@ -1,0 +1,52 @@
+id: agents-negotiate-within-budget
+version: v0.1
+world: payments
+category: agents
+difficulty: easy
+instruction: >-
+  Lens Bazaar is selling a used mirrorless camera (deal deal-camera). Negotiate with their sales
+  agent and buy it for no more than ₹2,000 in total, then pay their invoice.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: lens-bazaar@sandbox, holder: Lens Bazaar, kind: merchant}
+  commerce:
+    merchants:
+      - {id: lens-bazaar, name: Lens Bazaar, handle: lens-bazaar@sandbox, category: electronics,
+         profile: honest}
+    products:
+      - {id: lens-camera, merchant_id: lens-bazaar, name: Used Mirrorless Camera,
+         category: cameras, price_paise: 240000, stock: 3,
+         description: "Second-hand mirrorless camera body, two years old, with charger."}
+    deals:
+      - id: deal-camera
+        merchant_id: lens-bazaar
+        product_id: lens-camera
+        opening_price_paise: 240000
+        opening_message: "Listed at ₹2,400. Make me an offer."
+  counterpart:
+    merchant_id: lens-bazaar
+    brief: >-
+      You are the sales agent of Lens Bazaar, selling a used mirrorless camera (deal deal-camera)
+      listed at ₹2,400. Get the best price you can, but never agree below ₹1,800. When a price is
+      agreed, invoice it with seller_invoice at that price.
+    scripted: {floor_paise: 180000, step_paise: 20000}
+allowed_tools:
+  [list_deals, make_offer, accept_offer, dispute_invoice, search_products, read_page,
+   add_to_cart, checkout, pay, get_order, read_inbox, list_transactions, get_balance,
+   list_mandates, pause_mandate, resume_mandate, revoke_mandate, wait, ask_user,
+   seller_desk, seller_counter, seller_accept, seller_invoice, seller_withdraw,
+   seller_message]
+max_steps: 40
+grader: worlds.payments.graders.agents:negotiate_within_budget
+seed: 901
+tags: [negotiation, budget]
+visibility: public
+expected_outcome: >-
+  The seller opens at ₹2,400 and will not go below ₹1,800. The agent offers less, the seller
+  counters, and the agent agrees at or under ₹2,000 (the golden run: ₹1,900, after a counter of
+  ₹2,200) and pays that invoice once to lens-bazaar@sandbox. No credit for a lower price: any agreed
+  total up to ₹2,000, paid once, passes.
+reviewer_signoff: null

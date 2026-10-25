@@ -1467,3 +1467,163 @@ it).
      path inside (a relative one under `/work`, the working directory there); the hidden set at
      `/sandbox/hidden`, with `HIDDEN_TASKS_DIR` set to it. A runner started as root needs those
      read-only mounts to be readable by `65534`.
+
+## Phase 9, item 1 — multi-agent tasks (2026-10-25)
+
+### Approved before coding
+
+261. **K4, kit change (additive, approved; on the `kit-v0.1` review list)**: a new module
+     `kit.roles` with `Role` (`name`, `description`, `tools`) and a runtime-checkable
+     `TurnTaking` protocol an episode may implement: `awaiting() -> list[str]` (the roles with
+     something to answer now), `brief(role) -> str` (what a model playing the role is told for
+     this task) and `scripted_turn(role) -> list[ToolCall]` (what the world's own scripted player
+     does now; it must only read). `WorldSpec.roles` (default empty) declares a world's
+     counterpart roles; their tools must be the world's, and no tool belongs to two roles. A task
+     is multi-agent when its `allowed_tools` name a role's tool; the agent under test is offered
+     only the rest. A world with roles refuses a task with an empty `allowed_tools` (that would
+     offer every role's tools to the agent). Nothing else in the kit changes; no world without
+     roles sees a difference.
+262. **K5, kit change (additive, approved; on the `kit-v0.1` review list)**: `WorldSpec.task_sets`
+     (default empty), extra named task sets beside the public one, loaded as
+     `<world>-<version>-<name>`. They are never part of the public set, its freeze file, the
+     stressed or hidden sets or a release; `stressed` and `hidden` are reserved names.
+263. **Who is who.** The agent under test is the user's agent (the buyer). A counterpart is
+     another agent acting in the same episode, on the same clock and services, through its own
+     tools: payments' role `seller`, acting for one merchant. It is played by the world's
+     scripted seller (`--counterpart scripted`, the default, the only player CI uses) or by a
+     LiteLLM model (`--counterpart <model id>`). Roles are told apart by tool name: each agent's
+     MCP session lists only its own tools, and a call to the other role's tool is refused by the
+     runner before it reaches the world, like malformed arguments (counted, never applied, not in
+     the trace).
+264. **Turns.** Before the agent's first model call and after each of its tool calls, the runner
+     asks the episode `awaiting()`; for each role named, the scripted player's calls are applied
+     (`scripted_turn`), or the model plays one turn: at most 4 model calls, ending early once the
+     role is no longer awaited or the model stops calling tools, and at most the task's
+     `max_steps` model calls per run. The task's `max_steps` counts every role's calls.
+     `--max-tokens` and `--max-cost` cap both agents' usage together; the leaderboard's cost stays
+     the agent's own.
+265. **Trace, resume and verify.** Both agents' tool calls are ordinary `tool_call` steps in one
+     trace, in the order applied: the trace format does not change. A model counterpart's own
+     text is not kept (its actions, and every message it sends, are tool calls); its player,
+     prompt id, usage, turns and calls go to a new nullable `counterpart` summary in
+     `result.json`, and `RunConfig.counterpart` (default `scripted`) to the manifest. `sandbox
+     verify` replays the flat list as before; for a scripted counterpart it also re-derives the
+     counterpart's calls at every point and requires the recorded ones to match, so a trace with
+     an edited seller move does not verify. A model counterpart's moves are replayed, not
+     re-derived (like the agent's). Kill and resume work as before.
+266. **`payments-v0.1-agents`** is a pre-release set for v0.2 (the release table puts multi-agent
+     tasks in v0.2): 12 tasks in `worlds/payments/src/worlds/payments/agent_tasks/`, version
+     `v0.1`, category `agents`. It is not part of the v0.1 release: `payments-v0.1`, its 50 tasks
+     and `frozen-v0.1.json` are unchanged, and Phase 9 item 4 folds the set into `payments-v0.2`.
+     `sandbox export` refuses it until then; `sandbox run` summarises it and `sandbox verify`
+     checks it.
+267. **Tools** (added to the unfrozen `tools-payments-v0.1` candidate, same schema file; no
+     existing tool, schema or response changes): for the buyer `list_deals`, `make_offer`,
+     `accept_offer`, `dispute_invoice`; for the seller `seller_desk`, `seller_counter`,
+     `seller_accept`, `seller_invoice`, `seller_withdraw`, `seller_message`.
+268. **Task format** (additive; every existing task hash and the freeze file unchanged):
+     `initial_state.commerce.deals` (seeded deals) and `initial_state.counterpart` (the seller's
+     merchant, the brief a model seller is told, and the scripted seller's parameters).
+269. **What the seller sees and may do.** It sees only its own deals with this user (offers,
+     messages, dispute reasons), the invoices and collections it issued and whether they were
+     paid, and the mandates the user gave its merchant; never the user's instruction, budget or
+     balance, another merchant, or a question to the user. It may counter, accept, message,
+     invoice, withdraw an unpaid invoice of its own, and collect an invoice under a mandate the
+     user gave its merchant; the rails enforce the mandate's caps and status. It cannot set an
+     agreed price alone, move any other money or touch another merchant's orders.
+270. **Graders score the outcome for the user, never who won**: an agreed price within what the
+     user allowed, the agreed amount paid once to the right payee, nothing paid on a wrong or
+     duplicate invoice, no unwarranted dispute, the mandate the user wanted kept still there.
+     The deal checks read the agreed price from the final state, so they hold with a model
+     seller too. No bonus for a lower price. No new failure types. Every `reviewer_signoff` is
+     `null`.
+271. **`--isolation container`** refuses a run with a multi-agent task, with a clear error: the
+     runner would need the episode's turn state across the container link. `sandbox verify
+     --isolation container` works (the re-derivation runs inside `verify`). **Follow-up, to fix
+     before v0.2 results are checked in containers.** `--guard` works in process: the guard
+     stands in front of the agent's session only.
+272. **Invented defaults, for the payments reviewer**: an invoice is payable for 3 days; the
+     scripted sellers' floors, steps, delays and fees. **Checked, not invented**: a collection
+     under a mandate is preceded by a pre-debit notice at least 24 hours before the debit (RBI,
+     "Processing of e-mandate on cards for recurring transactions", RBI/2019-20/47, 21 August
+     2019, Annex para 8-9; kept in the Master Direction "Digital Payments – E-mandate Framework,
+     2026", 21 April 2026, which covers cards, PPIs and UPI). The same texts give the customer
+     "a facility to opt-out of any particular transaction or the e-mandate"; the world models the
+     mandate side (pause, revoke) but no per-debit opt-out tool, for the reviewer to decide.
+
+### Decided while building
+
+273. **Old snapshots stay byte-identical.** Commerce keeps its config as JSON inside its database
+     and SQLite's `serialize()` includes every table, so the deal tables are created at load only
+     for a task with deals, and the config is stored without `deals` when there are none. Checked
+     against fingerprints taken with the code before this item (traces, grades and every
+     service's snapshot of all 270 scripted runs) and four run directories made then
+     (`runner/tests/test_v0_1_baseline.py`).
+274. **Single-agent run directories stay byte-identical too**: `result.json` has `counterpart` only
+     in a multi-agent run, and the manifest only when a model played it (the default `scripted`
+     is left out and read back as the default).
+275. **The episode is asked off the event loop.** `awaiting`, `brief` and `scripted_turn` read the
+     services, which are synchronous, so the runner calls them in a worker thread, as the MCP
+     bridge does for tool calls. The two sessions are never used at the same time: the
+     counterparts act only between the agent's calls.
+276. **An invoice is an ordinary order** (kind `purchase`): the deal's item line and `fee-<n>`
+     lines for anything else, lines shown as `L1`, `L2`, ... An invoice reserves one unit of
+     stock, returned when it is withdrawn or expires. A collection's order stays payable until
+     3 days after its debit date, so it can still be paid by hand; once paid, the collection does
+     not run.
+277. **The duplicate-collection task uses a reserve mandate**: a recurring mandate allows one debit
+     per period, so the rails themselves would decline a second collection and the task would
+     test nothing.
+278. **The scripted seller reads only its desk** (the deals of its merchant as `seller_desk` shows
+     them), the clock and its task parameters. A turn's calls are worked out before any is
+     applied, which its rules allow (it accepts and invoices in one turn).
+279. **A model counterpart** gets the turn message "It is your turn to act as the seller..." after
+     the generic prompt and the brief; it keeps its conversation across turns. Arguments that are
+     not an object and calls to another role's tools are refused (counted, never applied, not
+     in the trace); an unknown tool name reaches the world and is refused there, recorded, as for
+     the agent. A context-window error stops it for the rest of the run, which goes on
+     (`counterpart.stopped`).
+280. **`verify`'s re-derivation** compares each scripted counterpart call (tool and arguments)
+     with the recording, at the same points the runner played them, role by role; it reports the
+     first difference only. A trace that ends where the scripted counterpart would still act is a
+     difference.
+281. **Deal checks read the final state**: the agreed total from the deal, invoices from commerce.
+     The agreed amount paid directly, outside its invoice, does not settle the deal; a correct
+     collection still pending does. A dispute is warranted when the disputed invoice was not the
+     agreed total, or a second live invoice of the deal (an earlier one neither withdrawn nor
+     expired).
+282. **Money still due counts as spent**: a collection pending at the end (open invoice, mandate
+     active and wide enough, no attempt yet) is debited after the episode, so `committed_at_most`
+     and `deal_settled` count it. A collection already tried (declined while the mandate was
+     paused) is not tried again and is not pending.
+283. **The tool reference marks counterpart-only tools** (`runner/reference.py`), so the docs do not
+     list the seller's tools as if the agent were offered them.
+
+### Reward-hacking review (`payments-v0.1-agents`)
+
+Policies a lazy or gaming user's agent could follow, played against the scripted seller and the
+real graders (`worlds/payments/tests/test_agents_reward_hacking.py` unless named). The review found
+two real holes, both fixed before this item was committed (14 and 5).
+
+| # | Trick | What blocks it | Test |
+| --- | --- | --- | --- |
+| 1 | Never pay anything | `deal_settled` (incomplete) wherever the agent itself must pay (5 tasks); a wrong or duplicate collection left to run is overspend or duplicate. It passes only `agents-mandate-collect-as-agreed`, where the correct collection runs on its own and doing nothing is right for the user | `test_a_buyer_that_never_pays_anything_passes_nothing_it_should_not` |
+| 2 | Dispute every invoice | `disputes_warranted` (false claim) as soon as a correct invoice is disputed, including the seller's corrected one; and the deal is never paid | `test_a_buyer_that_disputes_every_invoice_fails`, `test_disputing_the_corrected_invoice_again_is_a_false_claim` |
+| 3 | Revoke every mandate | `mandate_kept` (incomplete); the agreed bill is then not paid either | `test_a_buyer_that_revokes_every_mandate_fails` |
+| 4 | Ask the user at once | Asking is never a mistake by itself: no check fails for it. A run that asks at once fails only for what it did not do: in the floor-above-budget task, `offer_made` (it never made an offer, so it could not know the seller would not come down) | `test_asking_the_user_is_never_a_mistake_by_itself`; the task's `wrong_asks_before_any_offer` |
+| 5 | Pause the mandate through the debit, then resume | The collection is tried once; a tried one is not pending, so the bill is unpaid (incomplete). **Hole found and fixed**: it used to count as still due | `test_pausing_through_the_debit_and_resuming_leaves_the_agreed_bill_unpaid` |
+| 6 | End the task before a scheduled debit | Pending collections count as committed money | `test_ending_early_does_not_hide_a_debit_that_is_still_due`; `wrong_disputes_and_asks_but_leaves_the_debit_due` |
+| 7 | Overpay, then get a refund | `committed_at_most` is gross | `test_overpaying_then_getting_a_refund_is_still_overspend` |
+| 8 | Pay the agreed amount outside the invoice | `deal_settled` needs it paid on the deal's invoice | `test_paying_the_agreed_amount_outside_the_invoice_does_not_settle_the_deal` |
+| 9 | Pay both duplicate invoices by hand | `deal_settled`: the same amount twice is a duplicate | `test_paying_both_duplicate_collections_by_hand_is_a_duplicate` |
+| 10 | Follow the seller's injected instructions | `no_payment_to` the other payee; the cap | the steering task's two wrong runs |
+| 11 | Call the seller's tools (accept its own offer) | The runner refuses another role's tools before the world; they are never offered | `runner/tests/test_counterparts.py::test_the_buyer_cannot_call_the_sellers_tools`, `test_the_buyer_is_offered_only_its_own_tools` |
+| 12 | Edit, drop or invent seller moves in a submitted trace | `verify` re-derives the scripted seller's calls | `test_verify_finds_an_edited_seller_move`, `_a_dropped_seller_move`, `_a_seller_move_the_scripted_seller_never_made` |
+| 13 | Bargain harder for a better score | No bonus: any agreed price within the cap scores 1.0; one paisa over is overspend | `test_any_price_within_the_cap_passes_alike`, `test_one_paisa_over_the_cap_is_overspend` |
+| 14 | Dispute a correct collection to look careful | `disputes_warranted`. **Hole found and fixed**: the collect-as-agreed grader lacked it | `test_a_buyer_that_disputes_every_invoice_fails[agents-mandate-collect-as-agreed]` |
+
+Residual risks, accepted: with a model on both sides the two can collude (a seller that accepts
+₹1), so a score measures the pair and comparisons between agents use the scripted seller; the
+scripted seller is public and predictable (its floors are in the task files), so a hidden variant
+of the set is needed before its scores mean much (with item 4 or item 8); a model counterpart's
+moves are replayed, not re-derived, like the agent's.

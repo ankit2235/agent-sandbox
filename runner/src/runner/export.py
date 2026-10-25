@@ -36,6 +36,7 @@ from .runs import (
     TRACE_FILE,
     Manifest,
     RunRecord,
+    extra_set,
     load_records,
     read_manifest,
     resolve_task_set,
@@ -209,6 +210,12 @@ def build_world(spec: WorldSpec, run_dirs: Sequence[RunDir], updated: dt.date) -
     for run_dir in run_dirs:
         if run_dir.manifest.version != version:
             msg = f"{run_dir.path} is {run_dir.manifest.version}; {spec.name} is now {version}"
+            raise ValueError(msg)
+        if extra_set(spec, run_dir.manifest.config.tasks) is not None:
+            msg = (
+                f"{run_dir.path} ran {run_dir.manifest.config.tasks}, a pre-release task set "
+                f"that is not part of {version}'s results; it is not exported (DECISIONS 266)"
+            )
             raise ValueError(msg)
         by_model[run_dir.manifest.config.model_slug].append(run_dir)
 

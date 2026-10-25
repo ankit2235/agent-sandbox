@@ -10,6 +10,48 @@ This section becomes **[0.1.0] — payments-v0.1** when the repo owner tags `pay
 `v0.1.0` (`docs/RELEASING.md`). The release gate does not pass yet: it waits on the payments
 reviewer's sign-off, real model results and the real calibration report.
 
+### Added — Phase 9, item 1: multi-agent tasks
+
+- `payments-v0.1-agents`, a pre-release task set for v0.2 (not part of the v0.1 release; Phase 9
+  item 4 folds it into `payments-v0.2`): 12 tasks in which the user's agent works beside a seller
+  agent: 5 negotiations (within budget, a floor above budget, a seller that steers through its
+  message, one that never answers, one that answers late), 3 invoice disputes (a padded line, a
+  correct invoice, a seller that refuses to correct) and 4 agent-to-agent payments under
+  mandates (a collection as agreed, above it, sent twice, above it and refused). Each has a golden
+  run and one to three wrong runs (12 golden, 18 wrong). Graders score the outcome for the user,
+  never who won (`graders/agents.py`); every `reviewer_signoff` is `null`.
+- Kit (K4, K5; additive, on the `kit-v0.1` review list): `kit.roles` (`Role`, the `TurnTaking`
+  protocol); `WorldSpec.roles` and `WorldSpec.task_sets` (extra sets as `<world>-<version>-<name>`).
+- Payments: deals, seller invoices and collections under mandates in commerce (tables created only
+  for a task with deals); a pre-debit notice 24 hours before a collection (RBI's e-mandate rule);
+  tools `list_deals`, `make_offer`, `accept_offer`, `dispute_invoice` for the user's agent and
+  `seller_desk`, `seller_counter`, `seller_accept`, `seller_invoice`, `seller_withdraw`,
+  `seller_message` for the seller role (added to the unfrozen `tools-payments-v0.1` candidate);
+  `initial_state.counterpart` and `commerce.deals`; category `agents`; the scripted seller
+  (`counterpart.py`).
+- Runner: `sandbox run --counterpart scripted|<model id>` plays the counterparts
+  (`runner/counterpart.py`, prompt `counterpart/v1`): turns after each of the agent's calls, a
+  model seller limited to 4 calls a turn and `max_steps` a run, caps over both agents, calls to
+  the other role's tools refused; `result.json` gains `counterpart` (multi-agent runs only), the
+  manifest `counterpart` (model counterparts only). `sandbox verify` re-derives every scripted
+  counterpart call. `sandbox tasks validate` and `sandbox worlds` cover extra task sets; the
+  tool reference marks counterpart-only tools.
+- Docs: `docs/site/multi-agent.md`; concepts, task format, isolation and limitations updated.
+- Tests: `kit/tests/test_roles.py`; `worlds/payments/tests/test_agents.py` (every run, the scripted
+  seller against every run file, deal rules and edge cases) and `test_agents_reward_hacking.py`;
+  `runner/tests/test_counterparts.py` (end to end, kill and resume, verify catching edited,
+  dropped and invented seller moves, model sellers, refused cross-role calls, combined caps, the
+  guard, refusals) and `test_v0_1_baseline.py` (every existing scripted run and four run
+  directories made before this item reproduce byte for byte); a container verify of the set in
+  `test_isolation_docker.py`.
+
+### Not changed — Phase 9, item 1
+
+- `payments-v0.1` and `frozen-v0.1.json`, every existing tool, schema and response, the trace
+  format and `results-v0.1`. Single-agent run directories are byte for byte what they were.
+- `sandbox export` refuses the agents set, and `sandbox run --isolation container` refuses
+  multi-agent tasks for now (DECISIONS 271).
+
 ### Added — Phase 9, item 6: security of the sandbox itself
 
 - `sandbox run --isolation container [--image IMG]`: each episode's world (tool handlers,

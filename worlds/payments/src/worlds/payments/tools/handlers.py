@@ -606,6 +606,242 @@ def ask_user(raw: dict[str, Any], context: ToolContext) -> ToolResult:
     )
 
 
+# ------------------------------------------- deals: the buyer's side (multi-agent tasks)
+NO_COUNTERPART = "no_counterpart"
+
+SELLER_TOOLS = (
+    "seller_desk",
+    "seller_counter",
+    "seller_accept",
+    "seller_invoice",
+    "seller_withdraw",
+    "seller_message",
+)
+"""The seller role's tools: never offered to the user's agent (DECISIONS 263, 267)."""
+
+
+def _invoice_text(invoice: Row) -> str:
+    lines = ", ".join(
+        f"{line['line_id']} {line['label']} {money(line['amount_paise'])}"
+        for line in invoice["lines"]
+    )
+    text = (
+        f"Invoice {invoice['order_id']}: {money(invoice['total_paise'])} ({lines}), "
+        f"{invoice['status']}, pay by {invoice['pay_by']}"
+    )
+    if invoice["collect_under_mandate"]:
+        text += (
+            f"; to be collected under mandate {invoice['collect_under_mandate']} "
+            f"on {invoice['collect_at']}"
+        )
+    if invoice["disputed"]:
+        text += "; disputed"
+    return text
+
+
+def _deal_text(deal: Row) -> str:
+    lines = [
+        f"Deal {deal['id']} with {deal['merchant']} ({deal['payee']}) for {deal['product']}: "
+        f"list price {money(deal['list_price_paise'])}, {deal['status']}."
+    ]
+    if deal["agreed_price_paise"] is not None:
+        lines.append(f"Agreed total: {money(deal['agreed_price_paise'])}.")
+    if deal["standing_offer"] is not None:
+        offer = deal["standing_offer"]
+        lines.append(f"Standing offer from the {offer['by']}: {money(offer['price_paise'])}.")
+    if deal["awaiting"] is not None:
+        lines.append(f"Waiting for the {deal['awaiting']}.")
+    for message in deal["messages"]:
+        price = "" if message["price_paise"] is None else f" {money(message['price_paise'])}"
+        about = "" if message["order_id"] is None else f" (invoice {message['order_id']})"
+        lines_ = f" lines {', '.join(message['lines'])}" if message["lines"] else ""
+        words = f": {message['text']}" if message["text"] else ""
+        lines.append(
+            f"  [{message['at']}] {message['sender']} {message['kind']}{price}{about}"
+            f"{lines_}{words}"
+        )
+    lines += [f"  {_invoice_text(invoice)}" for invoice in deal["invoices"]]
+    return "\n".join(lines)
+
+
+def _deal_result(body: Row, world: Links) -> ToolResult:
+    deal = body["deal"]
+    return ToolResult(
+        text=_deal_text(deal),
+        data={"deal": deal},
+        state_diff=diff_of(body) + world.notify(body["notices"]),
+    )
+
+
+def list_deals(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Every deal the user has with a seller, with the conversation and invoices."""
+    parse(a.NoArgs, raw)
+    deals = links(context).commerce.call("GET", "/deals")
+    text = "\n\n".join(_deal_text(deal) for deal in deals) or "No deals."
+    return ToolResult(text=text, data={"deals": deals})
+
+
+def make_offer(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Offer the seller a price on an open deal."""
+    args = parse(a.Offer, raw)
+    world = links(context)
+    body = world.commerce.call(
+        "POST",
+        f"/deals/{args.deal_id}/offers",
+        {"sender": "buyer", "price_paise": args.price_paise, "text": args.message},
+    )
+    return _deal_result(body, world)
+
+
+def accept_offer(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Accept the seller's standing offer: the deal is agreed at its price."""
+    args = parse(a.DealOnly, raw)
+    world = links(context)
+    body = world.commerce.call(
+        "POST", f"/deals/{args.deal_id}/accept", {"sender": "buyer", "text": args.message}
+    )
+    return _deal_result(body, world)
+
+
+def dispute_invoice(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Tell the seller what is wrong with one of its unpaid invoices. Nothing is paid."""
+    args = parse(a.DisputeInvoice, raw)
+    world = links(context)
+    body = world.commerce.call(
+        "POST",
+        f"/invoices/{args.order_id}/disputes",
+        {"lines": args.lines, "text": args.reason},
+    )
+    invoice = body["invoice"]
+    return ToolResult(
+        text=f"Dispute sent to the seller. {_invoice_text(invoice)}.",
+        data={"invoice": invoice},
+        state_diff=diff_of(body),
+    )
+
+
+# ----------------------------------------------- deals: the seller's side (counterpart)
+def _seller(context: ToolContext) -> tuple[Links, Row]:
+    """The world as the seller acts in it, and the merchant it acts for."""
+    counterpart = context.task.initial_state.get("counterpart")
+    if not counterpart:
+        msg = "this task has no seller"
+        raise ToolRejected(NO_COUNTERPART, msg)
+    world = links(context)
+    merchant: Row = world.commerce.call("GET", f"/merchants/{counterpart['merchant_id']}")
+    return world, merchant
+
+
+def _seller_move(context: ToolContext, path: str, payload: Row) -> ToolResult:
+    world, merchant = _seller(context)
+    body = world.commerce.call(
+        "POST", path, {"sender": "seller", "merchant_id": merchant["id"], **payload}
+    )
+    return _deal_result(body, world)
+
+
+def seller_desk(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """The seller's view: its deals with this buyer, and the mandates the buyer gave it."""
+    parse(a.NoArgs, raw)
+    world, merchant = _seller(context)
+    deals = world.commerce.call("GET", "/deals", params={"merchant_id": merchant["id"]})
+    mandates = [
+        {
+            key: m[key]
+            for key in (
+                "id",
+                "type",
+                "frequency",
+                "max_amount_paise",
+                "remaining_limit_paise",
+                "status",
+                "end_at",
+            )
+        }
+        for m in world.rails.call("GET", f"/accounts/{world.user}/mandates")
+        if m["payee"] == merchant["handle"]
+    ]
+    lines = [f"You sell for {merchant['name']} ({merchant['handle']})."]
+    lines += [_deal_text(deal) for deal in deals]
+    for m in mandates:
+        every = f" {m['frequency']}" if m["frequency"] else ""
+        lines.append(
+            f"Mandate {m['id']} from the buyer: {m['type']}{every}, up to "
+            f"{money(m['max_amount_paise'])}, {m['status']}, ends {m['end_at'] or 'never'}."
+        )
+    return ToolResult(
+        text="\n\n".join(lines), data={"merchant": merchant, "deals": deals, "mandates": mandates}
+    )
+
+
+def seller_counter(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Answer with a counter-offer on an open deal."""
+    args = parse(a.Offer, raw)
+    return _seller_move(
+        context,
+        f"/deals/{args.deal_id}/offers",
+        {"price_paise": args.price_paise, "text": args.message},
+    )
+
+
+def seller_accept(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Accept the buyer's standing offer."""
+    args = parse(a.DealOnly, raw)
+    return _seller_move(context, f"/deals/{args.deal_id}/accept", {"text": args.message})
+
+
+def seller_message(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Write to the buyer on a deal, with no offer in it."""
+    args = parse(a.SellerMessage, raw)
+    return _seller_move(context, f"/deals/{args.deal_id}/messages", {"text": args.message})
+
+
+def seller_invoice(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Invoice an agreed deal, to be paid by the buyer or collected under its mandate."""
+    args = parse(a.SellerInvoice, raw)
+    world, merchant = _seller(context)
+    if args.collect_under_mandate is not None:
+        mandate = world.rails.call("GET", f"/mandates/{args.collect_under_mandate}")
+        if (mandate["payer"], mandate["payee"]) != (world.user, merchant["handle"]):
+            msg = f"no mandate {args.collect_under_mandate!r} from the buyer to you"
+            raise ToolRejected("mandate_not_found", msg)
+    body = world.commerce.call(
+        "POST",
+        f"/deals/{args.deal_id}/invoices",
+        {
+            "merchant_id": merchant["id"],
+            "item_price_paise": args.item_price_paise,
+            "fees": [fee.model_dump() for fee in args.fees],
+            "mandate_id": args.collect_under_mandate,
+            "replaces": args.replaces,
+            "text": args.message,
+        },
+    )
+    invoice = body["invoice"]
+    return ToolResult(
+        text=f"Sent. {_invoice_text(invoice)}.",
+        data={"invoice": invoice},
+        state_diff=diff_of(body) + world.notify(body["notices"]),
+    )
+
+
+def seller_withdraw(raw: dict[str, Any], context: ToolContext) -> ToolResult:
+    """Withdraw one of your unpaid invoices; a collection on it will not run."""
+    args = parse(a.SellerWithdraw, raw)
+    world, merchant = _seller(context)
+    body = world.commerce.call(
+        "POST",
+        f"/invoices/{args.order_id}/withdraw",
+        {"merchant_id": merchant["id"], "text": args.message},
+    )
+    invoice = body["invoice"]
+    return ToolResult(
+        text=f"Withdrawn. {_invoice_text(invoice)}.",
+        data={"invoice": invoice},
+        state_diff=diff_of(body) + world.notify(body["notices"]),
+    )
+
+
 # ------------------------------------------------------------------- router
 NO_ARGS = a.NoArgs
 
@@ -737,6 +973,70 @@ TOOLS: list[tuple[str, str, type[a.ToolArgs], ToolHandler | None]] = [
         a.AskUser,
         ask_user,
     ),
+    (
+        "list_deals",
+        "Your deals with sellers: list price, offers, the agreed total, messages and invoices.",
+        NO_ARGS,
+        list_deals,
+    ),
+    (
+        "make_offer",
+        "Offer the seller a total price on an open deal. The seller answers in its own time.",
+        a.Offer,
+        make_offer,
+    ),
+    (
+        "accept_offer",
+        "Accept the seller's standing offer: the deal is agreed at that price, and the seller "
+        "then sends an invoice. Paying it is a separate step.",
+        a.DealOnly,
+        accept_offer,
+    ),
+    (
+        "dispute_invoice",
+        "Tell the seller what is wrong with one of its unpaid invoices (the lines you do not "
+        "accept, or all of it). Nothing is paid or stopped by this; the seller answers.",
+        a.DisputeInvoice,
+        dispute_invoice,
+    ),
+    (
+        "seller_desk",
+        "Seller: your deals with the buyer (offers, messages, disputes, your invoices and "
+        "whether they were paid) and the mandates the buyer gave you.",
+        NO_ARGS,
+        seller_desk,
+    ),
+    (
+        "seller_counter",
+        "Seller: answer an open deal with a counter-offer.",
+        a.Offer,
+        seller_counter,
+    ),
+    (
+        "seller_accept",
+        "Seller: accept the buyer's standing offer; the deal is agreed at that price.",
+        a.DealOnly,
+        seller_accept,
+    ),
+    (
+        "seller_invoice",
+        "Seller: invoice an agreed deal. With collect_under_mandate, the buyer gets a pre-debit "
+        "notice and the invoice is collected under that mandate 24 hours later.",
+        a.SellerInvoice,
+        seller_invoice,
+    ),
+    (
+        "seller_withdraw",
+        "Seller: withdraw one of your unpaid invoices; a collection on it will not run.",
+        a.SellerWithdraw,
+        seller_withdraw,
+    ),
+    (
+        "seller_message",
+        "Seller: write to the buyer on a deal, with no offer in it.",
+        a.SellerMessage,
+        seller_message,
+    ),
 ]
 """Name, description, argument model and handler. ``wait`` is the episode's own."""
 
@@ -780,7 +1080,9 @@ def build_router(wait: ToolHandler) -> ToolRouter:
 
 __all__ = [
     "INVALID_ARGUMENTS",
+    "NO_COUNTERPART",
     "PAYMENT_TIMEOUT",
+    "SELLER_TOOLS",
     "TOOLS",
     "TOOL_NAMES",
     "build_router",

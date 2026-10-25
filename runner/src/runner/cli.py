@@ -39,6 +39,7 @@ from stress.core import GENERIC, registry
 from . import DISTRIBUTION, hidden, reference, release, submission
 from .calibrate import calibrate, write_report
 from .calibrate import markdown as calibration_markdown
+from .counterpart import SCRIPTED
 from .export import export
 from .guarding import GuardSetup
 from .isolation import (
@@ -50,7 +51,7 @@ from .isolation import (
     preflight,
     serve,
 )
-from .models import model_factory
+from .models import FAKE_PREFIX, model_factory
 from .runs import RunConfig, RunRecord, execute, load_records, slug, task_set_version
 from .score import score, summary_lines
 from .validate import task_files, validate_file
@@ -86,6 +87,10 @@ def cmd_worlds(args: argparse.Namespace) -> int:
         _print(f"  tools         : {', '.join(spec.tool_names)}")
         _print(f"  failure types : {', '.join(f.id for f in spec.failure_types) or '-'}")
         _print(f"  tasks         : {spec.tasks_dir or '-'}")
+        for extra, path in sorted(spec.task_sets.items()):
+            _print(f"  extra set     : {spec.name}-{spec.version}-{extra} ({path})")
+        for role in spec.roles:
+            _print(f"  counterpart   : {role.name} ({', '.join(role.tools)})")
         _print()
     return 0
 
@@ -101,9 +106,10 @@ def cmd_tasks_validate(args: argparse.Namespace) -> int:
     roots = [Path(path) for path in args.paths or []]
     if not roots:
         for name in worlds.names():
-            tasks_dir = worlds.get(name).tasks_dir
-            if tasks_dir is not None:
-                roots.append(tasks_dir)
+            spec = worlds.get(name)
+            if spec.tasks_dir is not None:
+                roots.append(spec.tasks_dir)
+            roots += [spec.task_sets[extra] for extra in sorted(spec.task_sets)]
     files = [(path, root) for root in roots for path in task_files(root)]
     if not files:
         _print("No task files found.")
@@ -207,6 +213,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     if isolation is not None and args.guard is not None:
         _print(f"error: {GUARD_REFUSAL}")
         return 2
+    if args.counterpart.startswith(FAKE_PREFIX):
+        _print(f"error: --counterpart {args.counterpart}: use scripted or a LiteLLM model id")
+        return 2
     guard = (
         GuardSetup.from_names(args.guard, args.backend, args.set)
         if args.guard is not None
@@ -231,6 +240,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         temperature=args.temperature,
         retries=args.retries,
         guard=guard.config if guard is not None else None,
+        counterpart=args.counterpart,
     )
     out = Path(args.out)
     try:
@@ -595,9 +605,16 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--tasks",
         required=True,
-        help="payments-v0.1, payments-v0.1-stressed, payments-v0.1-hidden or a task directory",
+        help="payments-v0.1, payments-v0.1-stressed, payments-v0.1-hidden, payments-v0.1-agents "
+        "or a task directory",
     )
     run_parser.add_argument("--out", required=True, help="run directory; rerun to resume")
+    run_parser.add_argument(
+        "--counterpart",
+        default=SCRIPTED,
+        help="who plays the other agents of multi-agent tasks: scripted (the world's, the "
+        "default) or a LiteLLM model id",
+    )
     run_parser.add_argument("--runs", type=int, default=1, help="runs per task")
     run_parser.add_argument("--concurrency", type=int, default=1)
     run_parser.add_argument("--sample", type=int, default=None, help="run N tasks, seeded")

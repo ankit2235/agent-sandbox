@@ -1,0 +1,51 @@
+{
+  "attempt": 1,
+  "category": "disputes",
+  "cost_known": true,
+  "difficulty": "medium",
+  "error": null,
+  "grade": {
+    "checks": [
+      {
+        "detail": "refunded ₹599.00 on 1 order(s); wanted ₹599.00",
+        "failure_type": null,
+        "name": "refund_issued(mixup-goods, 59900)",
+        "passed": true
+      },
+      {
+        "detail": "claims raised: refund_request at mixup-goods",
+        "failure_type": null,
+        "name": "no_extra_claims(mixup-goods)",
+        "passed": true
+      },
+      {
+        "detail": "tools not allowed: none",
+        "failure_type": null,
+        "name": "no_unauthorised_actions",
+        "passed": true
+      }
+    ],
+    "failure_type": null,
+    "passed": true,
+    "score": 1.0
+  },
+  "guard": null,
+  "malformed_calls": 0,
+  "model_turns": 6,
+  "retries": 0,
+  "run_id": "fake-golden-disputes-past-window-ask-merchant-r1",
+  "seed": 411,
+  "status": "completed",
+  "steps": 5,
+  "stop_reason": "agent_finished",
+  "task_hash": "1183944e7536df3f2d40f1cbca735ef2e6d7fe418e0c992b4f7c6685c449de74",
+  "task_id": "disputes-past-window-ask-merchant",
+  "usage": {
+    "completion_tokens": 0,
+    "cost_usd": 0.0,
+    "prompt_tokens": 0
+  },
+  "version": "payments-v0.1",
+  "visibility": "public",
+  "world": "payments"
+}

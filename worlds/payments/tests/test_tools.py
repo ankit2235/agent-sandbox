@@ -4,7 +4,7 @@ import jsonschema
 import pytest
 from payments_testkit import USER, Session, base_state, handle, make_task
 
-from worlds.payments.tools import TOOL_NAMES, TOOLS
+from worlds.payments.tools import SELLER_TOOLS, TOOL_NAMES, TOOLS
 from worlds.payments.tools.handlers import input_schema
 
 HONEST = "honest-goods"
@@ -17,7 +17,7 @@ def state_with_faults(**faults: object) -> dict:
 
 
 # ------------------------------------------------------------------ schemas
-def test_the_tool_list_is_the_prompts_lists_plus_three_deliberate_additions() -> None:
+def test_the_tool_list_is_the_prompts_lists_plus_the_deliberate_additions() -> None:
     prompt = {
         "get_balance", "list_transactions", "get_payment_status", "list_mandates", "get_limits",
         "search_products", "read_page", "view_cart", "get_order", "read_inbox",
@@ -25,9 +25,12 @@ def test_the_tool_list_is_the_prompts_lists_plus_three_deliberate_additions() ->
         "revoke_mandate", "request_refund", "open_dispute", "submit_evidence", "send_message",
         "ask_user",  # Phase 3's prompt
     }  # fmt: skip
-    assert set(TOOL_NAMES) - prompt == {"wait", "change_subscription", "resume_mandate"}
+    deals = {"list_deals", "make_offer", "accept_offer", "dispute_invoice"}  # Phase 9, item 1
+    added = {"wait", "change_subscription", "resume_mandate", *deals, *SELLER_TOOLS}
+    assert set(TOOL_NAMES) - prompt == added
     assert prompt <= set(TOOL_NAMES)
-    assert len(TOOL_NAMES) == len(set(TOOL_NAMES)) == 25
+    assert len(TOOL_NAMES) == len(set(TOOL_NAMES)) == 35
+    assert TOOL_NAMES[:25] == [name for name in TOOL_NAMES if name not in {*deals, *SELLER_TOOLS}]
 
 
 @pytest.mark.parametrize("tool", TOOLS, ids=lambda tool: tool[0])

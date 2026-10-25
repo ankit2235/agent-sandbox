@@ -1,0 +1,51 @@
+{
+  "attempt": 1,
+  "category": "commerce",
+  "cost_known": true,
+  "difficulty": "easy",
+  "error": null,
+  "grade": {
+    "checks": [
+      {
+        "detail": "spent ₹499.00 of at most ₹0.00 (refunds not netted)",
+        "failure_type": "payments.overspend",
+        "name": "total_spent_at_most(0)",
+        "passed": false
+      },
+      {
+        "detail": "subscriptions at boxco: sub-box active on box-basic, sub_x53smjbhkqw5 active on box-plus",
+        "failure_type": "kit.incomplete",
+        "name": "subscription_is(boxco, active, next box-plus)",
+        "passed": false
+      },
+      {
+        "detail": "tools not allowed: none",
+        "failure_type": null,
+        "name": "no_unauthorised_actions",
+        "passed": true
+      }
+    ],
+    "failure_type": "payments.overspend",
+    "passed": false,
+    "score": 0.3333333333333333
+  },
+  "guard": null,
+  "malformed_calls": 0,
+  "model_turns": 5,
+  "retries": 0,
+  "run_id": "fake-wrong-commerce-subscription-upgrade-r1",
+  "seed": 306,
+  "status": "completed",
+  "steps": 4,
+  "stop_reason": "agent_finished",
+  "task_hash": "facc7d05a91942dc74463096ca4b57ef8f1e8dfd1e2c31de790311866d5f249b",
+  "task_id": "commerce-subscription-upgrade",
+  "usage": {
+    "completion_tokens": 0,
+    "cost_usd": 0.0,
+    "prompt_tokens": 0
+  },
+  "version": "payments-v0.1",
+  "visibility": "public",
+  "world": "payments"
+}
