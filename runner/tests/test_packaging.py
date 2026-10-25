@@ -23,6 +23,8 @@ PARTS = {
     "kit": "kit",
     "stress": "stress",
     "runner": "runner",
+    "guard": "guard",
+    "training": "training",
     "worlds/payments": "world-payments",
     "worlds/security": "world-security",
 }
@@ -118,6 +120,7 @@ def test_every_sdist_holds_only_files_git_would_ship(built) -> None:
 
 def test_every_wheel_holds_only_its_package_and_metadata(built) -> None:
     packages = {"kit": "kit/", "stress": "stress/", "runner": "runner/"}
+    packages |= {"guard": "guard/", "training": "training/"}
     packages |= {"worlds/payments": "worlds/payments/", "worlds/security": "worlds/security/"}
     for folder, name in names().items():
         with zipfile.ZipFile(dist_file(built, name, "-py3-none-any.whl")) as wheel:

@@ -1,0 +1,7 @@
+# OpenAI's Decisions API (guide checked 2026-10-25: generally available, gpt-6-luna only).
+kind: openai_decisions
+name: openai-decisions
+model: gpt-6-luna
+api_key_env: OPENAI_API_KEY
+timeout_s: 10
+reason_threshold: 0.5

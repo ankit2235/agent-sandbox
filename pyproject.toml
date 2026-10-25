@@ -48,10 +48,12 @@ bypass-selection = true
 only-include = ["pyproject.toml", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [tool.uv.workspace]
-members = ["kit", "stress", "runner", "worlds/payments", "worlds/security"]
+members = ["kit", "stress", "runner", "guard", "training", "worlds/payments", "worlds/security"]
 
 [tool.uv.sources]
 agent-sandbox-bench-kit = { workspace = true }
+agent-sandbox-bench-guard = { workspace = true }
+agent-sandbox-bench-training = { workspace = true }
 agent-sandbox-bench-runner = { workspace = true }
 agent-sandbox-bench-stress = { workspace = true }
 agent-sandbox-bench-world-payments = { workspace = true }
@@ -76,7 +78,15 @@ dev = [
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["kit/src", "runner/src", "stress/src", "worlds/payments/src", "worlds/security/src"]
+src = [
+  "kit/src",
+  "runner/src",
+  "stress/src",
+  "guard/src",
+  "training/src",
+  "worlds/payments/src",
+  "worlds/security/src",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "ANN", "D"]
@@ -94,7 +104,7 @@ ignore = [
 "**/examples/**" = ["D"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["kit", "runner", "stress", "worlds"]
+known-first-party = ["kit", "runner", "stress", "guard", "training", "worlds"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -111,8 +121,22 @@ ignore_missing_imports = true
 module = ["litellm.*", "opentelemetry.exporter.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# The guard model's training and local inference (requirements-train.txt, never installed
+# by the workspace or CI); imported lazily and typed against Any.
+module = ["torch.*", "transformers.*", "peft.*", "trl.*", "datasets.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
-testpaths = ["kit/tests", "stress/tests", "runner/tests", "worlds/payments/tests", "worlds/security/tests"]
+testpaths = [
+  "kit/tests",
+  "stress/tests",
+  "runner/tests",
+  "guard/tests",
+  "training/tests",
+  "worlds/payments/tests",
+  "worlds/security/tests",
+]
 addopts = "-q --strict-markers --strict-config"
 markers = [
   "openenv: requires the optional openenv extra to be installed",

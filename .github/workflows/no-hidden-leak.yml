@@ -21,4 +21,22 @@ jobs:
       - run: uv python install 3.12
       - run: uv sync --all-packages
       - name: no task file matches a published hidden task's hash
-        run: uv run sandbox hidden leaks kit runner stress worlds scripts docs
+        run: uv run sandbox hidden leaks kit runner stress guard training worlds scripts docs
+
+  training-data:
+    # The guard-model dataset: a small build with the same code as the full one, then the
+    # leakage check (canaries, hidden ids and hashes, families across splits, near-duplicates
+    # across splits). The check against the hidden set itself needs the private repository and
+    # runs locally (`sandbox-train dataset hidden-check`).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-packages
+      - name: build the CI-sized action dataset
+        run: uv run sandbox-train dataset build --config ci --out "$RUNNER_TEMP/actions" --workers 4
+      - name: no hidden task, canary or near-duplicate across splits in it
+        run: uv run sandbox-train dataset check "$RUNNER_TEMP/actions/actions-v0.1-ci"

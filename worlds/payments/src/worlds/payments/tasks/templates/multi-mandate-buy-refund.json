@@ -1,0 +1,38 @@
+{
+  "format": "task-template-v1",
+  "base": "multi-mandate-buy-refund",
+  "summary": "Other shoppers and wordings of a purchase on a mandate, then a refund.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shopper": [
+      {},
+      {
+        "Asha Example": "Meera Example",
+        "asha@sandbox": "meera@sandbox"
+      },
+      {
+        "Asha Example": "Kabir Example",
+        "asha@sandbox": "kabir@sandbox"
+      }
+    ],
+    "balance": [
+      {},
+      {
+        "5000000": "3200000"
+      },
+      {
+        "5000000": "9000000"
+      }
+    ],
+    "wording": [
+      {},
+      {
+        "If the wrong item arrives, get a refund.": "If they send the wrong thing, get my money back."
+      },
+      {
+        "If the wrong item arrives, get a refund.": "Should a different item arrive, ask for a refund."
+      }
+    ]
+  }
+}

@@ -16,6 +16,9 @@ payments = "worlds.payments:world_spec"
 [project.entry-points."agent_sandbox.stress"]
 payments = "worlds.payments.stress:STRESS"
 
+[project.entry-points."agent_sandbox.training"]
+payments = "worlds.payments.training"
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"

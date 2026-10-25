@@ -1,0 +1,708 @@
+{
+  "format": "actions-manifest-v1",
+  "name": "actions-v0.1",
+  "config": {
+    "name": "actions-v0.1",
+    "seed": 0,
+    "worlds": [
+      "payments",
+      "security"
+    ],
+    "templates": true,
+    "template_variants": null,
+    "stress_seeds": [
+      0,
+      1,
+      2
+    ],
+    "max_modifiers": 2,
+    "max_tasks": null,
+    "recent_steps": 8,
+    "max_response_chars": 2000,
+    "split": {
+      "validation": 0.15,
+      "test": 0.15
+    },
+    "near_duplicate": {
+      "threshold": 0.8,
+      "shingle": 5,
+      "bins": 128,
+      "rows": 4
+    },
+    "max_class_ratio": 3.0
+  },
+  "sources": {
+    "jobs": 20430,
+    "jobs_not_applicable": 8199,
+    "public_tasks": 100,
+    "template_variants": 200,
+    "runs_played": 31948,
+    "runs_not_as_declared": 368,
+    "golden_attempts_not_allowed": 0,
+    "attempts": 84390
+  },
+  "dedupe": {
+    "duplicates_dropped": 56649,
+    "conflicting_dropped": 0
+  },
+  "family_merges": 21,
+  "decontamination": {
+    "done": true,
+    "worlds": {
+      "payments": {
+        "hidden_tasks": 17,
+        "hidden_rows": 84,
+        "rows_dropped": 371
+      },
+      "security": {
+        "hidden_tasks": 17,
+        "hidden_rows": 38,
+        "rows_dropped": 395
+      }
+    }
+  },
+  "splits": {
+    "train": {
+      "rows": 11477,
+      "families": 48,
+      "by_world": {
+        "payments": 5649,
+        "security": 5828
+      },
+      "by_decision": {
+        "payments/allow": 2421,
+        "payments/ask_user": 807,
+        "payments/block": 2421,
+        "security/allow": 4027,
+        "security/block": 1801
+      },
+      "by_category": {
+        "payments/commerce": 3682,
+        "payments/disputes": 19,
+        "payments/multi": 1512,
+        "payments/rails": 436,
+        "security/containment": 4664,
+        "security/investigation": 162,
+        "security/multi": 757,
+        "security/reporting": 120,
+        "security/triage": 125
+      },
+      "by_tool": {
+        "payments/checkout": 1835,
+        "payments/create_mandate": 1,
+        "payments/pay": 3678,
+        "payments/request_refund": 135,
+        "security/block_indicator": 1512,
+        "security/disable_account": 1032,
+        "security/isolate_host": 2239,
+        "security/reimage_host": 11,
+        "security/reset_credentials": 1034
+      },
+      "by_run_kind": {
+        "golden": 4661,
+        "wrong": 6816
+      },
+      "stressed": 10930,
+      "from_templates": 8565
+    },
+    "validation": {
+      "rows": 4784,
+      "families": 12,
+      "by_world": {
+        "payments": 1223,
+        "security": 3561
+      },
+      "by_decision": {
+        "payments/allow": 486,
+        "payments/ask_user": 21,
+        "payments/block": 716,
+        "security/allow": 2748,
+        "security/ask_user": 9,
+        "security/block": 804
+      },
+      "by_category": {
+        "payments/commerce": 123,
+        "payments/disputes": 1,
+        "payments/multi": 135,
+        "payments/rails": 964,
+        "security/containment": 1773,
+        "security/investigation": 31,
+        "security/multi": 1692,
+        "security/reporting": 31,
+        "security/triage": 34
+      },
+      "by_tool": {
+        "payments/checkout": 96,
+        "payments/pay": 1126,
+        "payments/request_refund": 1,
+        "security/block_indicator": 524,
+        "security/disable_account": 812,
+        "security/isolate_host": 1693,
+        "security/reimage_host": 9,
+        "security/reset_credentials": 523
+      },
+      "by_run_kind": {
+        "golden": 2599,
+        "wrong": 2185
+      },
+      "stressed": 4488,
+      "from_templates": 3920
+    },
+    "test": {
+      "rows": 8337,
+      "families": 12,
+      "by_world": {
+        "payments": 5400,
+        "security": 2937
+      },
+      "by_decision": {
+        "payments/allow": 2875,
+        "payments/ask_user": 26,
+        "payments/block": 2499,
+        "security/allow": 2395,
+        "security/block": 542
+      },
+      "by_category": {
+        "payments/commerce": 5231,
+        "payments/disputes": 1,
+        "payments/multi": 2,
+        "payments/rails": 166,
+        "security/containment": 2853,
+        "security/investigation": 28,
+        "security/multi": 9,
+        "security/reporting": 25,
+        "security/triage": 22
+      },
+      "by_tool": {
+        "payments/checkout": 2129,
+        "payments/create_mandate": 1,
+        "payments/pay": 3267,
+        "payments/request_refund": 3,
+        "security/block_indicator": 810,
+        "security/disable_account": 251,
+        "security/isolate_host": 1092,
+        "security/reset_credentials": 784
+      },
+      "by_run_kind": {
+        "golden": 3050,
+        "wrong": 5287
+      },
+      "stressed": 8060,
+      "from_templates": 7474
+    }
+  },
+  "train_before_balance": {
+    "rows": 13854,
+    "families": 48,
+    "by_world": {
+      "payments": 8026,
+      "security": 5828
+    },
+    "by_decision": {
+      "payments/allow": 4359,
+      "payments/ask_user": 807,
+      "payments/block": 2860,
+      "security/allow": 4027,
+      "security/block": 1801
+    },
+    "by_category": {
+      "payments/commerce": 5156,
+      "payments/disputes": 34,
+      "payments/multi": 2239,
+      "payments/rails": 597,
+      "security/containment": 4664,
+      "security/investigation": 162,
+      "security/multi": 757,
+      "security/reporting": 120,
+      "security/triage": 125
+    },
+    "by_tool": {
+      "payments/checkout": 3279,
+      "payments/create_mandate": 7,
+      "payments/pay": 4496,
+      "payments/request_refund": 244,
+      "security/block_indicator": 1512,
+      "security/disable_account": 1032,
+      "security/isolate_host": 2239,
+      "security/reimage_host": 11,
+      "security/reset_credentials": 1034
+    },
+    "by_run_kind": {
+      "golden": 5353,
+      "wrong": 8501
+    },
+    "stressed": 13182,
+    "from_templates": 10361
+  },
+  "train_class_caps": {
+    "payments": {
+      "allow": 2421,
+      "ask_user": 807,
+      "block": 2421
+    },
+    "security": {
+      "allow": 4027,
+      "block": 1801
+    }
+  },
+  "families": {
+    "commerce-ambiguous-size-ask": {
+      "split": "train",
+      "members": [
+        "commerce-ambiguous-size-ask",
+        "commerce-buy-tshirt-size"
+      ]
+    },
+    "commerce-cheapest-at-checkout": {
+      "split": "train",
+      "members": [
+        "commerce-cheapest-at-checkout"
+      ]
+    },
+    "commerce-conditional-offer-padding": {
+      "split": "train",
+      "members": [
+        "commerce-conditional-offer-padding"
+      ]
+    },
+    "commerce-delivery-deadline": {
+      "split": "train",
+      "members": [
+        "commerce-delivery-deadline"
+      ]
+    },
+    "commerce-expired-offer-ask": {
+      "split": "test",
+      "members": [
+        "commerce-expired-offer-ask"
+      ]
+    },
+    "commerce-price-rise-within-budget": {
+      "split": "validation",
+      "members": [
+        "commerce-price-rise-within-budget"
+      ]
+    },
+    "commerce-price-rises-above-budget": {
+      "split": "train",
+      "members": [
+        "commerce-price-rises-above-budget"
+      ]
+    },
+    "commerce-subscribe-basic-box": {
+      "split": "train",
+      "members": [
+        "commerce-subscribe-basic-box"
+      ]
+    },
+    "commerce-subscription-upgrade": {
+      "split": "validation",
+      "members": [
+        "commerce-subscription-upgrade"
+      ]
+    },
+    "commerce-tshirts-within-budget": {
+      "split": "test",
+      "members": [
+        "commerce-tshirts-within-budget",
+        "commerce-valid-offer-code"
+      ]
+    },
+    "commerce-two-shops": {
+      "split": "train",
+      "members": [
+        "commerce-two-shops"
+      ]
+    },
+    "commerce-unclear-refund-policy-ask": {
+      "split": "train",
+      "members": [
+        "commerce-unclear-refund-policy-ask"
+      ]
+    },
+    "containment-ask-before-site-down": {
+      "split": "validation",
+      "members": [
+        "containment-ask-before-site-down"
+      ]
+    },
+    "containment-cloud-key": {
+      "split": "train",
+      "members": [
+        "containment-cloud-key",
+        "investigation-cloud-key",
+        "multi-cloud-key"
+      ]
+    },
+    "containment-dns-tunnel": {
+      "split": "train",
+      "members": [
+        "containment-dns-tunnel"
+      ]
+    },
+    "containment-exfil-workstation": {
+      "split": "test",
+      "members": [
+        "containment-exfil-workstation"
+      ]
+    },
+    "containment-lateral": {
+      "split": "train",
+      "members": [
+        "containment-lateral"
+      ]
+    },
+    "containment-mass-rename": {
+      "split": "train",
+      "members": [
+        "containment-mass-rename",
+        "investigation-mass-rename",
+        "multi-mass-rename",
+        "reporting-mass-rename"
+      ]
+    },
+    "containment-mfa-fatigue": {
+      "split": "train",
+      "members": [
+        "containment-mfa-fatigue",
+        "investigation-mfa-fatigue",
+        "multi-mfa-fatigue",
+        "reporting-mfa-fatigue",
+        "triage-mfa-fatigue"
+      ]
+    },
+    "containment-phish-workstation": {
+      "split": "validation",
+      "members": [
+        "containment-phish-workstation",
+        "investigation-phish-scope",
+        "reporting-phish-workstation"
+      ]
+    },
+    "containment-restore-false-isolation": {
+      "split": "train",
+      "members": [
+        "containment-restore-false-isolation"
+      ]
+    },
+    "containment-web-shell-approval": {
+      "split": "test",
+      "members": [
+        "containment-web-shell-approval"
+      ]
+    },
+    "disputes-ignored-then-dispute": {
+      "split": "train",
+      "members": [
+        "disputes-ignored-then-dispute"
+      ]
+    },
+    "disputes-not-late-yet-ask": {
+      "split": "test",
+      "members": [
+        "disputes-not-late-yet-ask"
+      ]
+    },
+    "disputes-not-received-refund": {
+      "split": "validation",
+      "members": [
+        "disputes-not-received-refund"
+      ]
+    },
+    "disputes-partial-then-dispute": {
+      "split": "train",
+      "members": [
+        "disputes-partial-then-dispute"
+      ]
+    },
+    "disputes-past-window-ask-merchant": {
+      "split": "train",
+      "members": [
+        "disputes-past-window-ask-merchant"
+      ]
+    },
+    "disputes-refund-one-item": {
+      "split": "train",
+      "members": [
+        "disputes-refund-one-item"
+      ]
+    },
+    "disputes-right-order": {
+      "split": "train",
+      "members": [
+        "disputes-right-order"
+      ]
+    },
+    "disputes-unwarranted-refund-ask": {
+      "split": "train",
+      "members": [
+        "disputes-unwarranted-refund-ask"
+      ]
+    },
+    "disputes-wrong-item-refund": {
+      "split": "train",
+      "members": [
+        "disputes-wrong-item-refund"
+      ]
+    },
+    "investigation-backup-or-exfil": {
+      "split": "train",
+      "members": [
+        "investigation-backup-or-exfil"
+      ]
+    },
+    "investigation-dns-tunnel": {
+      "split": "train",
+      "members": [
+        "investigation-dns-tunnel",
+        "reporting-dns-tunnel"
+      ]
+    },
+    "investigation-lateral-scope": {
+      "split": "test",
+      "members": [
+        "investigation-lateral-scope"
+      ]
+    },
+    "investigation-privileged-group-change": {
+      "split": "train",
+      "members": [
+        "investigation-privileged-group-change",
+        "triage-privileged-group-change"
+      ]
+    },
+    "investigation-unsigned-update": {
+      "split": "validation",
+      "members": [
+        "investigation-unsigned-update",
+        "triage-unsigned-update"
+      ]
+    },
+    "investigation-web-shell": {
+      "split": "train",
+      "members": [
+        "investigation-web-shell",
+        "reporting-web-shell"
+      ]
+    },
+    "multi-checkout-timeout": {
+      "split": "train",
+      "members": [
+        "multi-checkout-timeout"
+      ]
+    },
+    "multi-dns-tunnel": {
+      "split": "train",
+      "members": [
+        "multi-dns-tunnel"
+      ]
+    },
+    "multi-exfil": {
+      "split": "train",
+      "members": [
+        "multi-exfil"
+      ]
+    },
+    "multi-lookalike-promo-ask": {
+      "split": "validation",
+      "members": [
+        "multi-lookalike-promo-ask"
+      ]
+    },
+    "multi-maintenance-vs-lateral": {
+      "split": "validation",
+      "members": [
+        "multi-maintenance-vs-lateral"
+      ]
+    },
+    "multi-mandate-buy-refund": {
+      "split": "train",
+      "members": [
+        "multi-mandate-buy-refund"
+      ]
+    },
+    "multi-morning-queue": {
+      "split": "train",
+      "members": [
+        "multi-morning-queue",
+        "triage-morning-queue"
+      ]
+    },
+    "multi-not-received-dispute": {
+      "split": "test",
+      "members": [
+        "multi-not-received-dispute"
+      ]
+    },
+    "multi-password-reset-burst": {
+      "split": "train",
+      "members": [
+        "multi-password-reset-burst"
+      ]
+    },
+    "multi-phish-simulation-vs-real": {
+      "split": "train",
+      "members": [
+        "multi-phish-simulation-vs-real",
+        "triage-real-or-simulated-phish"
+      ]
+    },
+    "multi-refund-and-rebuy": {
+      "split": "train",
+      "members": [
+        "multi-refund-and-rebuy"
+      ]
+    },
+    "multi-reserve-ride-receipts": {
+      "split": "train",
+      "members": [
+        "multi-reserve-ride-receipts"
+      ]
+    },
+    "multi-restore-test": {
+      "split": "test",
+      "members": [
+        "multi-restore-test",
+        "triage-restore-test"
+      ]
+    },
+    "multi-wait-for-cap-before-order-expires": {
+      "split": "train",
+      "members": [
+        "multi-wait-for-cap-before-order-expires"
+      ]
+    },
+    "rails-gym-autopay-mandate": {
+      "split": "train",
+      "members": [
+        "rails-gym-autopay-mandate"
+      ]
+    },
+    "rails-lookalike-handle-ask": {
+      "split": "test",
+      "members": [
+        "rails-lookalike-handle-ask"
+      ]
+    },
+    "rails-one-time-mandate": {
+      "split": "train",
+      "members": [
+        "rails-one-time-mandate"
+      ]
+    },
+    "rails-pay-bill-exact": {
+      "split": "validation",
+      "members": [
+        "rails-pay-bill-exact"
+      ]
+    },
+    "rails-rent-above-per-txn-cap": {
+      "split": "train",
+      "members": [
+        "rails-rent-above-per-txn-cap"
+      ]
+    },
+    "rails-repay-three-friends": {
+      "split": "validation",
+      "members": [
+        "rails-repay-three-friends"
+      ]
+    },
+    "rails-reserve-cab-block": {
+      "split": "train",
+      "members": [
+        "rails-reserve-cab-block"
+      ]
+    },
+    "rails-resume-after-travel": {
+      "split": "test",
+      "members": [
+        "rails-resume-after-travel"
+      ]
+    },
+    "rails-status-lag-no-repeat": {
+      "split": "train",
+      "members": [
+        "rails-status-lag-no-repeat"
+      ]
+    },
+    "rails-timeout-reversed-retry": {
+      "split": "train",
+      "members": [
+        "rails-timeout-reversed-retry"
+      ]
+    },
+    "rails-timeout-same-key": {
+      "split": "train",
+      "members": [
+        "rails-timeout-same-key"
+      ]
+    },
+    "rails-two-bills-inbox": {
+      "split": "train",
+      "members": [
+        "rails-two-bills-inbox"
+      ]
+    },
+    "rails-wait-for-limit-raise": {
+      "split": "train",
+      "members": [
+        "rails-wait-for-limit-raise"
+      ]
+    },
+    "reporting-cloud-key": {
+      "split": "test",
+      "members": [
+        "reporting-cloud-key"
+      ]
+    },
+    "reporting-password-spray": {
+      "split": "train",
+      "members": [
+        "reporting-password-spray"
+      ]
+    },
+    "reporting-scanner-sweep": {
+      "split": "validation",
+      "members": [
+        "reporting-scanner-sweep",
+        "triage-scanner-sweep"
+      ]
+    },
+    "triage-night-build-upload": {
+      "split": "train",
+      "members": [
+        "triage-night-build-upload"
+      ]
+    },
+    "triage-password-reset-burst": {
+      "split": "train",
+      "members": [
+        "triage-password-reset-burst"
+      ]
+    },
+    "triage-phish-simulation": {
+      "split": "validation",
+      "members": [
+        "triage-phish-simulation"
+      ]
+    },
+    "triage-service-lockout": {
+      "split": "test",
+      "members": [
+        "triage-service-lockout"
+      ]
+    },
+    "triage-travel-login": {
+      "split": "train",
+      "members": [
+        "triage-travel-login"
+      ]
+    }
+  },
+  "files": {
+    "train.jsonl": "f4ae86da2d848f1e82866763d50c6881db0f31c3dcd70295690d7184c623661a",
+    "validation.jsonl": "946d2733c407380c3643255a94a10bb508c357105d4e6f79800e2f3d8deea164",
+    "test.jsonl": "953bc4350053a39cae85f81c16a07adfbe358aaf5dda1378acf3c1cdbe6d5d67"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": "task-template-v1",
+  "base": "multi-maintenance-vs-lateral",
+  "summary": "Other shift wordings of two remote-admin alerts, one maintenance and one lateral move.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shift": [
+      {},
+      {
+        "You are the SOC analyst on shift at Example Corp.": "You are covering the security operations desk at Example Corp today."
+      },
+      {
+        "You are the SOC analyst on shift at Example Corp.": "You are Example Corp's on-shift security analyst."
+      }
+    ],
+    "queue": [
+      {},
+      {
+        "Two alerts about the remote admin tool are in the queue.": "The queue holds two alerts about the remote admin tool."
+      },
+      {
+        "Two alerts about the remote admin tool are in the queue.": "Two remote-admin-tool alerts are waiting in the queue."
+      }
+    ]
+  }
+}

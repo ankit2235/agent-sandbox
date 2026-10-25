@@ -1,0 +1,8 @@
+# LLM judge B. The model id has no default: run with --set model=<provider>/<model>, from a
+# different provider than judge A, and not gpt-6-luna (already the Decisions baseline).
+kind: llm_judge
+name: judge-b
+model: null
+prompt_version: v1
+temperature: 0.0
+timeout_s: 60

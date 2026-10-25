@@ -31,8 +31,8 @@ format:
 
 # Strict type checking on the kit; the rest is checked non-strictly.
 typecheck:
-    uv run mypy --strict kit/src/kit
-    uv run mypy runner/src/runner stress/src/stress
+    uv run mypy --strict kit/src/kit guard/src/guard
+    uv run mypy runner/src/runner stress/src/stress training/src/training
     uv run mypy -p worlds.payments
     uv run mypy -p worlds.security
 
@@ -43,7 +43,12 @@ invariants:
 # The hidden-task rule: no canary, no task marked hidden, no published hidden task in the repo.
 no-hidden:
     git ls-files -z | xargs -0 python3 scripts/check_no_hidden.py
-    uv run sandbox hidden leaks kit runner stress worlds scripts docs
+    uv run sandbox hidden leaks kit runner stress guard training worlds scripts docs
+
+# The guard-model dataset's leakage check, as CI runs it: a small build, then the check.
+training-leaks:
+    uv run sandbox-train dataset build --config ci --out training/data/out --workers 4
+    uv run sandbox-train dataset check training/data/out/actions-v0.1-ci
 
 # Run the hello-world example end to end.
 run-example *ARGS:

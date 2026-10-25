@@ -1,0 +1,42 @@
+[project]
+name = "agent-sandbox-bench-training"
+version = "0.1.0"
+description = "The guard model's action dataset, baselines, evaluation, and training configs (Phase 7)."
+requires-python = ">=3.12"
+license = "Apache-2.0"
+# Model training libraries (torch, transformers, TRL, PEFT) are deliberately not here:
+# they live in guard_model/requirements-train.txt, outside the workspace lock and CI.
+dependencies = [
+  "agent-sandbox-bench-kit==0.1.0",
+  "agent-sandbox-bench-stress==0.1.0",
+  "agent-sandbox-bench-runner==0.1.0",
+  "agent-sandbox-bench-guard==0.1.0",
+  "httpx>=0.28",
+  "pydantic>=2.9",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# The two LLM-judge baselines call models through LiteLLM, like the runner does.
+litellm = ["agent-sandbox-bench-runner[litellm]==0.1.0"]
+
+[project.scripts]
+sandbox-train = "training.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/training"]
+
+[tool.hatch.build.targets.sdist]
+# Generated datasets, training files and adapters are never shipped (they are git-ignored, but
+# hatch, building from this folder, does not apply the root .gitignore's anchored rule).
+exclude = ["data/out"]
+
+[tool.uv.sources]
+agent-sandbox-bench-kit = { workspace = true }
+agent-sandbox-bench-stress = { workspace = true }
+agent-sandbox-bench-runner = { workspace = true }
+agent-sandbox-bench-guard = { workspace = true }

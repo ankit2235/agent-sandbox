@@ -17,9 +17,11 @@ resolution-markers = [
 [manifest]
 members = [
     "agent-sandbox-bench",
+    "agent-sandbox-bench-guard",
     "agent-sandbox-bench-kit",
     "agent-sandbox-bench-runner",
     "agent-sandbox-bench-stress",
+    "agent-sandbox-bench-training",
     "agent-sandbox-bench-world-payments",
     "agent-sandbox-bench-world-security",
 ]
@@ -93,6 +95,21 @@ dev = [
 docs = [{ name = "mkdocs-material", specifier = "==9.7.7" }]
 
 [[package]]
+name = "agent-sandbox-bench-guard"
+version = "0.1.0"
+source = { editable = "guard" }
+dependencies = [
+    { name = "jsonschema" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jsonschema", specifier = ">=4.23" },
+    { name = "pydantic", specifier = ">=2.9" },
+]
+
+[[package]]
 name = "agent-sandbox-bench-kit"
 version = "0.1.0"
 source = { editable = "kit" }
@@ -160,6 +177,38 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "agent-sandbox-bench-kit", editable = "kit" }]
+
+[[package]]
+name = "agent-sandbox-bench-training"
+version = "0.1.0"
+source = { editable = "training" }
+dependencies = [
+    { name = "agent-sandbox-bench-guard" },
+    { name = "agent-sandbox-bench-kit" },
+    { name = "agent-sandbox-bench-runner" },
+    { name = "agent-sandbox-bench-stress" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.optional-dependencies]
+litellm = [
+    { name = "agent-sandbox-bench-runner", extra = ["litellm"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agent-sandbox-bench-guard", editable = "guard" },
+    { name = "agent-sandbox-bench-kit", editable = "kit" },
+    { name = "agent-sandbox-bench-runner", editable = "runner" },
+    { name = "agent-sandbox-bench-runner", extras = ["litellm"], marker = "extra == 'litellm'", editable = "runner" },
+    { name = "agent-sandbox-bench-stress", editable = "stress" },
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "pydantic", specifier = ">=2.9" },
+    { name = "pyyaml", specifier = ">=6.0" },
+]
+provides-extras = ["litellm"]
 
 [[package]]
 name = "agent-sandbox-bench-world-payments"

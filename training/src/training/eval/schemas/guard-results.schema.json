@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/prarabdha-soni/agent-sandbox/guard-results-v0.1.schema.json",
+  "title": "Guard models leaderboard results (guard-results-v0.1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "updated", "dataset", "disclosure", "backends"],
+  "properties": {
+    "format": {"const": "guard-results-v0.1"},
+    "updated": {"type": "string", "format": "date"},
+    "dataset": {"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
+    "disclosure": {"type": "string", "minLength": 1},
+    "backends": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "ours", "model", "model_versions", "price", "sets"],
+        "properties": {
+          "name": {"type": "string"},
+          "kind": {"enum": ["rules", "llm_judge", "system_one", "openai_decisions", "guard_model"]},
+          "ours": {"type": "boolean"},
+          "model": {"type": ["string", "null"]},
+          "model_versions": {"type": "array", "items": {"type": "string"}},
+          "price": {"type": ["object", "null"]},
+          "sets": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["set", "rows"],
+              "properties": {
+                "set": {"type": "string"},
+                "rows": {"type": "integer", "minimum": 0}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

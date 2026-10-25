@@ -1,0 +1,15 @@
+# The full actions-v0.1 build: every public task and template variant, each also under
+# every single modifier and every pair of its world's modifiers, with three stress seeds.
+# Run it with HIDDEN_TASKS_DIR set and --decontaminate (docs: training/README.md).
+name: actions-v0.1
+seed: 0
+worlds: [payments, security]
+templates: true
+template_variants: null
+stress_seeds: [0, 1, 2]
+max_modifiers: 2
+recent_steps: 8
+max_response_chars: 2000
+split: {validation: 0.15, test: 0.15}
+near_duplicate: {threshold: 0.8, shingle: 5, bins: 128, rows: 4}
+max_class_ratio: 3.0

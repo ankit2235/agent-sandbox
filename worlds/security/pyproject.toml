@@ -16,6 +16,9 @@ security = "worlds.security:world_spec"
 [project.entry-points."agent_sandbox.stress"]
 security = "worlds.security.stress:STRESS"
 
+[project.entry-points."agent_sandbox.training"]
+security = "worlds.security.training"
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"

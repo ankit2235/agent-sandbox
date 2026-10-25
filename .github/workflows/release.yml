@@ -16,8 +16,11 @@ on:
 permissions:
   contents: read
 
+# Every job runs only on the owner's repository: a tag pushed to a fork must never try to
+# publish (a fork's tag once started a publish attempt, which failed safely).
 jobs:
   build:
+    if: github.repository == 'prarabdha-soni/agent-sandbox'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -47,6 +50,7 @@ jobs:
 
   pypi:
     needs: build
+    if: github.repository == 'prarabdha-soni/agent-sandbox'
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -62,6 +66,7 @@ jobs:
 
   image:
     needs: build
+    if: github.repository == 'prarabdha-soni/agent-sandbox'
     runs-on: ubuntu-latest
     permissions:
       contents: read

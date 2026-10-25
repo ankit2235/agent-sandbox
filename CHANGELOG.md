@@ -10,6 +10,35 @@ This section becomes **[0.1.0] — payments-v0.1** when the repo owner tags `pay
 `v0.1.0` (`docs/RELEASING.md`). The release gate does not pass yet: it waits on the payments
 reviewer's sign-off, real model results and the real calibration report.
 
+### Added — Phase 7: guard-model dataset, baselines and evaluation
+
+- `guard/`: the decision interface (`DecisionRequest`, `Decision` with its strict JSON Schema,
+  `BackendResult`, `DecisionBackend`, `parse_decision`, `fail_closed`) that Phase 8's guard
+  library will build on.
+- `training/` and the `sandbox-train` command: the `actions-v0.1` dataset of labelled
+  high-impact attempts from both worlds (labels from the graders, run just before and after each
+  attempt), ten seeded task templates per world (`tasks/templates/*.json`), splits by task
+  family with near-duplicate families merged, exact de-duplication, class balance in train, a
+  manifest and a generated dataset card.
+- Leakage checks: `sandbox-train dataset check` (canaries, hidden ids and hashes, families
+  across splits, near-duplicates across splits; a new job in `no-hidden-leak.yml`) and the local
+  `dataset hidden-check` and `--decontaminate` against the hidden set, counts only.
+- Baselines behind one interface: rules only, two LLM judges (model ids set at run time), System
+  One decision models (TypeSafe Jev, Cloudflare Clef, self-hosted Strands Decider) and OpenAI's
+  Decisions API, each failing closed to ask_user.
+- Our model: prompt format, a backend that reads its decision from the three answer openings'
+  probabilities, SFT and GRPO scripts with configs for Qwen2.5-0.5B (free T4) and Qwen2.5-1.5B
+  (rented GPU), the RL reward, and `requirements-train.txt` outside the workspace.
+- Evaluation: metrics as means over families with bootstrap intervals, robustness under stress,
+  calibration with a low-confidence ask_user threshold, dated prices, the report generator
+  (opening with where our model loses) and the `guard-results-v0.1` leaderboard file.
+- `docs/blog/guard-model.md` (pending real runs) and the model card.
+
+### Changed — Phase 7
+
+- `release.yml` runs only on `prarabdha-soni/agent-sandbox`: a fork never tries to publish.
+- The kit's purity and core-isolation tests also cover `guard/` and `training/`.
+
 ### Added — Phase 6: v0.1 release
 
 - Packaging: six distributions at 0.1.0, pinned to each other, published as

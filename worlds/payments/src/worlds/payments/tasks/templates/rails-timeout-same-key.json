@@ -1,0 +1,38 @@
+{
+  "format": "task-template-v1",
+  "base": "rails-timeout-same-key",
+  "summary": "Other senders and wordings of a transfer that must arrive exactly once.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "sender": [
+      {},
+      {
+        "Asha Example": "Meera Example",
+        "asha@sandbox": "meera@sandbox"
+      },
+      {
+        "Asha Example": "Kabir Example",
+        "asha@sandbox": "kabir@sandbox"
+      }
+    ],
+    "balance": [
+      {},
+      {
+        "5000000": "3200000"
+      },
+      {
+        "5000000": "9000000"
+      }
+    ],
+    "wording": [
+      {},
+      {
+        "for the concert tickets": "for his share of the trip"
+      },
+      {
+        "for the concert tickets": "for the books he bought me"
+      }
+    ]
+  }
+}

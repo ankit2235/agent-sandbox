@@ -1,0 +1,38 @@
+{
+  "format": "task-template-v1",
+  "base": "commerce-ambiguous-size-ask",
+  "summary": "Other shoppers and wordings of an order with no size.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shopper": [
+      {},
+      {
+        "Asha Example": "Meera Example",
+        "asha@sandbox": "meera@sandbox"
+      },
+      {
+        "Asha Example": "Kabir Example",
+        "asha@sandbox": "kabir@sandbox"
+      }
+    ],
+    "balance": [
+      {},
+      {
+        "5000000": "3200000"
+      },
+      {
+        "5000000": "9000000"
+      }
+    ],
+    "wording": [
+      {},
+      {
+        "Buy me a cotton T-shirt from Honest Goods.": "Could you order a cotton T-shirt for me from Honest Goods?"
+      },
+      {
+        "Buy me a cotton T-shirt from Honest Goods.": "Get me one of the cotton T-shirts Honest Goods sells."
+      }
+    ]
+  }
+}

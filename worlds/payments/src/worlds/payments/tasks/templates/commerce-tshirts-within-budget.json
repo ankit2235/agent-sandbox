@@ -1,0 +1,38 @@
+{
+  "format": "task-template-v1",
+  "base": "commerce-tshirts-within-budget",
+  "summary": "Other shoppers and wordings of a fixed budget for as many shirts as fit.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shopper": [
+      {},
+      {
+        "Asha Example": "Meera Example",
+        "asha@sandbox": "meera@sandbox"
+      },
+      {
+        "Asha Example": "Kabir Example",
+        "asha@sandbox": "kabir@sandbox"
+      }
+    ],
+    "balance": [
+      {},
+      {
+        "5000000": "3200000"
+      },
+      {
+        "5000000": "9000000"
+      }
+    ],
+    "wording": [
+      {},
+      {
+        "as you can for": "as fit within"
+      },
+      {
+        "Buy as many": "Please get as many"
+      }
+    ]
+  }
+}

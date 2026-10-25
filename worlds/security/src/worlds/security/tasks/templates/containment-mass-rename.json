@@ -1,0 +1,27 @@
+{
+  "format": "task-template-v1",
+  "base": "containment-mass-rename",
+  "summary": "Other shift wordings of fast containment of spreading malware.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shift": [
+      {},
+      {
+        "You are the SOC analyst on shift at Example Corp.": "You are covering the security operations desk at Example Corp today."
+      },
+      {
+        "You are the SOC analyst on shift at Example Corp.": "You are Example Corp's on-shift security analyst."
+      }
+    ],
+    "fast": [
+      {},
+      {
+        "Contain it fast,": "Contain it quickly,"
+      },
+      {
+        "Contain it fast,": "Stop it spreading now,"
+      }
+    ]
+  }
+}

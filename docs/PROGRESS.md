@@ -137,6 +137,43 @@ spot-check`, template and workflow), the OpenEnv / Hugging Face Space bundle for
 (`docs/blog/v0.1.md`, findings pending real runs). The Prime Intellect verifiers wrapper is not
 built, by the repo owner's decision (decision 159).
 
+**Phase 7 — guard-model dataset, baselines, training configs, evaluation: built and green; no
+model has been trained or run.** Built for payments and security; drug safety is recorded as
+pending (its world does not exist). No kit code change; the kit's purity and isolation tests now
+also cover `guard/` and `training/`. Of its "Done when" list:
+
+- [x] A versioned action dataset and its card exist, and CI proves no hidden task, canary or
+  near-duplicate across splits is in it. `actions-v0.1`, built locally with the full config and
+  decontaminated against the hidden set: 20,430 tasks planned (100 public, 200 template
+  variants, each also under one or two modifiers with three seeds), 84,390 attempts labelled,
+  56,649 exact duplicates dropped, 0 label conflicts, 766 rows dropped as near-duplicates of
+  hidden rows, **24,598 rows**: train 11,477 (48 family groups), validation 4,784 (12), test
+  8,337 (12). `sandbox-train dataset check` finds 0 problems; `dataset hidden-check` finds 0
+  near-duplicates and 0 canaries. The manifest and the generated card are in
+  `training/data/actions-v0.1/`; the JSONL files (273 MB) stay in the ignored
+  `training/data/out/`. CI's `training-data` job (in `no-hidden-leak.yml`) builds a small set
+  with the same code and runs the check; the check against the hidden set itself is local
+  (decision 184).
+- [ ] **Pending, needs real models, provider access and a GPU:** our model and at least four
+  baselines scored on held-out and hidden sets, with intervals, robustness and wrongful-block
+  rates. Built and tested with fake and local stand-ins: the rules-only baseline (measured on
+  the full build: `docs/blog/guard-model.md`), two LLM judges (model ids set at run time),
+  System One decision models (Jev, Clef, a self-hosted Strands Decider), OpenAI's Decisions API,
+  our model's backend, calibration, the metrics and the report. The commands are in
+  `training/src/training/guard_model/README.md` and the write-up.
+- [ ] **Pending, needs a trained model and publishing:** weights, model card and eval report
+  published, including where our model loses. Prepared: `MODEL_CARD.md`, the dataset card,
+  `docs/blog/guard-model.md` (the report generator opens with where our model loses), and the
+  `guard-results-v0.1` leaderboard file format. Nothing is uploaded.
+- [x] A leakage and reward-hacking review is in `docs/DECISIONS.md` (19 rows, each with its
+  test). It found and fixed one real leak (authored idempotency keys such as `stress-bait` that
+  only mistake runs used, decision 196) and one gap it could not fix in the data (every
+  `reimage_host` attempt is a mistake).
+
+Also: `release.yml` now runs only on the owner's repository (decision 212). Measured by the
+build, not estimated: train prompts have a median of 6,158 characters, so the training configs
+use 4,096 tokens and 10,771 of 11,477 train rows fit (decision 207).
+
 ## What exists
 
 | Area | State |
@@ -156,7 +193,9 @@ built, by the repo owner's decision (decision 159).
 | Stress library | `stress/core`: generic contracts (`catalogue.py`), seeded wording (`wording.py`), `Modifier`/`WorldStress` (`model.py`), `apply`, `stressed_set`, `per_modifier`, `scripted_runs` and the `agent_sandbox.stress` registry (`apply.py`) |
 | Stressed and hidden sets | `<world>-<version>-stressed` (33 payments, 50 security tasks, in memory, seed 0); `<world>-<version>-hidden` from `HIDDEN_TASKS_DIR` with canaries and published hashes (`runner/hidden.py`); calibration (`runner/calibrate.py`); `docs/STRESS.md`, `docs/HIDDEN_SETS.md` |
 | Runner | `agent.py` (agent loop over MCP, caps, versioned prompts in `prompts/`), `models.py` (LiteLLM adapter, `fake:golden`/`fake:wrong`/`fake:idle`), `runs.py` (run directory, resume, retries, concurrency), `tracing.py` (OpenTelemetry), `score.py` (bootstrap intervals), `export.py` + `schemas/` (`results-v0.1`), `verify.py` |
-| CI | `ci.yml` (lint, strict types on the kit, types on `worlds.payments` and `worlds.security`, tests; `package`: the built wheels in a clean virtualenv, quickstart), `core-isolation.yml` (purity + no world imports), `no-hidden-leak.yml` (no canary or hidden task in any tracked file, no copy of a published hidden task), `docs.yml` (strict site build; Pages from main), `results-submission.yml` (results pull requests; maintainer spot-check) and `release.yml` (version tag: PyPI trusted publishing, GHCR image) |
+| Guard interface | `guard/`: `DecisionRequest`, `Decision` and its strict JSON Schema, `BackendResult`, `DecisionBackend`, `parse_decision`, `fail_closed` (Phase 8 builds the library on it) |
+| Training | `training/` (`sandbox-train`): world training modules (`worlds/<name>/training.py`, entry point `agent_sandbox.training`), 10 templates per world (`tasks/templates/*.json`), labels from the graders, sources, near-duplicate detection, splits by family, build and manifest, leakage checks, dataset card; baselines (rules, LLM judge, System One, OpenAI Decisions) with configs; our model's format, backend, reward, SFT and GRPO scripts and configs, `requirements-train.txt`; metrics, prices, calibration, report and `guard-results-v0.1` schema |
+| CI | `ci.yml` (lint, strict types on the kit on `worlds.payments` and `worlds.security`, tests; `package`: the built wheels in a clean virtualenv, quickstart), `core-isolation.yml` (purity + no world imports), `no-hidden-leak.yml` (no canary or hidden task in any tracked file, no copy of a published hidden task; `training-data`: a CI-sized action dataset and its leakage check), `docs.yml` (strict site build; Pages from main), `results-submission.yml` (results pull requests; maintainer spot-check) and `release.yml` (version tag: PyPI trusted publishing, GHCR image; owner's repository only) |
 | Payments services | `services/rails` (Phase 1 + mandate creation, statement), `services/commerce`, `services/disputes` (with `reconcile.py`), shared `services/common.py` |
 | Payments world | `merchants.py` (profiles), `state.py` (`initial_state` model with `history`, and schema), `links.py` (the only cross-service code), `episode.py` (`PaymentsEpisode`, `wait`, history replay), `tools/` (25 tools with `ask_user`, `schemas.json`, stdio server), `task_format.py` (task file schema), `stress/` (7 modifiers, `initial_state.stress_checks`); registered as world `payments` with `tasks_dir` set |
 | Payments tasks | 50 in `tasks/<category>/` (15 rails, 15 commerce, 12 disputes, 8 multi; 15 easy, 20 medium, 15 hard), `tasks/schema.json` |
@@ -169,11 +208,20 @@ built, by the repo owner's decision (decision 159).
 | Release | `runner/release.py` (nine named conditions), `sandbox freeze` and `payments/tasks/frozen-v0.1.json`, `runner/validate.py` (shared task-file and run checks), `docs/RELEASING.md` |
 | Submissions | `runner/submission.py` (`submission-v1` files, safe fetch, check, spot-check), `submissions/`, `.github/PULL_REQUEST_TEMPLATE/results_submission.md` |
 | Docs | `mkdocs.yml`, `docs/site/` (quickstart, concepts, task format, graders, generated tool reference for both worlds, scoring, limitations, submitting results, contributing tasks, citation), `runner/reference.py`, `docs/blog/v0.1.md`, `docs/calibration/` |
-| Tests | 2,477 in all, all passing with the openenv extra installed (CI, without it, skips the 7 OpenEnv adapter and 5 Space tests), 72 more than Phase 5. New in Phase 6: `test_release.py` (20: every gate condition passing and failing, freeze, quickstart, spot-check CLI), `test_submission.py` (20: every way of tampering with a submission, safe fetch, size cap, spot-check), `test_packaging.py` (6: names, versions, pins, what each built archive holds), `test_reference.py` (6), `test_openenv_space.py` (5), 2 in `test_openenv_adapter.py` (K1), 1 in `test_verify.py` (a run made before sign-off still verifies). Before Phase 6: 2,405 (2,404 pass, 1 skipped without the openenv extra), 700 more than Phase 4. New in Phase 5: `test_payments_stress.py` (381: every task × modifier, plus each modifier's content and edge cases), `test_security_stress_runs.py` (257), `test_hidden.py` (27), `stress/tests/test_stress_core.py` (15), `test_calibrate.py` (7). Before Phase 5: 1,705 (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
+| Tests | 2,719 in all, all passing with the openenv extra installed (CI, without it, skips the 7 OpenEnv adapter and 5 Space tests), 242 more than Phase 6: 164 in `guard/` and `training/` (`test_decision.py` 16, baselines 26, guard model 25, eval 20, templates 16, world 13, reward hacking 11, labels 10, leaks 10, similarity and splits 9, build 8), the rest the purity and core-isolation checks over the new source files. Before Phase 7: 2,477, 72 more than Phase 5. New in Phase 6: `test_release.py` (20: every gate condition passing and failing, freeze, quickstart, spot-check CLI), `test_submission.py` (20: every way of tampering with a submission, safe fetch, size cap, spot-check), `test_packaging.py` (6: names, versions, pins, what each built archive holds), `test_reference.py` (6), `test_openenv_space.py` (5), 2 in `test_openenv_adapter.py` (K1), 1 in `test_verify.py` (a run made before sign-off still verifies). Before Phase 6: 2,405 (2,404 pass, 1 skipped without the openenv extra), 700 more than Phase 4. New in Phase 5: `test_payments_stress.py` (381: every task × modifier, plus each modifier's content and edge cases), `test_security_stress_runs.py` (257), `test_hidden.py` (27), `stress/tests/test_stress_core.py` (15), `test_calibrate.py` (7). Before Phase 5: 1,705 (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
 
 ## Decisions made
 
-See `docs/DECISIONS.md`, entries 1–176 and the two reward-hacking reviews. Phase 6's that later
+See `docs/DECISIONS.md`, entries 1–213, the two reward-hacking reviews and the leakage and
+reward-hacking review of the guard-model data. Phase 7's that later phases depend on:
+
+- `guard.DecisionBackend` and the decision contract (178); every backend fails closed (178, 206).
+- Labels from the graders before and after each attempt; ask_user versus block (194, 197).
+- Splits by family group, near-duplicate families merged; hidden results by family bucket,
+  buckets of fewer than three families as counts only (192, 202, 203, 209).
+- Opaque idempotency keys (196); the training libraries outside uv (187).
+
+Phase 6's that later
 phases depend on:
 
 - Published as `agent-sandbox-bench` (provisional, one constant, a rename script), 0.1.0, pinned;
@@ -341,8 +389,32 @@ Phase 2's that later phases depend on:
     litellm/openai conflict with 0.3.0. Revisit when the kit moves to mcp 2.x.
 28. **The spot-check's 30-point tolerance is invented** (decision 156), and a replay cannot tell a
     model's actions from hand-written ones; only the spot-check rerun can, and only on a sample.
-29. **The `just` recipes added in Phase 6 were not run** (`just` is not installed on the build
-    machine); each one is a single command that was run directly.
+29. **The `just` recipes added in Phases 6 and 7 were not run** (`just` is not installed on the
+    build machine); each one is a single command that was run directly.
+30. **No guard model is trained and no outside backend has run.** Every number in the eval
+    report but the rules-only baseline's is pending: the judges (model ids and keys), Jev, OpenAI
+    Decisions, Clef (keys), Strands Decider (a local server), our model (a GPU), latency on CPU
+    and a small GPU, and cost per 1,000 decisions. The GPU memory and runtime figures are
+    estimates; the first training step is a 200-step timing run.
+31. **Provider terms on publishing benchmark results are unchecked**: OpenAI's services
+    agreement could not be read (403) and TypeSafe's terms were not found. Check both, and
+    Cloudflare's, before publishing any number.
+32. **The labels rest on graders no reviewer has signed off**, and the always-block sets
+    (decision 197) and the rules-only baseline's rules (decision 211) are invented, for the
+    payments and SOC reviewers.
+33. **Data gaps**: every `reimage_host` row is a mistake and every `checkout` row is allow;
+    `create_mandate` has 2 rows; ask_user is rare (in security, 9 rows in validation and none in
+    train or test); templates vary surface text only. New tasks, not more templates, close these.
+34. **The hidden set shares families with the training data** (it is built from the public
+    families): of its 122 rows, 101 come from families in train. Hidden results are reported by
+    family bucket; a hidden set written from scratch (open issue 19) would fix it.
+35. **K3 proposed**: an `observe` hook on `kit.scripted.play` (decision 195), which would let the
+    label loop stop copying the run player's step loop.
+36. **Unverified details**: Clef's REST response envelope (decision 208), whether `torch==2.14.1`'s
+    CUDA 13 wheels support a T4, and the 3–3.5 characters-per-token estimate behind the 12,000
+    character prompt cut.
+37. **Owner follow-up**: a CI job on the owner's repository only that runs `sandbox-train dataset
+    hidden-check` with a read-only deploy key for the private repository (decision 184).
 
 ## Next step
 
@@ -360,6 +432,19 @@ Everything left for v0.1 is people's, models' or the owner's (`docs/RELEASING.md
 - Then: an outside tester installs from PyPI and reproduces one model's score; the leaderboard
   goes live with real results; the write-up's findings are filled in from the measured numbers.
 
+For Phase 7, the user's to run (`training/src/training/guard_model/README.md`,
+`docs/blog/guard-model.md`):
+
+- the baselines on the test split and the hidden set: the two judges (`--set model=...`, two
+  providers), Jev, OpenAI Decisions, Clef, Strands Decider (local server); fill in each price
+  with its date;
+- the Stage A pilot on a free T4 (a 200-step timing run first), then the 1.5B config on a
+  rented GPU; calibrate on validation; evaluate; write the report from `sandbox-train report`;
+- check the providers' terms; then the owner publishes the weights, cards, report and
+  `guards/results.json`.
+
 Phase 3P (drug safety) still starts only once the repo owner confirms a drug-safety physician as
-reviewer. Otherwise Phase 7. In parallel, a SOC reviewer should sign off the security world's 50
-graders and freeze `tools-security-v0.1`.
+reviewer; then its Phase 7 parts (`submit_case`, `close_case_invalid`, a seriousness downgrade)
+join the dataset. Otherwise Phase 8 (the guard library, on `guard.DecisionBackend`). In
+parallel, a SOC reviewer should sign off the security world's 50 graders and freeze
+`tools-security-v0.1`.

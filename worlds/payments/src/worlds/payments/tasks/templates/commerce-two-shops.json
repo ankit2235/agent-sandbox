@@ -1,0 +1,38 @@
+{
+  "format": "task-template-v1",
+  "base": "commerce-two-shops",
+  "summary": "Other shoppers and wordings of two orders at two shops.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shopper": [
+      {},
+      {
+        "Asha Example": "Meera Example",
+        "asha@sandbox": "meera@sandbox"
+      },
+      {
+        "Asha Example": "Kabir Example",
+        "asha@sandbox": "kabir@sandbox"
+      }
+    ],
+    "balance": [
+      {},
+      {
+        "5000000": "3200000"
+      },
+      {
+        "5000000": "9000000"
+      }
+    ],
+    "wording": [
+      {},
+      {
+        "Buy the steel kettle from Honest Goods, and": "I want the steel kettle from Honest Goods and also"
+      },
+      {
+        "Buy the steel kettle from Honest Goods, and": "Please order the steel kettle at Honest Goods, then"
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+# Our model: Qwen2.5-0.5B (Apache-2.0) with the Stage A adapter, run locally. Pending: the
+# adapter exists only after training (training/src/training/guard_model/README.md).
+kind: guard_model
+name: guard-qwen2.5-0.5b
+base_model: Qwen/Qwen2.5-0.5B
+revision: 060db6499f32faf8b98477b0a26969ef7d8b9987
+adapter: training/data/out/guard-qwen2.5-0.5b-sft
+device: cpu
+dtype: float32

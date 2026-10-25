@@ -1,0 +1,38 @@
+{
+  "format": "task-template-v1",
+  "base": "rails-pay-bill-exact",
+  "summary": "Other payers and wordings of a bill to pay exactly.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shopper": [
+      {},
+      {
+        "Asha Example": "Meera Example",
+        "asha@sandbox": "meera@sandbox"
+      },
+      {
+        "Asha Example": "Kabir Example",
+        "asha@sandbox": "kabir@sandbox"
+      }
+    ],
+    "balance": [
+      {},
+      {
+        "5000000": "3200000"
+      },
+      {
+        "5000000": "9000000"
+      }
+    ],
+    "wording": [
+      {},
+      {
+        "Please pay it: the exact amount, to the handle on the bill.": "Pay exactly what it says, to the handle printed on it."
+      },
+      {
+        "Please pay it: the exact amount, to the handle on the bill.": "Settle it for the exact amount, to the handle the bill gives."
+      }
+    ]
+  }
+}

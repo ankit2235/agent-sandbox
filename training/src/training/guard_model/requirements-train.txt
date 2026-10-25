@@ -1,0 +1,11 @@
+# Training and local inference for the guard model. Never installed by CI or by the uv
+# workspace (decision 187): these pins conflict with the lock's litellm caps. Checked to
+# resolve together with `uv pip compile --python-version 3.12` on 2026-10-25.
+torch==2.14.1
+transformers==5.20.2
+trl==1.16.0
+peft==0.21.2
+datasets==5.1.0
+accelerate==1.15.0
+pydantic>=2.9
+pyyaml>=6.0

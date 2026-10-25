@@ -18,6 +18,8 @@ SOURCE_ROOTS = [
     REPO / "kit" / "src",
     REPO / "runner" / "src",
     REPO / "stress" / "src",
+    REPO / "guard" / "src",
+    REPO / "training" / "src",
     *sorted((REPO / "worlds").glob("*/src")),
 ]
 
