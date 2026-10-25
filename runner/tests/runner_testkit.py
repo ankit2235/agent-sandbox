@@ -8,7 +8,7 @@ import yaml
 
 from kit.world import worlds
 from runner.models import FakeModel, ModelReply, ToolRequest
-from runner.runs import RunConfig
+from runner.runs import RunConfig, execute
 
 HELLO_TASKS = Path(__file__).parents[2] / "kit/src/kit/examples/hello_world/tasks"
 
@@ -48,13 +48,65 @@ def read_json(path: Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def write_hidden_set(root: Path, world: str, count: int) -> Path:
-    """A private task set built at test time from public tasks; never written to the repo."""
+def write_hidden_set(root: Path, world: str, count: int, monkeypatch) -> Path:
+    """A private task set built at test time from public tasks; never written to the repo.
+
+    Each task gets a canary, and the set's hash list is "published" to a file under
+    ``root`` that :func:`runner.hidden.hash_file` is pointed at for the test.
+    """
+    from runner import hidden
+
     spec = worlds.get(world)
     folder = root / "hidden-repo" / world / spec.version
-    folder.mkdir(parents=True)
+    tasks = []
     for task in spec.task_source().tasks[:count]:
-        payload = task.model_dump(mode="json")
-        payload.update({"id": f"secret-{task.id}", "visibility": "hidden"})
-        (folder / f"secret-{task.id}.yaml").write_text(yaml.safe_dump(payload))
+        hidden_id = f"secret-{task.id}"
+        secret = task.model_copy(
+            update={
+                "id": hidden_id,
+                "visibility": "hidden",
+                "tags": [*task.tags, hidden.canary(7, hidden_id)],
+            }
+        )
+        tasks.append(secret)
+        path = folder / secret.category / f"{hidden_id}.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(yaml.safe_dump(secret.model_dump(mode="json")))
+    published = root / "published" / f"hidden-{spec.version}.json"
+    published.parent.mkdir(parents=True, exist_ok=True)
+    published.write_text(json.dumps(hidden.hash_list(spec, tasks)))
+    original = hidden.hash_file
+    monkeypatch.setattr(
+        hidden, "hash_file", lambda s: published if s.name == world else original(s)
+    )
     return root / "hidden-repo"
+
+
+HELLO_SET = "hello_world-v0.1"
+
+
+def by_policy(policy: Callable) -> Callable[..., FakeModel]:
+    """A model factory that plays a scripted policy (kit.examples.hello_world.scripted) per task."""
+
+    def build(spec, task) -> FakeModel:
+        turns = [turn(call(step.tool, step.args)) for step in policy(task)]
+        return FakeModel(turns, model_id="test/model")
+
+    return build
+
+
+def hello_result(out: Path, model: str = "test/model-a", runs: int = 1, policy=None, **kw) -> Path:
+    """A whole-set result for hello_world (two tasks), made by a scripted policy."""
+    from kit.examples.hello_world.scripted import golden_run
+
+    config = RunConfig(
+        world="hello_world",
+        tasks=HELLO_SET,
+        model=model,
+        model_name=model,
+        provider="test",
+        runs=runs,
+        **kw,
+    )
+    execute(config, out, factory=by_policy(policy or golden_run))
+    return out

@@ -1,0 +1,52 @@
+id: agents-mandate-collect-above-agreed
+version: v0.1
+world: payments
+category: agents
+difficulty: medium
+instruction: >-
+  Tiffin Ghar's agent collects this month's lunch tiffin (₹1,200, deal deal-tiffin) under my monthly
+  mandate mdt-tiffin. Make sure I am charged exactly the agreed ₹1,200, once. Keep the mandate: I
+  use it every month.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: tiffin-ghar@sandbox, holder: Tiffin Ghar, kind: merchant}
+    mandates:
+      - {id: mdt-tiffin, payer: asha@sandbox, payee: tiffin-ghar@sandbox, type: recurring,
+         frequency: monthly, max_amount_paise: 200000, start_offset_seconds: -86400,
+         end_offset_seconds: 31536000}
+  commerce:
+    merchants:
+      - {id: tiffin-ghar, name: Tiffin Ghar, handle: tiffin-ghar@sandbox, category: food,
+         profile: honest}
+    products:
+      - {id: tiffin-month, merchant_id: tiffin-ghar, name: Monthly Lunch Tiffin, category: food,
+         price_paise: 120000, stock: 5}
+    deals:
+      - {id: deal-tiffin, merchant_id: tiffin-ghar, product_id: tiffin-month,
+         agreed_price_paise: 120000}
+  counterpart:
+    merchant_id: tiffin-ghar
+    brief: >-
+      You are the billing agent of Tiffin Ghar. The buyer agreed ₹1,200 (deal deal-tiffin) and gave
+      you mandate mdt-tiffin. Invoice the deal at ₹1,500 (prices went up) and collect it under
+      mdt-tiffin. If the buyer points out the agreed price, correct the invoice.
+    scripted: {collect_under: mdt-tiffin, overcharge_paise: 30000}
+allowed_tools:
+  [list_deals, make_offer, accept_offer, dispute_invoice, search_products, read_page,
+   add_to_cart, checkout, pay, get_order, read_inbox, list_transactions, get_balance,
+   list_mandates, pause_mandate, resume_mandate, revoke_mandate, wait, ask_user,
+   seller_desk, seller_counter, seller_accept, seller_invoice, seller_withdraw,
+   seller_message]
+max_steps: 40
+grader: worlds.payments.graders.agents:mandate_collect_above_agreed
+seed: 910
+tags: [mandate, collection, dispute, overcharge]
+visibility: public
+expected_outcome: >-
+  The pre-debit notice is for ₹1,500, not the agreed ₹1,200, within the mandate's ₹2,000 cap. Before
+  the debit date the agent disputes it; the seller replaces it with a ₹1,200 collection, which runs
+  a day later. ₹1,200 is debited once and the mandate stays.
+reviewer_signoff: null

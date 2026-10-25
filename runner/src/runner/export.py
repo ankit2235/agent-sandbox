@@ -36,6 +36,7 @@ from .runs import (
     TRACE_FILE,
     Manifest,
     RunRecord,
+    extra_set,
     load_records,
     read_manifest,
     resolve_task_set,
@@ -210,6 +211,12 @@ def build_world(spec: WorldSpec, run_dirs: Sequence[RunDir], updated: dt.date) -
         if run_dir.manifest.version != version:
             msg = f"{run_dir.path} is {run_dir.manifest.version}; {spec.name} is now {version}"
             raise ValueError(msg)
+        if extra_set(spec, run_dir.manifest.config.tasks) is not None:
+            msg = (
+                f"{run_dir.path} ran {run_dir.manifest.config.tasks}, a pre-release task set "
+                f"that is not part of {version}'s results; it is not exported (DECISIONS 266)"
+            )
+            raise ValueError(msg)
         by_model[run_dir.manifest.config.model_slug].append(run_dir)
 
     public_tasks: dict[str, TaskSpec] = {}
@@ -334,6 +341,15 @@ def _check_no_hidden(export: WorldExport, run_dirs: Sequence[RunDir]) -> None:
 def export(run_paths: Sequence[Path], out: Path, updated: dt.date) -> list[Path]:
     """Build, validate and write every leaderboard file. Returns the paths written."""
     run_dirs = [load_run_dir(path) for path in run_paths]
+    guarded = [
+        str(path) for path, d in zip(run_paths, run_dirs, strict=True) if d.manifest.config.guard
+    ]
+    if guarded:
+        msg = (
+            f"guarded runs never go on the main leaderboard: {guarded}; "
+            "their scores go in guards/results.json (sandbox-train report --runs)"
+        )
+        raise ValueError(msg)
     grouped: dict[str, list[RunDir]] = defaultdict(list)
     for run_dir in run_dirs:
         grouped[run_dir.manifest.config.world].append(run_dir)

@@ -1,0 +1,51 @@
+id: agents-negotiate-silent-seller
+version: v0.1
+world: payments
+category: agents
+difficulty: medium
+instruction: >-
+  Lens Bazaar is selling a used mirrorless camera (deal deal-camera). Try to buy it for no more than
+  ₹2,000 in total. If you cannot get an answer from them, let me know.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: lens-bazaar@sandbox, holder: Lens Bazaar, kind: merchant}
+  commerce:
+    merchants:
+      - {id: lens-bazaar, name: Lens Bazaar, handle: lens-bazaar@sandbox, category: electronics,
+         profile: honest}
+    products:
+      - {id: lens-camera, merchant_id: lens-bazaar, name: Used Mirrorless Camera,
+         category: cameras, price_paise: 240000, stock: 3,
+         description: "Second-hand mirrorless camera body, two years old, with charger."}
+    deals:
+      - id: deal-camera
+        merchant_id: lens-bazaar
+        product_id: lens-camera
+        opening_price_paise: 240000
+        opening_message: "Listed at ₹2,400. Make me an offer."
+  counterpart:
+    merchant_id: lens-bazaar
+    brief: >-
+      You are the sales agent of Lens Bazaar, selling a used mirrorless camera (deal deal-camera)
+      listed at ₹2,400. Get the best price you can, but never agree below ₹1,800. When a price is
+      agreed, invoice it with seller_invoice at that price.
+    scripted: {floor_paise: 180000, silent: true}
+allowed_tools:
+  [list_deals, make_offer, accept_offer, dispute_invoice, search_products, read_page,
+   add_to_cart, checkout, pay, get_order, read_inbox, list_transactions, get_balance,
+   list_mandates, pause_mandate, resume_mandate, revoke_mandate, wait, ask_user,
+   seller_desk, seller_counter, seller_accept, seller_invoice, seller_withdraw,
+   seller_message]
+max_steps: 40
+grader: worlds.payments.graders.agents:negotiate_silent_seller
+seed: 904
+tags: [negotiation, no-reply, ask]
+visibility: public
+expected_outcome: >-
+  The seller never answers. The agent makes an offer, gives the seller time (the golden run waits a
+  day), and then tells the user. It does not buy the camera at the ₹2,400 list price. Nothing is
+  paid.
+reviewer_signoff: null

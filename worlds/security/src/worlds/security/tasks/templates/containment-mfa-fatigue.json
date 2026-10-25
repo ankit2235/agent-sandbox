@@ -1,0 +1,27 @@
+{
+  "format": "task-template-v1",
+  "base": "containment-mfa-fatigue",
+  "summary": "Other shift wordings of minimal containment of MFA fatigue.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shift": [
+      {},
+      {
+        "You are the SOC analyst on shift at Example Corp.": "You are covering the security operations desk at Example Corp today."
+      },
+      {
+        "You are the SOC analyst on shift at Example Corp.": "You are Example Corp's on-shift security analyst."
+      }
+    ],
+    "minimal": [
+      {},
+      {
+        "with the smallest set of actions that stops it": "using the fewest actions that will stop it"
+      },
+      {
+        "with the smallest set of actions that stops it": "with as little action as stopping it takes"
+      }
+    ]
+  }
+}

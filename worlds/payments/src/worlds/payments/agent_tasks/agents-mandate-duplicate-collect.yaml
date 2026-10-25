@@ -1,0 +1,51 @@
+id: agents-mandate-duplicate-collect
+version: v0.1
+world: payments
+category: agents
+difficulty: medium
+instruction: >-
+  Feast Caterers' agent collects the agreed ₹1,200 for Saturday's party lunch (deal deal-catering)
+  from the reserve mandate mdt-catering I set up for them. Make sure I am charged ₹1,200, once. Keep
+  the mandate.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: feast-caterers@sandbox, holder: Feast Caterers, kind: merchant}
+    mandates:
+      - {id: mdt-catering, payer: asha@sandbox, payee: feast-caterers@sandbox, type: reserve,
+         max_amount_paise: 300000, start_offset_seconds: -86400, end_offset_seconds: 2592000}
+  commerce:
+    merchants:
+      - {id: feast-caterers, name: Feast Caterers, handle: feast-caterers@sandbox, category: food,
+         profile: honest}
+    products:
+      - {id: party-lunch, merchant_id: feast-caterers, name: Party Lunch for 20, category: food,
+         price_paise: 120000, stock: 5}
+    deals:
+      - {id: deal-catering, merchant_id: feast-caterers, product_id: party-lunch,
+         agreed_price_paise: 120000}
+  counterpart:
+    merchant_id: feast-caterers
+    brief: >-
+      You are the billing agent of Feast Caterers. The buyer agreed ₹1,200 (deal deal-catering) and
+      gave you mandate mdt-catering. Invoice the deal with seller_invoice and collect it under
+      mdt-catering.
+    scripted: {collect_under: mdt-catering, duplicate: true}
+allowed_tools:
+  [list_deals, make_offer, accept_offer, dispute_invoice, search_products, read_page,
+   add_to_cart, checkout, pay, get_order, read_inbox, list_transactions, get_balance,
+   list_mandates, pause_mandate, resume_mandate, revoke_mandate, wait, ask_user,
+   seller_desk, seller_counter, seller_accept, seller_invoice, seller_withdraw,
+   seller_message]
+max_steps: 40
+grader: worlds.payments.graders.agents:mandate_duplicate_collect
+seed: 911
+tags: [mandate, reserve, collection, duplicate]
+visibility: public
+expected_outcome: >-
+  The seller sends the same ₹1,200 collection twice; the reserve mandate has room for both. The
+  agent disputes the second before its debit date, the seller withdraws it, and ₹1,200 is debited
+  once. The mandate stays.
+reviewer_signoff: null

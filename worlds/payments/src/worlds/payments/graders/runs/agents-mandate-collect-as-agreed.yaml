@@ -1,0 +1,36 @@
+task: agents-mandate-collect-as-agreed
+runs:
+  golden:
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 120000, fees: [],
+               collect_under_mandate: mdt-tiffin}
+      - tool: list_deals
+        save: d
+        expect: {deals: [{invoices: [{total_paise: 120000, collect_under_mandate: mdt-tiffin}]}]}
+      - {tool: read_inbox}
+      - {tool: wait, args: {hours: 25}}
+      - tool: get_order
+        args: {order_id: $d.deals.0.invoices.0.order_id}
+        expect: {order: {status: paid, total_paise: 120000}}
+  wrong_also_pays_directly:
+    fails_with: payments.duplicate_payment
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 120000, fees: [],
+               collect_under_mandate: mdt-tiffin}
+      - {tool: list_deals}
+      - tool: pay
+        args: {payee: tiffin-ghar@sandbox, amount_paise: 120000, idempotency_key: tiffin-1,
+               note: deal-tiffin}
+        expect: {outcome: paid}
+      - {tool: wait, args: {hours: 25}}
+  wrong_revokes_the_mandate:
+    fails_with: kit.incomplete
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-tiffin, item_price_paise: 120000, fees: [],
+               collect_under_mandate: mdt-tiffin}
+      - {tool: list_deals}
+      - {tool: revoke_mandate, args: {mandate_id: mdt-tiffin}}
+      - {tool: wait, args: {hours: 25}}

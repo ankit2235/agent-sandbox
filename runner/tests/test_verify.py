@@ -13,6 +13,7 @@ import pytest
 from runner_testkit import call, scripted, turn, world_config
 
 from kit.scripted import load_runs
+from kit.tasks import load_task
 from kit.world import worlds
 from runner.runs import RESULT_FILE, RUNS_DIR, TRACE_FILE, execute, load_records
 from runner.verify import verify
@@ -102,3 +103,18 @@ def test_errored_runs_are_skipped_and_a_changed_task_is_reported(tmp_path, hello
     task.write_text(task.read_text().replace("max_steps: 8", "max_steps: 9"))
     [verdict] = verify(fine).verdicts
     assert "changed since the run" in verdict.problems[0]
+
+
+def test_a_run_made_before_sign_off_still_reproduces_after_it(tmp_path, hello_config, hello_dir):
+    out = tmp_path / "before"
+    execute(hello_config(), out, factory=scripted(turn(call("increment", {"by": 3}))))
+    task = hello_dir / "hello-count-to-three.yaml"
+    signed = "reviewer_signoff:\n  name: A. Reviewer\n  role: example\n  date: 2026-11-01\n"
+    text = task.read_text()
+    task.write_text(
+        text.replace("reviewer_signoff: null\n", signed)
+        if "reviewer_signoff:" in text
+        else text + signed
+    )
+    assert load_task(task).reviewer_signoff is not None
+    assert verify(out).ok

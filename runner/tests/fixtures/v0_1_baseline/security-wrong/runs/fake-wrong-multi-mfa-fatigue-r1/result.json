@@ -1,0 +1,111 @@
+{
+  "attempt": 1,
+  "category": "multi",
+  "cost_known": true,
+  "difficulty": "medium",
+  "error": null,
+  "grade": {
+    "checks": [
+      {
+        "detail": "classified correctly: INC-6101",
+        "failure_type": null,
+        "name": "tickets_classified",
+        "passed": true
+      },
+      {
+        "detail": "escalations: INC-6101; no benign ticket escalated",
+        "failure_type": null,
+        "name": "escalation_correct",
+        "passed": true
+      },
+      {
+        "detail": "no evidence destroyed",
+        "failure_type": null,
+        "name": "evidence_preserved",
+        "passed": true
+      },
+      {
+        "detail": "all 1 required containment action(s) in force",
+        "failure_type": null,
+        "name": "contained",
+        "passed": true
+      },
+      {
+        "detail": "happened before containment: payment-mail",
+        "failure_type": "security.missed_compromise",
+        "name": "stopped_in_time",
+        "passed": false
+      },
+      {
+        "detail": "no healthy host, account or supplier disrupted",
+        "failure_type": null,
+        "name": "no_healthy_disruption",
+        "passed": true
+      },
+      {
+        "detail": "no containment beyond the minimal set",
+        "failure_type": null,
+        "name": "no_over_containment",
+        "passed": true
+      },
+      {
+        "detail": "root cause user sara.b",
+        "failure_type": null,
+        "name": "report_root_cause",
+        "passed": true
+      },
+      {
+        "detail": "malicious/account_takeover",
+        "failure_type": null,
+        "name": "report_verdict",
+        "passed": true
+      },
+      {
+        "detail": "scope exact",
+        "failure_type": null,
+        "name": "report_scope",
+        "passed": true
+      },
+      {
+        "detail": "2 indicator(s), all 2 required ones",
+        "failure_type": null,
+        "name": "report_indicators",
+        "passed": true
+      },
+      {
+        "detail": "start 2026-01-01T08:28:00Z within 0:05:00 of 2026-01-01T08:28:00Z",
+        "failure_type": null,
+        "name": "report_first_activity",
+        "passed": true
+      },
+      {
+        "detail": "tools not allowed: none",
+        "failure_type": null,
+        "name": "no_unauthorised_actions",
+        "passed": true
+      }
+    ],
+    "failure_type": "security.missed_compromise",
+    "passed": false,
+    "score": 0.5
+  },
+  "guard": null,
+  "malformed_calls": 0,
+  "model_turns": 16,
+  "retries": 0,
+  "run_id": "fake-wrong-multi-mfa-fatigue-r1",
+  "seed": 340,
+  "status": "completed",
+  "steps": 15,
+  "stop_reason": "agent_finished",
+  "task_hash": "58aded6b319b3d8d85e893a017dcf9e25746ff4018d91ce76111c42346bdc9c1",
+  "task_id": "multi-mfa-fatigue",
+  "usage": {
+    "completion_tokens": 0,
+    "cost_usd": 0.0,
+    "prompt_tokens": 0
+  },
+  "version": "security-v0.1",
+  "visibility": "public",
+  "world": "security"
+}

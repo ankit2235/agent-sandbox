@@ -1,0 +1,4 @@
+# The rules-only backend: each world's deterministic checks (worlds/<name>/training.py), no
+# model. In front of a guard, the guard is then rules only.
+kind: rules_only
+name: rules_only

@@ -1,0 +1,20 @@
+# Stage A pilot on one free Kaggle or Colab T4 (16 GB, no bf16): Qwen2.5-0.5B, Apache-2.0.
+# Estimated (not measured): 8-12 GB of GPU memory, 4-8 h per epoch. Run first with
+# max_steps: 200 to measure the real step time, then set max_steps back to -1.
+base_model: Qwen/Qwen2.5-0.5B
+revision: 060db6499f32faf8b98477b0a26969ef7d8b9987
+data: training/data/out/sft
+output_dir: training/data/out/guard-qwen2.5-0.5b-sft
+dtype: float16
+max_length: 4096
+epochs: 1
+max_steps: -1
+learning_rate: 1.0e-4
+per_device_batch_size: 1
+gradient_accumulation_steps: 16
+warmup_steps: 50
+logging_steps: 10
+save_steps: 500
+eval_steps: 500
+seed: 0
+lora: {r: 16, alpha: 32, dropout: 0.05, target_modules: all-linear}

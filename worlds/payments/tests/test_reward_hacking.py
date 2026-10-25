@@ -82,7 +82,7 @@ PATH_ARGS = [
 
 @pytest.mark.parametrize(("tool", "field"), PATH_ARGS)
 def test_no_id_can_walk_out_to_the_admin_or_internal_endpoints(tool: str, field: str) -> None:
-    session = Session()
+    session = Session(make_task(allowed_tools=[name for name, _, _, _ in TOOLS]))
     before = session.episode.snapshot_all()
     for sneaky in ("../admin/state", "x/../../internal/load", "..", "%2E%2E%2Fadmin"):
         code = session.refused(tool, **{field: sneaky})

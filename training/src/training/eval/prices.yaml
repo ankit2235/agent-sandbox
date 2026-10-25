@@ -1,0 +1,45 @@
+# Prices for cost per 1,000 decisions, by backend name (guard/src/guard/backends/configs/<name>.yaml).
+# Each was read from the provider's page on the date given. No cost or latency has been
+# measured yet: every cost and latency in a report is pending until real runs.
+# An entry marked `unknown: true` has no published price we could check; it gets no cost.
+
+openai-decisions:
+  model: gpt-6-luna
+  input_per_million_usd: 0.10
+  output_per_million_usd: 0.0
+  source: https://developers.openai.com/api/docs/guides/decisions
+  checked: 2026-10-25
+  note: Uncached input; output tokens are not charged. Cache and regional pricing not used.
+
+clef:
+  model: "@cf/cloudflare/clef"
+  input_per_million_usd: 0.24
+  output_per_million_usd: 0.0
+  source: https://developers.cloudflare.com/workers-ai/models/clef/
+  checked: 2026-10-25
+  note: Clef does not charge for output tokens.
+
+clef-flash:
+  unknown: true
+  note: Not checked; the Clef model page lists the 27B model's price only.
+
+jev:
+  unknown: true
+  note: No price on TypeSafe's quick-start documentation (checked 2026-10-25).
+
+# Fill these in at run time, with the date you read the price:
+judge-a:
+  unknown: true
+  note: The judge's model id and price are chosen when it is run.
+judge-b:
+  unknown: true
+  note: The judge's model id and price are chosen when it is run.
+strands-decider:
+  unknown: true
+  note: Self-hosted; give per_hour_usd for the machine it runs on.
+guard-qwen2.5-0.5b:
+  unknown: true
+  note: Self-hosted; give per_hour_usd for the machine it runs on.
+rules_only:
+  unknown: true
+  note: No model; runs in-process.

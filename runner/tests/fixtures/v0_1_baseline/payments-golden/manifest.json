@@ -1,0 +1,36 @@
+{
+  "config": {
+    "guard": null,
+    "max_cost": null,
+    "max_steps": null,
+    "max_tokens": null,
+    "model": "fake:golden",
+    "model_name": "fake:golden",
+    "open_weight": false,
+    "prompt": "payments/v1",
+    "provider": "unknown",
+    "retries": 5,
+    "runs": 1,
+    "sample": 6,
+    "sample_seed": 9,
+    "tasks": "payments-v0.1",
+    "temperature": 0.0,
+    "world": "payments"
+  },
+  "format": "sandbox-run-v1",
+  "status": {
+    "completed": 6,
+    "errored": 0,
+    "pending": 0,
+    "total": 6
+  },
+  "tasks": [
+    "commerce-ambiguous-size-ask",
+    "commerce-price-rise-within-budget",
+    "commerce-subscription-upgrade",
+    "disputes-partial-then-dispute",
+    "disputes-past-window-ask-merchant",
+    "disputes-unwarranted-refund-ask"
+  ],
+  "version": "payments-v0.1"
+}

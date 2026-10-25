@@ -15,7 +15,7 @@ from pydantic import Field, StrictInt, model_validator
 from kit.types import Strict
 
 from ..services.disputes.models import DisputeReason, EvidenceKind
-from ..services.rails.models import HANDLE_PATTERN, KEY_PATTERN, Frequency, MandateType
+from ..services.rails.models import HANDLE_PATTERN, KEY_PATTERN, Frequency, MandateId, MandateType
 
 ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]*$"
 """Ids go into service paths, so no slash, dot or percent sign can reach one (decision 81)."""
@@ -245,16 +245,94 @@ class AskUser(ToolArgs):
     )
 
 
+# ------------------------------------------------------- deals (multi-agent tasks)
+Price = Annotated[StrictInt, Field(gt=0, description="An amount in paise (₹1 = 100 paise).")]
+Note = Annotated[str, Field(max_length=1000)]
+
+
+class DealOnly(ToolArgs):
+    """Arguments for ``accept_offer`` and ``seller_accept``."""
+
+    deal_id: Id
+    message: Note = Field(default="", description="Optional words to the other side.")
+
+
+class Offer(ToolArgs):
+    """Arguments for ``make_offer`` and ``seller_counter``."""
+
+    deal_id: Id
+    price_paise: Price = Field(description="The total price you offer, in paise.")
+    message: Note = Field(default="", description="Optional words to the other side.")
+
+
+class DisputeInvoice(ToolArgs):
+    """Arguments for ``dispute_invoice``."""
+
+    order_id: Id = Field(description="The invoice's order id.")
+    reason: Annotated[str, Field(min_length=1, max_length=1000)] = Field(
+        description="What is wrong with it, for the seller."
+    )
+    lines: list[Annotated[str, Field(pattern=r"^L[1-9][0-9]?$")]] = Field(
+        default_factory=list,
+        max_length=10,
+        description="The invoice lines you do not accept (L1, L2, ...); none for all of it.",
+    )
+
+
+class Fee(ToolArgs):
+    """One extra invoice line."""
+
+    label: Annotated[str, Field(min_length=1, max_length=60)]
+    amount_paise: Price
+
+
+class SellerInvoice(ToolArgs):
+    """Arguments for ``seller_invoice``."""
+
+    deal_id: Id
+    item_price_paise: Price = Field(description="The item's line, in paise.")
+    fees: list[Fee] = Field(
+        default_factory=list, max_length=5, description="Further lines, such as delivery."
+    )
+    collect_under_mandate: MandateId | None = Field(
+        default=None,
+        description="Collect the invoice under this mandate the user gave you, 24 hours after "
+        "the pre-debit notice, instead of waiting to be paid.",
+    )
+    replaces: Id | None = Field(
+        default=None, description="An open invoice of this deal that this one replaces."
+    )
+    message: Note = Field(default="", description="Optional words to the buyer.")
+
+
+class SellerWithdraw(ToolArgs):
+    """Arguments for ``seller_withdraw``."""
+
+    order_id: Id = Field(description="The invoice's order id.")
+    message: Note = Field(default="", description="Optional words to the buyer.")
+
+
+class SellerMessage(ToolArgs):
+    """Arguments for ``seller_message``."""
+
+    deal_id: Id
+    message: Annotated[str, Field(min_length=1, max_length=1000)]
+
+
 __all__ = [
     "AddToCart",
     "ApplyOffer",
     "AskUser",
     "ChangeSubscription",
     "CreateMandate",
+    "DealOnly",
+    "DisputeInvoice",
+    "Fee",
     "ListTransactions",
     "MandateOnly",
     "MerchantOnly",
     "NoArgs",
+    "Offer",
     "OpenDispute",
     "OrderOnly",
     "Pay",
@@ -263,6 +341,9 @@ __all__ = [
     "ReadPage",
     "RequestRefund",
     "SearchProducts",
+    "SellerInvoice",
+    "SellerMessage",
+    "SellerWithdraw",
     "SendMessage",
     "SubmitEvidence",
     "SubscriptionAction",

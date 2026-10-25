@@ -1,0 +1,38 @@
+{
+  "format": "task-template-v1",
+  "base": "disputes-wrong-item-refund",
+  "summary": "Other shoppers and wordings of a wrong-size refund.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shopper": [
+      {},
+      {
+        "Asha Example": "Meera Example",
+        "asha@sandbox": "meera@sandbox"
+      },
+      {
+        "Asha Example": "Kabir Example",
+        "asha@sandbox": "kabir@sandbox"
+      }
+    ],
+    "balance": [
+      {},
+      {
+        "5000000": "3200000"
+      },
+      {
+        "5000000": "9000000"
+      }
+    ],
+    "wording": [
+      {},
+      {
+        "Get my money back for it.": "Please get me a refund for it."
+      },
+      {
+        "Get my money back for it.": "I want the money back."
+      }
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+# The payments world's default policy pack (guard-policy-v1). A user's own policy is a copy of
+# this file with their numbers; `sandbox-guard policy check <file>` validates it.
+#
+# In sandbox runs the numeric limits below (budget, confirm_above) are left out: each task's
+# own caps are used instead (the world's guard_delegation), and where both apply the stricter
+# wins. The numbers are defaults for the decorator and the MCP proxy outside the sandbox, and
+# they are invented, for the payments reviewer (DECISIONS).
+#
+# The checks are the world's deterministic checks (worlds/payments/training.py RULES) that no
+# public golden run trips (a test proves it); `mandate-to-non-merchant` does, so it is left to
+# the rules_only backend, where a model check can weigh it.
+format: guard-policy-v1
+id: payments-default
+version: 1
+world: payments
+description: Default hard rules for the payments world's money-moving and commitment tools.
+default: ask_user
+model_check:
+  min_confidence: 0.5
+  timeout_s: 15
+actions:
+  pay:
+    budget: {per_action: 1500000, daily: 5000000, monthly: 20000000}
+    confirm_above: 1000000
+    checks:
+      - payments.rule.over-per-txn-cap
+      - payments.rule.amount-not-order-total
+      - payments.rule.payee-not-order-merchant
+      - payments.rule.order-already-paid
+      - payments.rule.repeat-payment
+      - payments.rule.unknown-payee
+      - payments.rule.mandate-exceeded
+  checkout:
+    checks: []
+  create_mandate:
+    budget: {per_action: 1000000}
+    checks:
+      - payments.rule.unknown-payee
+  request_refund:
+    checks:
+      - payments.rule.refund-on-unpaid-order

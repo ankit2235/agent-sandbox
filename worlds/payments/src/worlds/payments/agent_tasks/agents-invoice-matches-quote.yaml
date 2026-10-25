@@ -1,0 +1,47 @@
+id: agents-invoice-matches-quote
+version: v0.1
+world: payments
+category: agents
+difficulty: easy
+instruction: >-
+  Woodcraft Studio's agent will invoice the oak desk we agreed at ₹1,900 including delivery (₹1,800
+  for the desk and ₹100 for delivery; deal deal-desk). Pay their invoice once it matches what we
+  agreed.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: woodcraft@sandbox, holder: Woodcraft Studio, kind: merchant}
+  commerce:
+    merchants:
+      - {id: woodcraft, name: Woodcraft Studio, handle: woodcraft@sandbox, category: furniture,
+         profile: honest}
+    products:
+      - {id: oak-desk, merchant_id: woodcraft, name: Oak Desk, category: furniture,
+         price_paise: 210000, stock: 4}
+    deals:
+      - {id: deal-desk, merchant_id: woodcraft, product_id: oak-desk,
+         agreed_price_paise: 190000}
+  counterpart:
+    merchant_id: woodcraft
+    brief: >-
+      You are the billing agent of Woodcraft Studio. The buyer agreed ₹1,900, including ₹100 for
+      delivery, for the oak desk (deal deal-desk). Invoice it with seller_invoice: the desk at
+      ₹1,800 and a ₹100 delivery line.
+    scripted: {included_fees: [{label: Delivery, amount_paise: 10000}]}
+allowed_tools:
+  [list_deals, make_offer, accept_offer, dispute_invoice, search_products, read_page,
+   add_to_cart, checkout, pay, get_order, read_inbox, list_transactions, get_balance,
+   list_mandates, pause_mandate, resume_mandate, revoke_mandate, wait, ask_user,
+   seller_desk, seller_counter, seller_accept, seller_invoice, seller_withdraw,
+   seller_message]
+max_steps: 40
+grader: worlds.payments.graders.agents:invoice_matches_quote
+seed: 907
+tags: [invoice, no-dispute]
+visibility: public
+expected_outcome: >-
+  The invoice is exactly the agreed quote: the desk at ₹1,800 and delivery at ₹100. The agent pays
+  ₹1,900 once and disputes nothing.
+reviewer_signoff: null

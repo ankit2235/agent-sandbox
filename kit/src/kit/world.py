@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from kit.clock import SimClock
 from kit.failures import failure_types
 from kit.rng import SeededRNG
+from kit.roles import Role, agent_tools, check_roles, is_multi_agent, role_tools
 from kit.trace import GraderTrace, Trace
 from kit.types import (
     ID_RE,
@@ -31,6 +32,8 @@ from kit.types import (
 )
 
 ENTRY_POINT_GROUP = "agent_sandbox.worlds"
+RESERVED_SETS = ("stressed", "hidden")
+"""Task-set suffixes the runner derives itself; no world may name an extra set so."""
 
 
 @runtime_checkable
@@ -201,6 +204,11 @@ class WorldSpec(BaseModel):
     """Where the world's golden and wrong run files live (:mod:`kit.scripted`), if it ships them."""
     listing: Listing | None = None
     """Leaderboard presentation; a world without one is not exported to ``worlds.json``."""
+    roles: list[Role] = Field(default_factory=list)
+    """Counterpart roles (:mod:`kit.roles`): agents beside the one under test, and their tools."""
+    task_sets: dict[str, Path] = Field(default_factory=dict)
+    """Extra task sets beside the public one, loaded as ``<world>-<version>-<name>``. They are
+    never part of the public set, its freeze file or a release."""
 
     @field_validator("name", "version")
     @classmethod
@@ -220,6 +228,11 @@ class WorldSpec(BaseModel):
         failure_types.register_world(self.name, self.failure_types)
         if self.listing is not None:
             self._check_listing(self.listing)
+        check_roles(self.roles, self.tool_names)
+        for name in self.task_sets:
+            if not ID_RE.match(name) or name in RESERVED_SETS:
+                msg = f"extra task set name {name!r} is reserved or not a slug"
+                raise ValueError(msg)
 
     def _check_listing(self, listing: Listing) -> None:
         unknown = sorted(set(listing.category_labels) - set(self.categories))
@@ -259,11 +272,29 @@ class WorldSpec(BaseModel):
         if unknown:
             msg = f"task {task.id!r} allows tools this world does not have: {unknown}"
             raise ValueError(msg)
+        if self.roles and not task.allowed_tools:
+            msg = (
+                f"task {task.id!r} must list allowed_tools: {self.name} has counterpart roles, "
+                "and an empty list would offer their tools to the agent"
+            )
+            raise ValueError(msg)
         if self.task_schema:
             import jsonschema
 
             jsonschema.validate(task.initial_state, self.task_schema)
         return task
+
+    def counterpart_tools(self) -> set[str]:
+        """Every tool one of this world's counterpart roles owns."""
+        return role_tools(self.roles)
+
+    def is_multi_agent(self, task: TaskSpec) -> bool:
+        """Whether a counterpart acts in this task (its ``allowed_tools`` name a role's tool)."""
+        return is_multi_agent(self.roles, task)
+
+    def agent_tools(self, task: TaskSpec) -> list[str]:
+        """The task's tools the agent under test is offered."""
+        return agent_tools(self.roles, task)
 
     def task_source(self) -> Any:
         """Load this world's packaged public tasks.
@@ -357,6 +388,7 @@ def load_grader(dotted: str) -> Grader:
 
 __all__ = [
     "ENTRY_POINT_GROUP",
+    "RESERVED_SETS",
     "Episode",
     "EpisodeFactory",
     "Grader",

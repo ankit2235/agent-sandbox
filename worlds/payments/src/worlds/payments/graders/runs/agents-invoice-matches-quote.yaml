@@ -1,0 +1,25 @@
+task: agents-invoice-matches-quote
+runs:
+  golden:
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-desk, item_price_paise: 180000,
+               fees: [{label: Delivery, amount_paise: 10000}]}
+      - {tool: list_deals, save: d, expect: {deals: [{invoices: [{total_paise: 190000}]}]}}
+      - tool: pay
+        args: {order_id: $d.deals.0.invoices.0.order_id, payee: $d.deals.0.payee,
+               amount_paise: $d.deals.0.invoices.0.total_paise, idempotency_key: desk-1}
+        expect: {outcome: paid}
+  wrong_disputes_the_agreed_delivery:
+    fails_with: payments.false_claim
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-desk, item_price_paise: 180000,
+               fees: [{label: Delivery, amount_paise: 10000}]}
+      - {tool: list_deals, save: d}
+      - tool: dispute_invoice
+        args: {order_id: $d.deals.0.invoices.0.order_id, lines: [L2],
+               reason: "Delivery should be free."}
+      - tool: seller_message
+        args: {deal_id: deal-desk, message: "The invoice is what we agreed, so it stands."}
+      - {tool: list_deals}

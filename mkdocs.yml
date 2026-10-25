@@ -1,0 +1,55 @@
+# The docs site: `just docs` builds it into site/ (strict); `.github/workflows/docs.yml`
+# builds it on every pull request and publishes it to GitHub Pages from main.
+site_name: agent-sandbox
+site_description: An OpenEnv-compatible sandbox that measures how well AI agents do real work inside simulated worlds.
+site_url: https://prarabdha-soni.github.io/agent-sandbox/
+repo_url: https://github.com/prarabdha-soni/agent-sandbox
+repo_name: prarabdha-soni/agent-sandbox
+edit_uri: edit/main/docs/site/
+docs_dir: docs/site
+strict: true
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Concepts: concepts.md
+  - Task format: task-format.md
+  - How graders work: graders.md
+  - Tool reference:
+      - Payments: tools/payments.md
+      - Security (preview): tools/security.md
+  - Scoring and confidence intervals: scoring.md
+  - The guard: guard.md
+  - Multi-agent tasks: multi-agent.md
+  - Running episodes in containers: isolation.md
+  - Limitations: limitations.md
+  - Submitting results: submit-results.md
+  - Contributing tasks: contribute-tasks.md
+  - Citation: citation.md

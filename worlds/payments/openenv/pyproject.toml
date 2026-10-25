@@ -1,0 +1,28 @@
+# The OpenEnv / Hugging Face Space package for the payments world (`openenv push` uploads this
+# folder). It installs the published agent-sandbox-bench package; nothing here is part of the uv
+# workspace. Generate uv.lock with `uv lock` once agent-sandbox-bench is on PyPI.
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-payments_env"
+version = "0.1.0"
+description = "agent-sandbox payments world (payments-v0.1) as an OpenEnv environment"
+requires-python = ">=3.12,<3.13"
+license = "Apache-2.0"
+dependencies = [
+    "agent-sandbox-bench[openenv]==0.1.0",
+    "fastapi>=0.116",
+    "uvicorn>=0.34",
+]
+
+[project.scripts]
+# uv run --project . server
+server = "payments_env.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["payments_env", "payments_env.server"]
+package-dir = { "payments_env" = ".", "payments_env.server" = "server" }

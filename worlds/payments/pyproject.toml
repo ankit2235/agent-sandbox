@@ -1,13 +1,23 @@
 [project]
-name = "agent-sandbox-world-payments"
-version = "0.0.1.dev0"
+name = "agent-sandbox-bench-world-payments"
+version = "0.1.0"
 description = "The payments world: services, MCP tools, tasks and graders."
 requires-python = ">=3.12"
 license = "Apache-2.0"
-dependencies = ["agent-sandbox-kit[mcp]", "fastapi>=0.116"]
+dependencies = [
+  "agent-sandbox-bench-kit[mcp]==0.1.0",
+  "agent-sandbox-bench-stress==0.1.0",
+  "fastapi>=0.116",
+]
 
 [project.entry-points."agent_sandbox.worlds"]
 payments = "worlds.payments:world_spec"
+
+[project.entry-points."agent_sandbox.stress"]
+payments = "worlds.payments.stress:STRESS"
+
+[project.entry-points."agent_sandbox.training"]
+payments = "worlds.payments.training"
 
 [build-system]
 requires = ["hatchling>=1.27"]
@@ -17,4 +27,5 @@ build-backend = "hatchling.build"
 packages = ["src/worlds"]
 
 [tool.uv.sources]
-agent-sandbox-kit = { workspace = true }
+agent-sandbox-bench-kit = { workspace = true }
+agent-sandbox-bench-stress = { workspace = true }

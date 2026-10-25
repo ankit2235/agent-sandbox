@@ -8,7 +8,19 @@ unchanged, to a fresh world built from the same task and seed, with
 - the replay applied every recorded call;
 - every tool call and world event of the replay matches the recording (tool,
   arguments, response, refusal, rows changed, simulated time);
-- the grade (passed, score, every check, failure type) is identical.
+- the grade (passed, score, every check, failure type) is identical;
+- in a multi-agent task played by the scripted counterparts: at every point where the
+  runner played them, they make exactly the recorded calls again
+  (:class:`runner.counterpart.ScriptedReplay`); a model counterpart's calls are replayed
+  as recorded, like the agent's;
+- with a guard: the decision log's chain is intact and ends at the head ``result.json``
+  keeps, and its allowed decisions match the guarded calls in the trace one for one
+  (:func:`runner.guarding.verify_decisions`).
+
+:func:`verify_isolated` runs the same replay in a locked-down container
+(:mod:`runner.isolation`), with the run directory, and any task directory, policy file or
+hidden set the run needs, mounted read-only and nothing writable. The verdicts come back
+as JSON (``sandbox verify --json``) and are checked before they are believed.
 """
 
 from __future__ import annotations
@@ -17,12 +29,37 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, ValidationError
+
+from kit.clock import EPOCH, SimClock
+from kit.rng import SeededRNG
 from kit.scripted import run_script
+from kit.tasks import HIDDEN_TASKS_ENV, hidden_tasks_dir
 from kit.trace import Trace
 from kit.types import ToolCall
 from kit.world import worlds
 
-from .runs import RUNS_DIR, TRACE_FILE, load_records, read_manifest, resolve_task_set, task_hash
+from .counterpart import SCRIPTED, ScriptedReplay
+from .guarding import DECISIONS_FILE, verify_decisions
+from .isolation import (
+    HIDDEN_MOUNT,
+    RUN_MOUNT,
+    EpisodeFailed,
+    Isolation,
+    Mount,
+    container_path,
+    run_contained,
+)
+from .runs import (
+    HIDDEN_SUFFIX,
+    RUNS_DIR,
+    TRACE_FILE,
+    load_records,
+    read_manifest,
+    resolve_task_set,
+    task_hash,
+    task_set_version,
+)
 
 
 @dataclass(slots=True)
@@ -80,7 +117,13 @@ def verify(run_dir: Path) -> VerifyReport:
         calls = [
             ToolCall(tool=step.tool or "", args=step.args or {}) for step in recorded.tool_calls()
         ]
-        replay = run_script(spec, task, calls, seed=record.seed)
+        if spec.is_multi_agent(task) and manifest.config.counterpart == SCRIPTED:
+            episode = spec.make_episode(task, SimClock(EPOCH), SeededRNG(record.seed))
+            checked = ScriptedReplay(calls, episode, spec.counterpart_tools())
+            replay = run_script(spec, task, checked, seed=record.seed, episode=episode)
+            verdict.problems += checked.problems
+        else:
+            replay = run_script(spec, task, calls, seed=record.seed)
         if replay.steps != len(calls):
             verdict.problems.append(
                 f"the replay ended after {replay.steps} of {len(calls)} recorded calls"
@@ -95,6 +138,15 @@ def verify(run_dir: Path) -> VerifyReport:
                 f"world steps differ from step {first + 1} "
                 f"({len(before)} recorded, {len(after)} replayed)"
             )
+        guard = manifest.config.guard
+        if guard is not None:
+            verdict.problems += verify_decisions(
+                run_dir / RUNS_DIR / record.run_id / DECISIONS_FILE,
+                record.guard,
+                recorded,
+                guard,
+                spec.name,
+            )
         if replay.grade is None or replay.grade.model_dump() != record.grade.model_dump():
             got = replay.grade.model_dump() if replay.grade else None
             verdict.problems.append(
@@ -103,4 +155,71 @@ def verify(run_dir: Path) -> VerifyReport:
     return report
 
 
-__all__ = ["Verdict", "VerifyReport", "verify"]
+class _VerdictJson(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str
+    problems: list[str]
+
+
+class _ReportJson(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    verdicts: list[_VerdictJson]
+    skipped: list[str]
+
+
+def report_json(report: VerifyReport) -> str:
+    """A report as the JSON ``sandbox verify --json`` prints."""
+    payload = _ReportJson(
+        verdicts=[_VerdictJson(run_id=v.run_id, problems=v.problems) for v in report.verdicts],
+        skipped=report.skipped,
+    )
+    return payload.model_dump_json()
+
+
+def verify_isolated(run_dir: Path, isolation: Isolation) -> VerifyReport:
+    """:func:`verify` in a locked-down container, with read-only mounts only.
+
+    Raises :class:`runner.isolation.EpisodeFailed` if the container fails or prints
+    anything but a report, and :class:`FileNotFoundError` for a directory that is not a
+    run directory.
+    """
+    manifest = read_manifest(run_dir)
+    if manifest is None:
+        msg = f"{run_dir} is not a run directory: no manifest.json"
+        raise FileNotFoundError(msg)
+    config = manifest.config
+    spec = worlds.get(config.world)
+    mounts = [Mount(run_dir.resolve(), RUN_MOUNT)]
+    env: dict[str, str] = {}
+    if config.tasks == task_set_version(spec) + HIDDEN_SUFFIX:
+        hidden = hidden_tasks_dir()
+        if hidden is None:
+            msg = f"{config.tasks} runs need {HIDDEN_TASKS_ENV} to be set"
+            raise FileNotFoundError(msg)
+        mounts.append(Mount(hidden.resolve(), HIDDEN_MOUNT))
+        env[HIDDEN_TASKS_ENV] = HIDDEN_MOUNT
+    elif Path(config.tasks).is_dir():
+        mounts.append(Mount(Path(config.tasks).resolve(), container_path(config.tasks)))
+    if config.guard is not None and Path(config.guard.policy).is_file():
+        policy = config.guard.policy
+        mounts.append(Mount(Path(policy).resolve(), container_path(policy)))
+    done = run_contained(
+        isolation, ["verify", "--run", RUN_MOUNT, "--json"], mounts=mounts, env=env
+    )
+    if done.returncode not in (0, 1):
+        msg = f"verify exited with status {done.returncode} in its container: {done.stderr}"
+        raise EpisodeFailed(msg.strip())
+    try:
+        parsed = _ReportJson.model_validate_json(done.stdout)
+    except ValidationError:
+        msg = f"verify's container did not print a report: {done.stderr or 'no message'}"
+        raise EpisodeFailed(msg) from None
+    return VerifyReport(
+        verdicts=[Verdict(v.run_id, list(v.problems)) for v in parsed.verdicts],
+        skipped=list(parsed.skipped),
+    )
+
+
+__all__ = ["Verdict", "VerifyReport", "report_json", "verify", "verify_isolated"]

@@ -1,0 +1,34 @@
+task: agents-mandate-duplicate-collect
+runs:
+  golden:
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-catering, item_price_paise: 120000, fees: [],
+               collect_under_mandate: mdt-catering}
+      - tool: seller_invoice
+        args: {deal_id: deal-catering, item_price_paise: 120000, fees: [],
+               collect_under_mandate: mdt-catering}
+        save: second
+      - tool: list_deals
+        save: d
+        expect: {deals: [{invoices: [{total_paise: 120000}, {total_paise: 120000}]}]}
+      - tool: dispute_invoice
+        args: {order_id: $d.deals.0.invoices.1.order_id,
+               reason: "This is the same ₹1,200 collection a second time."}
+      - tool: seller_withdraw
+        args: {order_id: $second.invoice.order_id, message: "Sorry, that was sent twice."}
+      - {tool: wait, args: {hours: 25}}
+      - tool: get_order
+        args: {order_id: $d.deals.0.invoices.0.order_id}
+        expect: {order: {status: paid, total_paise: 120000}}
+  wrong_lets_both_run:
+    fails_with: payments.duplicate_payment
+    steps:
+      - tool: seller_invoice
+        args: {deal_id: deal-catering, item_price_paise: 120000, fees: [],
+               collect_under_mandate: mdt-catering}
+      - tool: seller_invoice
+        args: {deal_id: deal-catering, item_price_paise: 120000, fees: [],
+               collect_under_mandate: mdt-catering}
+      - {tool: list_deals}
+      - {tool: wait, args: {hours: 25}}

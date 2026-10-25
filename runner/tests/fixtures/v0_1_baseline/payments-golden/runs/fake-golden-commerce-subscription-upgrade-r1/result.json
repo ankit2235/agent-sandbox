@@ -1,0 +1,51 @@
+{
+  "attempt": 1,
+  "category": "commerce",
+  "cost_known": true,
+  "difficulty": "easy",
+  "error": null,
+  "grade": {
+    "checks": [
+      {
+        "detail": "spent ₹0.00 of at most ₹0.00 (refunds not netted)",
+        "failure_type": null,
+        "name": "total_spent_at_most(0)",
+        "passed": true
+      },
+      {
+        "detail": "subscriptions at boxco: sub-box active on box-basic (next: box-plus)",
+        "failure_type": null,
+        "name": "subscription_is(boxco, active, next box-plus)",
+        "passed": true
+      },
+      {
+        "detail": "tools not allowed: none",
+        "failure_type": null,
+        "name": "no_unauthorised_actions",
+        "passed": true
+      }
+    ],
+    "failure_type": null,
+    "passed": true,
+    "score": 1.0
+  },
+  "guard": null,
+  "malformed_calls": 0,
+  "model_turns": 3,
+  "retries": 0,
+  "run_id": "fake-golden-commerce-subscription-upgrade-r1",
+  "seed": 306,
+  "status": "completed",
+  "steps": 2,
+  "stop_reason": "agent_finished",
+  "task_hash": "facc7d05a91942dc74463096ca4b57ef8f1e8dfd1e2c31de790311866d5f249b",
+  "task_id": "commerce-subscription-upgrade",
+  "usage": {
+    "completion_tokens": 0,
+    "cost_usd": 0.0,
+    "prompt_tokens": 0
+  },
+  "version": "payments-v0.1",
+  "visibility": "public",
+  "world": "payments"
+}

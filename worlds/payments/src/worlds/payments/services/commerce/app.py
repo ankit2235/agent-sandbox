@@ -17,7 +17,11 @@ from ..common import install_error_handlers, sim_now, written
 from .core import Commerce
 from .models import (
     CartLine,
+    DealMove,
     EventRequest,
+    InvoiceCreate,
+    InvoiceDispute,
+    InvoiceWithdraw,
     LoadRequest,
     OfferRequest,
     PaymentLink,
@@ -40,6 +44,12 @@ HTTP_STATUS: dict[str, int] = {
     Rejection.ORDER_NOT_PAYABLE: 409,
     Rejection.INVALID_TRANSITION: 409,
     Rejection.ALREADY_LOADED: 409,
+    Rejection.DEAL_NOT_FOUND: 404,
+    Rejection.INVOICE_NOT_FOUND: 404,
+    Rejection.DEAL_NOT_OPEN: 409,
+    Rejection.DEAL_NOT_AGREED: 409,
+    Rejection.NO_STANDING_OFFER: 409,
+    Rejection.INVOICE_NOT_OPEN: 409,
 }
 """Every other refusal is a 422."""
 
@@ -128,6 +138,35 @@ def create_app(commerce: Commerce) -> FastAPI:
         subscription_id: str, body: SubscriptionChange, now: Now
     ) -> JSONResponse:
         return written(commerce.change_subscription(subscription_id, body, now))
+
+    # ---------------------------------------------------------------- deals
+    @app.get("/deals")
+    async def deals(now: Now, merchant_id: str | None = None) -> list[dict[str, Any]]:
+        return commerce.deals(merchant_id)
+
+    @app.post("/deals/{deal_id}/offers")
+    async def deal_offer(deal_id: str, body: DealMove, now: Now) -> JSONResponse:
+        return written(commerce.deal_offer(deal_id, body, now))
+
+    @app.post("/deals/{deal_id}/accept")
+    async def deal_accept(deal_id: str, body: DealMove, now: Now) -> JSONResponse:
+        return written(commerce.deal_accept(deal_id, body, now))
+
+    @app.post("/deals/{deal_id}/messages")
+    async def deal_message(deal_id: str, body: DealMove, now: Now) -> JSONResponse:
+        return written(commerce.deal_message(deal_id, body, now))
+
+    @app.post("/deals/{deal_id}/invoices")
+    async def invoice(deal_id: str, body: InvoiceCreate, now: Now) -> JSONResponse:
+        return written(commerce.invoice_create(deal_id, body, now))
+
+    @app.post("/invoices/{order_id}/withdraw")
+    async def withdraw(order_id: str, body: InvoiceWithdraw, now: Now) -> JSONResponse:
+        return written(commerce.invoice_withdraw(order_id, body, now))
+
+    @app.post("/invoices/{order_id}/disputes")
+    async def dispute(order_id: str, body: InvoiceDispute, now: Now) -> JSONResponse:
+        return written(commerce.invoice_dispute(order_id, body, now))
 
     # -------------------------------------------------------- graders only
     @app.get("/admin/{resource}")

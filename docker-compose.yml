@@ -2,6 +2,9 @@
 # `docker compose --profile payments up` starts only that world. Episodes are
 # normally run in-process over ASGI (fast and deterministic); this file is for
 # running the suite in a clean container and, later, for the multi-process mode.
+# Locked-down episode containers are not defined here: `sandbox run --isolation
+# container` starts them itself with `docker run`, so their settings live in one
+# place (runner/src/runner/isolation.py, docs/site/isolation.md).
 services:
   dev:
     image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim

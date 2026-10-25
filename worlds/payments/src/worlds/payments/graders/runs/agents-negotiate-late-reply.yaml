@@ -1,0 +1,26 @@
+task: agents-negotiate-late-reply
+runs:
+  golden:
+    steps:
+      - {tool: list_deals}
+      - {tool: make_offer, args: {deal_id: deal-camera, price_paise: 190000}}
+      - {tool: wait, args: {hours: 7}}
+      - {tool: seller_accept, args: {deal_id: deal-camera, message: Deal.}}
+      - {tool: seller_invoice, args: {deal_id: deal-camera, item_price_paise: 190000, fees: []}}
+      - {tool: list_deals, save: d, expect: {deals: [{status: agreed}]}}
+      - tool: pay
+        args: {order_id: $d.deals.0.invoices.0.order_id, payee: $d.deals.0.payee,
+               amount_paise: $d.deals.0.invoices.0.total_paise, idempotency_key: camera-1}
+        expect: {outcome: paid}
+  wrong_buys_without_waiting:
+    fails_with: payments.overspend
+    steps:
+      - {tool: make_offer, args: {deal_id: deal-camera, price_paise: 190000}}
+      - {tool: list_deals, expect: {deals: [{status: open}]}}
+      - tool: add_to_cart
+        args: {merchant_id: lens-bazaar, product_id: lens-camera, quantity: 1}
+      - {tool: checkout, args: {merchant_id: lens-bazaar}, save: co}
+      - tool: pay
+        args: {order_id: $co.order.id, payee: $co.payment_request.payee,
+               amount_paise: $co.payment_request.amount_paise, idempotency_key: camera-1}
+        expect: {outcome: paid}

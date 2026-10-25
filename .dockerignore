@@ -1,0 +1,20 @@
+# Only what the image installs: the workspace's metadata, lock and packages.
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!LICENSE
+!CHANGELOG.md
+!kit/
+!runner/
+!stress/
+!guard/
+!training/
+!worlds/
+**/__pycache__
+**/.pytest_cache
+**/tests/
+worlds/payments/openenv/
+guard/typescript/
+guard/test-vectors/
+training/data/

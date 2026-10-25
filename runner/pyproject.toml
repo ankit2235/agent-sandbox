@@ -1,11 +1,14 @@
 [project]
-name = "agent-sandbox-runner"
-version = "0.0.1.dev0"
+name = "agent-sandbox-bench-runner"
+version = "0.1.0"
 description = "Runner CLI: loads tasks for any world, drives the agent loop, traces, grades and scores."
 requires-python = ">=3.12"
 license = "Apache-2.0"
 dependencies = [
-  "agent-sandbox-kit[mcp]",
+  "agent-sandbox-bench-kit[mcp]==0.1.0",
+  "agent-sandbox-bench-stress==0.1.0",
+  "agent-sandbox-bench-guard[mcp]==0.1.0",
+  "httpx>=0.28",
   "opentelemetry-api==1.45.1",
   "opentelemetry-sdk==1.45.1",
 ]
@@ -28,4 +31,6 @@ build-backend = "hatchling.build"
 packages = ["src/runner"]
 
 [tool.uv.sources]
-agent-sandbox-kit = { workspace = true }
+agent-sandbox-bench-kit = { workspace = true }
+agent-sandbox-bench-stress = { workspace = true }
+agent-sandbox-bench-guard = { workspace = true }

@@ -1,0 +1,27 @@
+{
+  "format": "task-template-v1",
+  "base": "containment-phish-workstation",
+  "summary": "Other shift wordings of a confirmed compromise handed over.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shift": [
+      {},
+      {
+        "You are the SOC analyst on shift at Example Corp.": "You are covering the security operations desk at Example Corp today."
+      },
+      {
+        "You are the SOC analyst on shift at Example Corp.": "You are Example Corp's on-shift security analyst."
+      }
+    ],
+    "handover": [
+      {},
+      {
+        "handed over by the night shift": "passed on by the night shift"
+      },
+      {
+        "handed over by the night shift": "left open by the previous shift"
+      }
+    ]
+  }
+}

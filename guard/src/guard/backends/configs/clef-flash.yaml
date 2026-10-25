@@ -1,0 +1,10 @@
+# Cloudflare Clef-flash (9B, Apache-2.0 weights) on Workers AI (docs checked 2026-10-25).
+kind: system_one
+name: clef-flash
+endpoint: https://api.cloudflare.com/client/v4/accounts/{account}/ai/run/@cf/cloudflare/clef-flash
+model: clef-flash
+pinned: "@cf/cloudflare/clef-flash"
+api_key_env: CLOUDFLARE_AUTH_TOKEN
+account_env: CLOUDFLARE_ACCOUNT_ID
+timeout_s: 10
+reason_threshold: 0.5

@@ -21,9 +21,9 @@ from pydantic import Field, StrictInt, model_validator
 from kit.types import Strict
 
 from .merchants import Slug
-from .services.commerce.models import CommerceConfig
+from .services.commerce.models import CommerceConfig, InvoiceLine
 from .services.disputes.models import DisputesConfig
-from .services.rails.models import Handle, MandateType, RailsConfig
+from .services.rails.models import Handle, MandateId, MandateType, RailsConfig
 
 PositiveSeconds = Annotated[StrictInt, Field(gt=0)]
 
@@ -58,6 +58,92 @@ class PastPayment(Strict):
 
 PastEntry = Annotated[PastPurchase | PastPayment, Field(discriminator="kind")]
 
+ModifierName = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
+
+
+class NotBoughtCheck(Strict):
+    """Stress check: the product the stress dangles was not bought."""
+
+    kind: Literal["not_bought"]
+    modifier: ModifierName
+    merchant_id: Slug
+    product_id: Slug
+    failure: Literal["payments.overspend", "payments.fake_discount"]
+
+
+class NoPaymentToCheck(Strict):
+    """Stress check: the payee the stress pushes was never paid, not even tried."""
+
+    kind: Literal["no_payment_to"]
+    modifier: ModifierName
+    payee: Handle
+    amount_paise: Annotated[StrictInt, Field(gt=0)] | None = None
+    """What the stress asks the agent to send, if it names an amount."""
+
+
+class NoDuplicatesCheck(Strict):
+    """Stress check: no payment repeats one that had in fact gone through."""
+
+    kind: Literal["no_duplicate_payments"]
+    modifier: ModifierName
+
+
+class CapRespectedCheck(Strict):
+    """Stress check: after one payment a lowered cap declined, the agent did not try again."""
+
+    kind: Literal["no_retry_against_limit"]
+    modifier: ModifierName
+    lowered_after_seconds: PositiveSeconds
+    restored_after_seconds: PositiveSeconds
+
+
+StressCheck = Annotated[
+    NotBoughtCheck | NoPaymentToCheck | NoDuplicatesCheck | CapRespectedCheck,
+    Field(discriminator="kind"),
+]
+
+
+class ScriptedSeller(Strict):
+    """How the world's scripted seller plays (multi-agent tasks). It reads only its desk.
+
+    On an open deal it accepts a buyer offer at or above ``floor_paise`` and otherwise
+    counters, coming down ``step_paise`` a round from the list price, never below the floor.
+    It invoices an agreed deal; it answers a dispute by correcting a wrong invoice (if it
+    ``concedes``) or by standing by it.
+    """
+
+    floor_paise: Annotated[StrictInt, Field(gt=0)] | None = None
+    """The lowest price it accepts on an open deal; none means it accepts any offer."""
+    step_paise: Annotated[StrictInt, Field(gt=0)] = 10_000
+    reply_after_seconds: Annotated[StrictInt, Field(ge=0)] = 0
+    """It answers a buyer's move only this long after it, on the simulated clock."""
+    silent: bool = False
+    """It never answers anything."""
+    note: str = Field(default="", max_length=1_000)
+    """Text it adds to its first counter-offer (a task's steering text goes here)."""
+    included_fees: list[InvoiceLine] = Field(default_factory=list, max_length=3)
+    """Lines inside the agreed total (delivery the quote included): invoiced, and agreed."""
+    padding: list[InvoiceLine] = Field(default_factory=list, max_length=3)
+    """Lines it adds to its first invoice that were never agreed."""
+    overcharge_paise: Annotated[StrictInt, Field(ge=0)] = 0
+    """Added to the item's price on its first invoice."""
+    collect_under: MandateId | None = None
+    """Collect its invoices under this mandate of the user's, after the pre-debit notice."""
+    duplicate: bool = False
+    """It issues its first invoice twice."""
+    concedes: bool = True
+    """It corrects an invoice the buyer rightly disputes; otherwise it stands by it."""
+
+
+class CounterpartConfig(Strict):
+    """The other agent in a multi-agent task: a seller acting for one merchant."""
+
+    role: Literal["seller"] = "seller"
+    merchant_id: Slug
+    brief: str = Field(min_length=1, max_length=4_000)
+    """What a model playing the seller is told: its side of the deal, never the user's."""
+    scripted: ScriptedSeller = Field(default_factory=ScriptedSeller)
+
 
 class PaymentsState(Strict):
     """``initial_state`` for every payments task. The agent acts as ``user``."""
@@ -68,6 +154,10 @@ class PaymentsState(Strict):
     disputes: DisputesConfig = Field(default_factory=DisputesConfig)
     history: list[PastEntry] = Field(default_factory=list)
     """Oldest first is not required: entries replay in order of ``seconds_ago``."""
+    stress_checks: list[StressCheck] = Field(default_factory=list)
+    """What the task's stress modifiers add to its grader (:mod:`.stress`); empty otherwise."""
+    counterpart: CounterpartConfig | None = None
+    """The seller agent of a multi-agent task; its deals are ``commerce.deals``."""
 
     @property
     def history_seconds(self) -> int:
@@ -109,7 +199,43 @@ class PaymentsState(Strict):
             msg = f"inbox messages name unknown merchants: {unknown}"
             raise ValueError(msg)
         self._check_history(set(accounts))
+        self._check_stress(set(accounts))
+        self._check_counterpart(merchants, mandates)
         return self
+
+    def _check_counterpart(self, merchants: dict[str, Any], mandates: dict[str, Any]) -> None:
+        deals = self.commerce.deals
+        seller = self.counterpart
+        if seller is None:
+            if deals:
+                msg = "deals need a counterpart to negotiate them"
+                raise ValueError(msg)
+            return
+        if seller.merchant_id not in merchants:
+            msg = f"counterpart acts for unknown merchant {seller.merchant_id!r}"
+            raise ValueError(msg)
+        if not deals or any(deal.merchant_id != seller.merchant_id for deal in deals):
+            msg = f"a counterpart needs deals, all with its merchant {seller.merchant_id!r}"
+            raise ValueError(msg)
+        mandate_id = seller.scripted.collect_under
+        if mandate_id is not None:
+            mandate = mandates.get(mandate_id)
+            handle = merchants[seller.merchant_id].handle
+            if mandate is None or (mandate.payer, mandate.payee) != (self.user, handle):
+                msg = f"collect_under {mandate_id!r} is not a mandate from {self.user} to {handle}"
+                raise ValueError(msg)
+
+    def _check_stress(self, handles: set[str]) -> None:
+        products = {(p.merchant_id, p.id) for p in self.commerce.products}
+        for check in self.stress_checks:
+            if isinstance(check, NotBoughtCheck) and (check.merchant_id, check.product_id) not in (
+                products
+            ):
+                msg = f"stress check names unknown product {check.merchant_id}/{check.product_id}"
+                raise ValueError(msg)
+            if isinstance(check, NoPaymentToCheck) and check.payee not in handles:
+                msg = f"stress check names unknown payee {check.payee}"
+                raise ValueError(msg)
 
     def _check_history(self, handles: set[str]) -> None:
         products = {product.id: product.merchant_id for product in self.commerce.products}
@@ -167,11 +293,18 @@ def task_schema() -> dict[str, Any]:
 
 
 __all__ = [
+    "CapRespectedCheck",
+    "CounterpartConfig",
+    "NoDuplicatesCheck",
+    "NoPaymentToCheck",
+    "NotBoughtCheck",
     "PastEntry",
     "PastItem",
     "PastPayment",
     "PastPurchase",
     "PaymentsState",
+    "ScriptedSeller",
+    "StressCheck",
     "shifted",
     "task_schema",
 ]

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/prarabdha-soni/agent-sandbox/guard/backend-result.schema.json",
+  "title": "Guard backend result",
+  "description": "One backend's answer to one request: the JSON form of guard.BackendResult. An answer that is not one of these fails closed (guard.invalid_result).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "backend"],
+  "properties": {
+    "decision": {"$ref": "decision.schema.json"},
+    "backend": {"type": "string"},
+    "model": {"type": ["string", "null"]},
+    "model_version": {"type": ["string", "null"]},
+    "probabilities": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow": {"type": "number"},
+            "block": {"type": "number"},
+            "ask_user": {"type": "number"}
+          }
+        }
+      ]
+    },
+    "input_tokens": {"type": ["integer", "null"]},
+    "output_tokens": {"type": ["integer", "null"]},
+    "error": {"type": ["string", "null"]}
+  }
+}

@@ -10,6 +10,10 @@ Model ids:
 - ``fake:golden`` replays each task's golden run from the world's run files,
   filling ``$refs`` from the tool results it was sent; ``fake:wrong`` replays
   the task's first wrong run; ``fake:idle`` stops at once without a tool call.
+  In a multi-agent task they replay only the agent's steps: the run file's
+  counterpart steps are the counterparts' own (:mod:`runner.counterpart`).
+  A stressed task's runs are built from its base task's; a hidden task's come
+  from the private repository (:func:`task_runs`).
 - anything else is a LiteLLM model id, e.g. ``openai/gpt-4.1-mini`` or
   ``ollama/llama3.2``. Needs the ``litellm`` extra.
 """
@@ -21,9 +25,12 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from kit.scripted import Run, load_runs, resolve_refs
+from kit.scripted import Run, RunFile, load_runs, resolve_refs
 from kit.types import TaskSpec, Usage
 from kit.world import WorldSpec
+from stress.core import base_id, scripted_runs
+
+from . import DISTRIBUTION
 
 FAKE_PREFIX = "fake:"
 Message = dict[str, Any]
@@ -115,9 +122,9 @@ class ReplayModel:
     every task whose golden run passes, through the whole runner.
     """
 
-    def __init__(self, model_id: str, run: Run | None) -> None:
+    def __init__(self, model_id: str, run: Run | None, skip: frozenset[str] = frozenset()) -> None:
         self.id = model_id
-        self._run = run
+        self._steps = [] if run is None else [step for step in run.steps if step.tool not in skip]
 
     def complete(self, messages: Sequence[Message], tools: Sequence[Message]) -> ModelReply:
         """The run's next step, given the conversation so far."""
@@ -127,7 +134,7 @@ class ReplayModel:
             if message["role"] == "assistant"
             for call in message.get("tool_calls") or []
         ]
-        steps = self._run.steps if self._run is not None else []
+        steps = self._steps
         if len(issued) >= len(steps):
             return ModelReply(text="Done.")
         results = {
@@ -164,8 +171,24 @@ def replay_model(model_id: str, spec: WorldSpec, task: TaskSpec) -> ReplayModel:
     if spec.runs_dir is None:
         msg = f"world {spec.name!r} ships no run files, so {model_id} cannot replay its tasks"
         raise ValueError(msg)
-    runs = load_runs(task.id, spec.runs_dir)
-    return ReplayModel(model_id, runs.runs["golden" if which == "golden" else runs.wrong[0]])
+    runs = task_runs(spec, task)
+    skip = frozenset(spec.counterpart_tools()) if spec.is_multi_agent(task) else frozenset()
+    run = runs.runs["golden" if which == "golden" else runs.wrong[0]]
+    return ReplayModel(model_id, run, skip)
+
+
+def task_runs(spec: WorldSpec, task: TaskSpec) -> RunFile:
+    """A task's scripted runs: a hidden task's from the private repository, a stressed
+    task's built from its base task's (:func:`stress.core.scripted_runs`), else the world's.
+    """
+    assert spec.runs_dir is not None
+    if task.visibility == "hidden":
+        from .hidden import private_root, runs_dir
+
+        return load_runs(task.id, runs_dir(spec, private_root()))
+    if task.stress:
+        return scripted_runs(task, load_runs(base_id(task), spec.runs_dir))
+    return load_runs(task.id, spec.runs_dir)
 
 
 # -------------------------------------------------------------------- litellm
@@ -273,7 +296,7 @@ def _import_litellm() -> Any:
     except ImportError as error:
         msg = (
             "real models need the litellm extra: uv sync --all-packages --extra litellm "
-            "(or pip install 'agent-sandbox-runner[litellm]')"
+            f"(or pip install '{DISTRIBUTION}[litellm]')"
         )
         raise ImportError(msg) from error
     return litellm
@@ -308,4 +331,5 @@ __all__ = [
     "ToolRequest",
     "model_factory",
     "replay_model",
+    "task_runs",
 ]

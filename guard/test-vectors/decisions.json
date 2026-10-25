@@ -1,0 +1,3099 @@
+{
+  "format": "guard-vectors-decisions-v1",
+  "checks": {
+    "vectors.rule.block-check": "block",
+    "vectors.rule.ask-check": "ask_user"
+  },
+  "cases": [
+    {
+      "name": "nothing broken, no backend",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "allow",
+        "layer": "hard",
+        "reason_codes": [],
+        "confidence": 1.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "over the per-action budget",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 100001,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-per-action-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "149ce31e44ec7d35809f953f82e45aede91067c83237904109100d2764efb456",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "exactly the per-action budget",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 100000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "allow",
+        "layer": "hard",
+        "reason_codes": [],
+        "confidence": 1.0,
+        "inputs_hash": "59f7806a37500f85f9e45f3cf0c942a4f34a18f6e6829850497182f2145356b7",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "over the daily budget with today's history",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "daily": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 40000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [
+        {
+          "tool": "pay",
+          "amount": 70000,
+          "sim_time": "2026-01-01T08:00:00Z"
+        }
+      ],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-daily-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "b7fa259dd226ddc41128fbdcf9b1e7bf7323ec1da48229c3285224d452f7244e",
+        "policy_hash": "9289b6c84d267097f911c078acd614648231639ee1b4f93cd2e523f23028210f",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "yesterday does not count against today",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "daily": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 40000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [
+        {
+          "tool": "pay",
+          "amount": 70000,
+          "sim_time": "2025-12-31T23:59:00Z"
+        }
+      ],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "allow",
+        "layer": "hard",
+        "reason_codes": [],
+        "confidence": 1.0,
+        "inputs_hash": "b7fa259dd226ddc41128fbdcf9b1e7bf7323ec1da48229c3285224d452f7244e",
+        "policy_hash": "9289b6c84d267097f911c078acd614648231639ee1b4f93cd2e523f23028210f",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "another tool does not count",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "daily": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 40000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [
+        {
+          "tool": "refund",
+          "amount": 70000,
+          "sim_time": "2026-01-01T08:00:00Z"
+        }
+      ],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "allow",
+        "layer": "hard",
+        "reason_codes": [],
+        "confidence": 1.0,
+        "inputs_hash": "b7fa259dd226ddc41128fbdcf9b1e7bf7323ec1da48229c3285224d452f7244e",
+        "policy_hash": "9289b6c84d267097f911c078acd614648231639ee1b4f93cd2e523f23028210f",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "over the monthly budget",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "monthly": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-20T10:00:00Z"
+      },
+      "fields": {
+        "amount": 40000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [
+        {
+          "tool": "pay",
+          "amount": 70000,
+          "sim_time": "2026-01-02T08:00:00Z"
+        }
+      ],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-monthly-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "ede42a5e77008287b0c9d562fc4d35d1790fa1ca7bd0cce3877ec509535e9cd4",
+        "policy_hash": "c5d187efe06b797701624595cb7873843b5e5bf195d3658e96c527c9a4132c9f",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "history in another time zone, same UTC day",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "daily": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 40000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [
+        {
+          "tool": "pay",
+          "amount": 70000,
+          "sim_time": "2026-01-01T05:30:00+05:30"
+        }
+      ],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-daily-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "b7fa259dd226ddc41128fbdcf9b1e7bf7323ec1da48229c3285224d452f7244e",
+        "policy_hash": "9289b6c84d267097f911c078acd614648231639ee1b4f93cd2e523f23028210f",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "above the confirm threshold",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "confirm_above": 50000
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.confirm-above"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "33f9ad9678190061d068f177703beebf8c61811bdd5bb92196d92fd63b8f4db5",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "a budget and no amount",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.missing-amount"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3bcbc6c98a67a699430a6f86d288a9c039857ec77bbf46644f6a03ab99f37c9a",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "blocked counterparty",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "counterparties": {
+              "block": [
+                "scam@sandbox"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": "scam@sandbox",
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.counterparty-blocked"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "be9121b83ef9be183a535148ef5f14970e1394ab46de6cee5869d7ac24d67d83",
+        "policy_hash": "54d64bfc0f84198664832a6785a7859b9521c5ba377efa310858025e892943ee",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "unlisted counterparty asks by default",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "counterparties": {
+              "allow": [
+                "shop@sandbox"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": "other@sandbox",
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.counterparty-unlisted"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "37360ff513988bd8704019223c958355a64869076dc9cec79cf4c7d3908a984f",
+        "policy_hash": "9fe2c68d79dd9c3d7477ce47b8cea7a06ddfba8bfed365766193e844c427e766",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "unlisted counterparty blocked",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "counterparties": {
+              "allow": [
+                "shop@sandbox"
+              ],
+              "unlisted": "block"
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": "other@sandbox",
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.counterparty-unlisted"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "37360ff513988bd8704019223c958355a64869076dc9cec79cf4c7d3908a984f",
+        "policy_hash": "f8d7752f9c9cbf422d43859c8adf1b1794da405d4ba81e09ac245d4283c9b04f",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "listed counterparty",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "counterparties": {
+              "allow": [
+                "shop@sandbox"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": "shop@sandbox",
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "allow",
+        "layer": "hard",
+        "reason_codes": [],
+        "confidence": 1.0,
+        "inputs_hash": "0bdb409f838b6ec69f527faae02b172dc4b57c6b240df38a49fedc8a95004afd",
+        "policy_hash": "9fe2c68d79dd9c3d7477ce47b8cea7a06ddfba8bfed365766193e844c427e766",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "counterparty rule and none named",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "counterparties": {
+              "block": [
+                "x"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.missing-counterparty"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3bcbc6c98a67a699430a6f86d288a9c039857ec77bbf46644f6a03ab99f37c9a",
+        "policy_hash": "5679419e0efc67af0fe1b2a46ea66dbaa06fc658a402dfb9303bc5c1d2516764",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "confirm-first category",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "categories": {
+              "confirm": [
+                "travel"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": "travel",
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.category-confirm"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "718d1b6240ce350cefe1ba20d1ee0033847ee2665661a09f90e8cf701bfce887",
+        "policy_hash": "66a242b7ebe39dfaae7bb66d75c0191fe635b5a2d0e4ad9feb278f957b10653a",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "blocked category wins over confirm",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "categories": {
+              "block": [
+                "travel"
+              ],
+              "confirm": [
+                "travel"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": "travel",
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.category-blocked"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "718d1b6240ce350cefe1ba20d1ee0033847ee2665661a09f90e8cf701bfce887",
+        "policy_hash": "5b423fbee1f32e15e3205c63cf0c3abf8d4f14788e185fc517be66a740bdb43c",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "mandate required and none named",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "mandate": {
+              "required": true
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.mandate-required"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3bcbc6c98a67a699430a6f86d288a9c039857ec77bbf46644f6a03ab99f37c9a",
+        "policy_hash": "8e27198c23f56335cdc082f0aab94cce005542b6d8698cc4d359013cd60bddb2",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "mandate not allowed",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "mandate": {
+              "allow": [
+                "mandate-1"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": "mandate-2"
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.mandate-not-allowed"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "0a2fcba7c73e03163c8e697aaf3314d66be414f13af5c3bb3ee13375f1c2c3d9",
+        "policy_hash": "69a49f0da72e27d63c6ce6b4c02a684f942ef8f61972c2b91cdee5e4c7a0de39",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "inside the time window",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "time_windows": {
+              "windows": [
+                {
+                  "days": [
+                    "thu"
+                  ],
+                  "start": "09:00",
+                  "end": "17:00"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "allow",
+        "layer": "hard",
+        "reason_codes": [],
+        "confidence": 1.0,
+        "inputs_hash": "3bcbc6c98a67a699430a6f86d288a9c039857ec77bbf46644f6a03ab99f37c9a",
+        "policy_hash": "b7cbe7249fda74ad51f819f0ba516d020bcbe5bff86cbc79d5b994029dbc6a76",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "at the window's end",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "time_windows": {
+              "windows": [
+                {
+                  "days": [
+                    "thu"
+                  ],
+                  "start": "08:00",
+                  "end": "09:00"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.outside-time-window"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3bcbc6c98a67a699430a6f86d288a9c039857ec77bbf46644f6a03ab99f37c9a",
+        "policy_hash": "0f8e3f4393150567ffc988adc557a1c20f3b2cec7861d659a680e11d3e860c2e",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "outside the window, blocked",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "time_windows": {
+              "windows": [
+                {
+                  "days": [
+                    "fri"
+                  ],
+                  "start": "09:00",
+                  "end": "17:00"
+                }
+              ],
+              "outside": "block"
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.outside-time-window"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3bcbc6c98a67a699430a6f86d288a9c039857ec77bbf46644f6a03ab99f37c9a",
+        "policy_hash": "ba04f95714f800305dc07bdc3c5f281c33dba19a40a0b5db3b2eadb60e94eb8d",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "window read in UTC",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "time_windows": {
+              "windows": [
+                {
+                  "days": [
+                    "thu"
+                  ],
+                  "start": "09:00",
+                  "end": "17:00"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T14:00:00+05:30"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.outside-time-window"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "2595d539e94123df24785756c61eac96f8cd3c75c685c7ed3f18d5fb3bc5bbfd",
+        "policy_hash": "b7cbe7249fda74ad51f819f0ba516d020bcbe5bff86cbc79d5b994029dbc6a76",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "tool the policy does not name",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "refund",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "ask_user",
+        "layer": "default",
+        "reason_codes": [
+          "guard.policy.uncovered-tool"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "bf726b5a1677e72b83e2e9ab40475815ae785776d761f27ad83bd611e73beedf",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "tool the policy does not name, default allow",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        },
+        "default": "allow"
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "refund",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "block",
+            "reason_codes": [],
+            "confidence": 1.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "allow",
+        "layer": "default",
+        "reason_codes": [],
+        "confidence": 1.0,
+        "inputs_hash": "bf726b5a1677e72b83e2e9ab40475815ae785776d761f27ad83bd611e73beedf",
+        "policy_hash": "816fd734c46ee5e63b3d4f87632817e07b681e46c177030ac60a459f2ec718a5",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "tool the task did not delegate",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {}
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {
+          "allowed_tools": [
+            "refund"
+          ]
+        },
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.tool-not-delegated"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "db9b78a0ccff5ea554e7486b74cce27aa2d9d1eca7c9f539c723fbc3120a3249",
+        "policy_hash": "2650adaf6e790fa932b2e9d1686bf2fbdb39b73033b0c2fcec0b364fa92c7eb7",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "world check blocks",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "checks": [
+              "vectors.rule.block-check",
+              "vectors.rule.ask-check"
+            ]
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [
+        "vectors.rule.block-check",
+        "vectors.rule.ask-check"
+      ],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "vectors.rule.block-check",
+          "vectors.rule.ask-check"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3bcbc6c98a67a699430a6f86d288a9c039857ec77bbf46644f6a03ab99f37c9a",
+        "policy_hash": "01ff02a79563f7d3ec1f6e1bf0cc0f29036910c799759818333af13383b68a3f",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "world check asks",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "checks": [
+              "vectors.rule.ask-check"
+            ]
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [
+        "vectors.rule.ask-check"
+      ],
+      "backend": null,
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "vectors.rule.ask-check"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3bcbc6c98a67a699430a6f86d288a9c039857ec77bbf46644f6a03ab99f37c9a",
+        "policy_hash": "056abbd199fad5eef033fe183b7ac0611a272b85e61b3025190e09316295d8d7",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "delegation stricter than the policy",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": {
+        "pay": {
+          "budget": {
+            "per_action": 50000
+          }
+        }
+      },
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-per-action-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": "805cc13ea7cad493e83dd3c96683d546e2c2743af9e5d9ceaae5e30183d919cb"
+      }
+    },
+    {
+      "name": "a delegation cannot loosen the policy",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 50000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": {
+        "pay": {
+          "budget": {
+            "per_action": 900000
+          }
+        }
+      },
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-per-action-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "a88200e54ddc942b3ff802268537321179c1ccdedabe02a1683b793342f8cda0",
+        "delegation_hash": "b892aaae5eab68543e1f61c71e1b120c21153e9b02aa2cd1e513a856bcd1c960"
+      }
+    },
+    {
+      "name": "sandbox: the policy's numbers left out",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 10000
+            },
+            "confirm_above": 10000
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": {
+        "pay": {
+          "budget": {
+            "per_action": 900000
+          }
+        }
+      },
+      "pack_limits": false,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "allow",
+        "layer": "hard",
+        "reason_codes": [],
+        "confidence": 1.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "a1d4d7cf464c344b03510bb97acc160ab52f944f0fc8c36506ffe565094230ff",
+        "delegation_hash": "b892aaae5eab68543e1f61c71e1b120c21153e9b02aa2cd1e513a856bcd1c960"
+      }
+    },
+    {
+      "name": "sandbox: the task's own limit still holds",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 10000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": {
+        "pay": {
+          "budget": {
+            "per_action": 50000
+          }
+        }
+      },
+      "pack_limits": false,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-per-action-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "6197227de702459b6de13a405969fc799cdf3ad21aa82694e609e4e4bc04fd0e",
+        "delegation_hash": "805cc13ea7cad493e83dd3c96683d546e2c2743af9e5d9ceaae5e30183d919cb"
+      }
+    },
+    {
+      "name": "same code, stricter decision kept",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "counterparties": {
+              "allow": [
+                "a"
+              ]
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": null,
+        "counterparty": "b",
+        "category": null,
+        "mandate": null
+      },
+      "delegation": {
+        "pay": {
+          "counterparties": {
+            "allow": [
+              "a"
+            ],
+            "unlisted": "block"
+          }
+        }
+      },
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": null,
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.counterparty-unlisted"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "01595900cde323bf8e7a1f27186bdb45ded0013c5d0c877f8a137551b798eccd",
+        "policy_hash": "d35ebea218074b19190390c6ee5965a57ba98e45f29ddf0a6a57a4adb9d186b5",
+        "delegation_hash": "dab9ff380f0e4c3f959eba86ece41d06bda2feeab1fc6108e5c53faa05fbef4e"
+      }
+    },
+    {
+      "name": "backend allows",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 0.9
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "allow",
+        "layer": "backend",
+        "reason_codes": [],
+        "confidence": 0.9,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "backend cannot unblock a hard block",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 200000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 1.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-per-action-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3509e3772fb80b2a8fa97a8662b06d302195249901ccb54f0c852e904a39ad6d",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "backend cannot allow a hard ask_user",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "confirm_above": 50000
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 1.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.confirm-above"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "33f9ad9678190061d068f177703beebf8c61811bdd5bb92196d92fd63b8f4db5",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "backend makes a hard ask_user a block",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "confirm_above": 50000
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "block",
+            "reason_codes": [
+              "vectors.wrong_payee"
+            ],
+            "confidence": 0.8
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "block",
+        "layer": "backend",
+        "reason_codes": [
+          "guard.policy.confirm-above",
+          "vectors.wrong_payee"
+        ],
+        "confidence": 0.8,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "33f9ad9678190061d068f177703beebf8c61811bdd5bb92196d92fd63b8f4db5",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "backend blocks",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "block",
+            "reason_codes": [
+              "vectors.planted_instruction"
+            ],
+            "confidence": 0.9
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "block",
+        "layer": "backend",
+        "reason_codes": [
+          "vectors.planted_instruction"
+        ],
+        "confidence": 0.9,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "low confidence allow asks",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        },
+        "model_check": {
+          "min_confidence": 0.7
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 0.6
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "backend",
+        "reason_codes": [
+          "guard.low_confidence"
+        ],
+        "confidence": 0.6,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "3a577f522b104253dffea4b4fec99a945d8de9ead7f4a3bee24fa99c290699ae",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "low confidence block asks",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        },
+        "model_check": {
+          "min_confidence": 0.7
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "block",
+            "reason_codes": [
+              "vectors.x"
+            ],
+            "confidence": 0.5
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "backend",
+        "reason_codes": [
+          "vectors.x",
+          "guard.low_confidence"
+        ],
+        "confidence": 0.5,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "3a577f522b104253dffea4b4fec99a945d8de9ead7f4a3bee24fa99c290699ae",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "the threshold itself is enough",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        },
+        "model_check": {
+          "min_confidence": 0.7
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 0.7
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "allow",
+        "layer": "backend",
+        "reason_codes": [],
+        "confidence": 0.7,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "3a577f522b104253dffea4b4fec99a945d8de9ead7f4a3bee24fa99c290699ae",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "backend times out",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        },
+        "model_check": {
+          "timeout_s": 0.05
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "late": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 1.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "fail_closed",
+        "reason_codes": [
+          "guard.timeout"
+        ],
+        "confidence": 0.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "a85ac6000f5f24eac077dce12b781b71e8fa58be83d9438851ecb51413f3810d",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "late allow cannot unblock",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        },
+        "model_check": {
+          "timeout_s": 0.05
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 200000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "late": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 1.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-per-action-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3509e3772fb80b2a8fa97a8662b06d302195249901ccb54f0c852e904a39ad6d",
+        "policy_hash": "a85ac6000f5f24eac077dce12b781b71e8fa58be83d9438851ecb51413f3810d",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "late allow cannot allow a hard ask_user",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "confirm_above": 50000
+          }
+        },
+        "model_check": {
+          "timeout_s": 0.05
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "late": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 1.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.confirm-above"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "ac02205df9e1890a7f68f76d37a7e48da4e9fcb9f543fcbb2f779d1066611c21",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "backend raises",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "raises": true
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "fail_closed",
+        "reason_codes": [
+          "guard.backend_error"
+        ],
+        "confidence": 0.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "backend fails closed itself",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "ask_user",
+            "reason_codes": [
+              "guard.provider_error"
+            ],
+            "confidence": 0.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1",
+          "error": "provider_error"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "fail_closed",
+        "reason_codes": [
+          "guard.provider_error"
+        ],
+        "confidence": 0.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "unknown field in the decision",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "invalid": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 1.0,
+            "override_hard_rules": true
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "fail_closed",
+        "reason_codes": [
+          "guard.invalid_result"
+        ],
+        "confidence": 0.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "unknown field beside the decision",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "invalid": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 1.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1",
+          "force": "allow"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "fail_closed",
+        "reason_codes": [
+          "guard.invalid_result"
+        ],
+        "confidence": 0.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "unknown field under a hard block",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 200000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "invalid": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 1.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1",
+          "force": "allow"
+        }
+      },
+      "expected": {
+        "decision": "block",
+        "layer": "hard",
+        "reason_codes": [
+          "guard.policy.over-per-action-budget"
+        ],
+        "confidence": 1.0,
+        "inputs_hash": "3509e3772fb80b2a8fa97a8662b06d302195249901ccb54f0c852e904a39ad6d",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "not a decision at all",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "invalid": {
+          "decision": "allow"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "fail_closed",
+        "reason_codes": [
+          "guard.invalid_result"
+        ],
+        "confidence": 0.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "confidence out of range",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            }
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "invalid": {
+          "decision": {
+            "decision": "allow",
+            "reason_codes": [],
+            "confidence": 1.5
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "ask_user",
+        "layer": "fail_closed",
+        "reason_codes": [
+          "guard.invalid_result"
+        ],
+        "confidence": 0.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "17285725ed34b843dd3cea3a6ed6ffb0dc9a7228f177888c55eb9685073fa588",
+        "delegation_hash": null
+      }
+    },
+    {
+      "name": "model check off for the tool",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000
+            },
+            "model_check": false
+          }
+        }
+      },
+      "request": {
+        "world": "vectors",
+        "instruction": "Pay the shop for the kettle, under 1,000.",
+        "policy": {},
+        "state": {},
+        "recent_steps": [],
+        "read": [],
+        "action": {
+          "tool": "pay",
+          "args": {
+            "payee": "shop@sandbox",
+            "amount_paise": 70000
+          }
+        },
+        "sim_time": "2026-01-01T09:00:00Z"
+      },
+      "fields": {
+        "amount": 70000,
+        "counterparty": null,
+        "category": null,
+        "mandate": null
+      },
+      "delegation": null,
+      "pack_limits": true,
+      "history": [],
+      "fires": [],
+      "backend": {
+        "result": {
+          "decision": {
+            "decision": "block",
+            "reason_codes": [],
+            "confidence": 1.0
+          },
+          "backend": "vectors-backend",
+          "model": "vectors-model",
+          "model_version": "v1"
+        }
+      },
+      "expected": {
+        "decision": "allow",
+        "layer": "hard",
+        "reason_codes": [],
+        "confidence": 1.0,
+        "inputs_hash": "bdb75c02108f605257734f983c63dd26e32a77c79045989b2a5da93535d2d48b",
+        "policy_hash": "4c85f5fe1739b1a3d3600eb5364591cd941543afc17819347e69699d1d556b7a",
+        "delegation_hash": null
+      }
+    }
+  ]
+}

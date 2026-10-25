@@ -6,14 +6,27 @@ Layout of ``--out``::
     spans.jsonl                OpenTelemetry spans (see :mod:`runner.tracing`)
     runs/<run_id>/trace.jsonl  the full trace, agent messages included
     runs/<run_id>/result.json  the record: grade, usage, stop reason; written last
+    runs/<run_id>/decisions.jsonl  with --guard: the run's hash-chained decision records
+    runs/<run_id>/episode/     with --isolation container, while the run is going: the
+                               container's only writable path, removed when it ends
 
 A run is finished when its ``result.json`` says ``completed``. Running the same
 command again skips finished runs and redoes the rest: a run killed midway has no
 ``result.json`` and starts again from a fresh world, and an ``error`` run (the
 provider kept failing) is retried. Resuming with different settings is refused.
 
-Wall-clock time is used in exactly one place: the sleep between provider retries.
-Inside an episode, time is the episode's :class:`kit.clock.SimClock`.
+With ``--isolation container`` each run's world lives in its own locked-down container
+(:mod:`runner.isolation`); the run directory comes out the same, byte for byte, so the
+setting is not part of :class:`RunConfig` and a directory may be resumed either way.
+
+A multi-agent task (:mod:`kit.roles`) is run with its counterparts (``--counterpart``,
+:mod:`runner.counterpart`): the world's scripted players by default, or a model. Their calls
+are in the same trace; the record's ``counterpart`` says who played them and what they used.
+Multi-agent tasks do not run in containers yet (DECISIONS 271).
+
+Wall-clock time is used in exactly one place here: the sleep between provider retries
+(a guard's decision latency is measured in :mod:`guard.engine`, and never decides
+anything). Inside an episode, time is the episode's :class:`kit.clock.SimClock`.
 """
 
 from __future__ import annotations
@@ -36,12 +49,32 @@ from pydantic import BaseModel, ConfigDict, Field
 from kit.clock import EPOCH, SimClock
 from kit.episode import BaseEpisode
 from kit.rng import SeededRNG
-from kit.tasks import hidden_tasks_dir, load_tasks
+from kit.tasks import load_tasks
 from kit.types import GradeResult, TaskSpec, Usage, Visibility
 from kit.world import WorldSpec, load_grader, worlds
+from stress.core import stressed_set
 
-from .agent import CallModel, Caps, run_agent, system_prompt
-from .models import Message, ModelFactory, ModelReply, ProviderError, model_factory
+from .agent import AgentResult, CallModel, Caps, LocalEpisode, run_agent, system_prompt
+from .counterpart import SCRIPTED, Counterparts, CounterpartSummary
+from .guarding import GuardRunConfig, GuardSetup, GuardSummary
+from .isolation import (
+    CONTAINER_ERRORS,
+    GUARD_REFUSAL,
+    MULTI_AGENT_REFUSAL,
+    ContainerEpisode,
+    EpisodeFailed,
+    Isolation,
+    IsolationError,
+    preflight,
+)
+from .models import (
+    FAKE_PREFIX,
+    Message,
+    ModelFactory,
+    ModelReply,
+    ProviderError,
+    model_factory,
+)
 from .tracing import TRACER_NAME, tracer_provider
 
 RUN_FORMAT = "sandbox-run-v1"
@@ -50,6 +83,9 @@ RUNS_DIR = "runs"
 TRACE_FILE = "trace.jsonl"
 RESULT_FILE = "result.json"
 HIDDEN_SUFFIX = "-hidden"
+STRESSED_SUFFIX = "-stressed"
+STRESSED_SEED = 0
+"""The public stressed set is always built with seed 0 (decision in DECISIONS.md)."""
 
 BACKOFF_BASE = 2.0
 BACKOFF_MAX = 60.0
@@ -64,7 +100,7 @@ class RunConfig(BaseModel):
 
     world: str
     tasks: str
-    """A task set (``payments-v0.1``, ``payments-v0.1-hidden``) or a task directory."""
+    """A task set (``payments-v0.1``, ``-stressed``, ``-hidden``) or a task directory."""
     model: str
     model_name: str
     provider: str
@@ -79,6 +115,10 @@ class RunConfig(BaseModel):
     retries: int = Field(default=5, ge=0)
     prompt: str = ""
     """The system prompt's id, e.g. ``payments/v1``; filled in by :func:`execute`."""
+    guard: GuardRunConfig | None = None
+    """The guard in front of the world's high-impact tools (``--guard``), if any."""
+    counterpart: str = SCRIPTED
+    """Who plays the other agents of a multi-agent task: ``scripted`` or a model id."""
 
     @property
     def model_slug(self) -> str:
@@ -141,6 +181,10 @@ class RunRecord(BaseModel):
     model_turns: int = 0
     malformed_calls: int = 0
     retries: int = 0
+    guard: GuardSummary | None = None
+    """With a guard: its decision counts and the decision log's head."""
+    counterpart: CounterpartSummary | None = None
+    """In a multi-agent task: who played the other agents, and what they did and used."""
 
     @property
     def passed(self) -> bool:
@@ -162,8 +206,13 @@ def slug(value: str) -> str:
 
 
 def task_hash(task: TaskSpec) -> str:
-    """A fingerprint of a task, so a resumed or verified run knows the task did not change."""
-    return hashlib.sha256(task.model_dump_json().encode()).hexdigest()
+    """A fingerprint of a task, so a resumed or verified run knows the task did not change.
+
+    ``reviewer_signoff`` is left out: the agent never sees it, so a run made before a
+    reviewer signed the task off still reproduces afterwards.
+    """
+    payload = task.model_dump_json(exclude={"reviewer_signoff"})
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def task_set_version(spec: WorldSpec) -> str:
@@ -172,33 +221,64 @@ def task_set_version(spec: WorldSpec) -> str:
 
 
 def resolve_task_set(spec: WorldSpec, value: str) -> list[TaskSpec]:
-    """The tasks a ``--tasks`` value names: the public set, the hidden set, or a directory."""
+    """The tasks a ``--tasks`` value names: the public, stressed or hidden set, or a directory.
+
+    Hidden tasks load only as the hidden set, from ``HIDDEN_TASKS_DIR``, and only if they
+    match the hashes the world published (:mod:`runner.hidden`).
+    """
+    from .hidden import load_hidden
+
     base = task_set_version(spec)
+    extra = extra_set(spec, value)
     if value == base:
         tasks = spec.task_source().split(spec.version)
+    elif extra is not None:
+        tasks = load_tasks(spec.task_sets[extra])
+    elif value == base + STRESSED_SUFFIX:
+        tasks = list(_stressed_set(spec))
     elif value == base + HIDDEN_SUFFIX:
-        root = hidden_tasks_dir()
-        if root is None:
-            msg = f"{value} needs HIDDEN_TASKS_DIR pointing at the private task repository"
-            raise ValueError(msg)
-        tasks = load_tasks(root / spec.name / spec.version)
-        public = [task.id for task in tasks if task.visibility != "hidden"]
-        if public:
-            msg = f"the hidden task set holds tasks not marked hidden: {public}"
-            raise ValueError(msg)
+        tasks = load_hidden(spec)
     elif Path(value).is_dir():
         tasks = load_tasks(value)
     else:
-        msg = f"unknown task set {value!r}; use {base}, {base}{HIDDEN_SUFFIX} or a task directory"
+        extras = "".join(f", {base}-{name}" for name in spec.task_sets)
+        msg = (
+            f"unknown task set {value!r}; use {base}, {base}{STRESSED_SUFFIX}, "
+            f"{base}{HIDDEN_SUFFIX}{extras} or a task directory"
+        )
         raise ValueError(msg)
     for task in tasks:
         if task.world != spec.name or task.version != spec.version:
             msg = f"task {task.id} is {task.world}/{task.version}, not {spec.name}/{spec.version}"
             raise ValueError(msg)
+        if task.visibility == "hidden" and value != base + HIDDEN_SUFFIX:
+            msg = f"task {task.id} is hidden: hidden tasks load only as {base}{HIDDEN_SUFFIX}"
+            raise ValueError(msg)
     if not tasks:
         msg = f"task set {value!r} is empty"
         raise ValueError(msg)
     return tasks
+
+
+def extra_set(spec: WorldSpec, value: str) -> str | None:
+    """The name of the extra task set (``WorldSpec.task_sets``) ``value`` names, if it does."""
+    base = task_set_version(spec)
+    for name in spec.task_sets:
+        if value == f"{base}-{name}":
+            return name
+    return None
+
+
+_STRESSED: dict[str, tuple[TaskSpec, ...]] = {}
+
+
+def _stressed_set(spec: WorldSpec) -> tuple[TaskSpec, ...]:
+    """The public stressed set, built once per process: it is pure, and slow to build."""
+    key = task_set_version(spec)
+    if key not in _STRESSED:
+        public = spec.task_source().split(spec.version)
+        _STRESSED[key] = tuple(stressed_set(public, STRESSED_SEED, runs_dir=spec.runs_dir))
+    return _STRESSED[key]
 
 
 def select_tasks(spec: WorldSpec, config: RunConfig) -> list[TaskSpec]:
@@ -264,6 +344,26 @@ def write_json(path: Path, payload: Any) -> None:
     os.replace(temporary, path)
 
 
+def manifest_json(manifest: Manifest) -> dict[str, Any]:
+    """``manifest.json``'s content.
+
+    ``counterpart`` is written only when a model played it, so a single-agent run directory
+    is byte for byte what it was before counterparts existed.
+    """
+    payload: dict[str, Any] = manifest.model_dump(mode="json")
+    if manifest.config.counterpart == SCRIPTED:
+        del payload["config"]["counterpart"]
+    return payload
+
+
+def record_json(record: RunRecord) -> dict[str, Any]:
+    """``result.json``'s content; ``counterpart`` only in a multi-agent run."""
+    payload: dict[str, Any] = record.model_dump(mode="json")
+    if record.counterpart is None:
+        del payload["counterpart"]
+    return payload
+
+
 def load_records(out: Path) -> list[RunRecord]:
     """Every run record in a run directory, sorted by run id."""
     worlds.discover()  # records name failure types, which worlds register
@@ -290,12 +390,32 @@ def execute(
     sleep: Sleep = time.sleep,  # purity-allow: the backoff between provider retries only
     env: dict[str, str] | None = None,
     report: Callable[[RunRecord], None] | None = None,
+    guard: GuardSetup | None = None,
+    isolation: Isolation | None = None,
+    counterpart_factory: ModelFactory | None = None,
 ) -> Manifest:
-    """Run every unfinished (task, run) pair and return the updated manifest."""
+    """Run every unfinished (task, run) pair and return the updated manifest.
+
+    With ``isolation``, every run's world runs in a locked-down container; Docker and the
+    image are checked first (:class:`runner.isolation.IsolationError`). A multi-agent task's
+    counterparts are the scripted ones, or ``config.counterpart``'s model, built with
+    ``counterpart_factory`` when one is given (tests).
+    """
+    if (guard.config if guard is not None else None) != config.guard:
+        msg = "the run's guard settings and the guard given to execute() differ"
+        raise ValueError(msg)
+    if isolation is not None:
+        if guard is not None:
+            raise IsolationError(GUARD_REFUSAL)
+        preflight(isolation)
     spec = worlds.get(config.world)
     prompt_id, prompt = system_prompt(spec.name)
     config = config.model_copy(update={"prompt": prompt_id})
     tasks = select_tasks(spec, config)
+    multi = [task.id for task in tasks if spec.is_multi_agent(task)]
+    if isolation is not None and multi:
+        raise IsolationError(MULTI_AGENT_REFUSAL)
+    others = _counterpart_factory(config, counterpart_factory) if multi else None
     manifest = _start(out, config, spec, tasks)
     done = {record.run_id: record for record in load_records(out)}
     pending: list[tuple[TaskSpec, int]] = []
@@ -310,7 +430,9 @@ def execute(
     build = factory or model_factory(config.model, temperature=config.temperature)
     provider = tracer_provider(out, env)
     tracer = provider.get_tracer(TRACER_NAME)
-    one = partial(_run_one, spec, config, prompt, build, tracer, sleep, out)
+    one = partial(
+        _run_one, spec, config, prompt, build, tracer, sleep, out, guard, isolation, others
+    )
     pool = ThreadPoolExecutor(max_workers=max(1, concurrency))
     try:
         futures: list[Future[RunRecord]] = [pool.submit(one, task, n) for task, n in pending]
@@ -319,7 +441,7 @@ def execute(
             record = future.result()
             # Kept current after every run, so it is right even if the process is killed.
             manifest.status = run_status(total, load_records(out))
-            write_json(out / MANIFEST, manifest.model_dump(mode="json"))
+            write_json(out / MANIFEST, manifest_json(manifest))
             if report is not None:
                 report(record)
     except BaseException:
@@ -329,8 +451,22 @@ def execute(
         pool.shutdown(wait=True)
         provider.shutdown()
         manifest.status = run_status(len(tasks) * config.runs, load_records(out))
-        write_json(out / MANIFEST, manifest.model_dump(mode="json"))
+        write_json(out / MANIFEST, manifest_json(manifest))
     return manifest
+
+
+def _counterpart_factory(config: RunConfig, given: ModelFactory | None) -> ModelFactory | None:
+    """The model factory for model counterparts; ``None`` for the scripted ones."""
+    if config.counterpart == SCRIPTED:
+        return None
+    if given is not None:
+        return given
+    if config.counterpart.startswith(FAKE_PREFIX):
+        msg = (
+            f"--counterpart {config.counterpart}: use scripted (the fake counterpart) or a model id"
+        )
+        raise ValueError(msg)
+    return model_factory(config.counterpart, temperature=config.temperature)
 
 
 def _start(out: Path, config: RunConfig, spec: WorldSpec, tasks: list[TaskSpec]) -> Manifest:
@@ -349,7 +485,7 @@ def _start(out: Path, config: RunConfig, spec: WorldSpec, tasks: list[TaskSpec])
         return existing
     manifest = Manifest(config=config, version=task_set_version(spec), tasks=ids)
     manifest.status = run_status(len(ids) * config.runs, [])
-    write_json(out / MANIFEST, manifest.model_dump(mode="json"))
+    write_json(out / MANIFEST, manifest_json(manifest))
     return manifest
 
 
@@ -361,18 +497,20 @@ def _run_one(
     tracer: Tracer,
     sleep: Sleep,
     out: Path,
+    guard: GuardSetup | None,
+    isolation: Isolation | None,
+    others: ModelFactory | None,
     task: TaskSpec,
     attempt: int,
 ) -> RunRecord:
     """One run: a fresh world, the agent loop, the grade, the trace and the record."""
     run_id = run_id_for(config, task, attempt)
     directory = out / RUNS_DIR / run_id
-    episode = spec.make_episode(task, SimClock(EPOCH), SeededRNG(task.seed))
-    if not isinstance(episode, BaseEpisode):
-        msg = f"world {spec.name!r} must build its episodes on kit.episode.BaseEpisode"
-        raise TypeError(msg)
     model = build(spec, task)
     call = RetryingModel(model.complete, config.retries, sleep)
+    other: RetryingModel | None = None
+    if others is not None and spec.is_multi_agent(task):
+        other = RetryingModel(others(spec, task).complete, config.retries, sleep)
     record = RunRecord(
         run_id=run_id,
         task_id=task.id,
@@ -393,45 +531,154 @@ def _run_one(
         "gen_ai.request.model": config.model,
     }
     with tracer.start_as_current_span("sandbox.run", attributes=attributes) as span:
-        try:
-            first = episode.reset(task)
-            agent = partial(
-                run_agent,
-                episode,
-                task,
-                first,
-                call,
-                prompt=prompt,
-                caps=config.caps,
-                tracer=tracer,
+        if isolation is None:
+            players = Players(config.counterpart, other)
+            _in_process(
+                spec, task, prompt, config.caps, tracer, guard, call, record, directory, players
             )
-            try:
-                result = anyio.run(agent)
-            except RunFailed as error:
-                record.error = str(error)
-            else:
-                grader = load_grader(task.grader)
-                record.grade = grader(episode.state, episode.trace.grader_view(), task)
-                record.status = "completed"
-                record.stop_reason = result.stop_reason
-                record.usage = result.usage
-                record.cost_known = result.cost_known
-                record.steps = result.tool_calls
-                record.model_turns = result.model_turns
-                record.malformed_calls = result.malformed_calls
-            record.retries = call.retried
-            trace = episode.trace.model_copy(update={"run_id": run_id})
-            trace.write_jsonl(directory / TRACE_FILE)
-        finally:
-            episode.close()
+        else:
+            _in_container(task, prompt, config.caps, tracer, isolation, call, record, directory)
         span.set_attribute("sandbox.status", record.status)
         if record.grade is not None:
             span.set_attribute("sandbox.passed", record.grade.passed)
             span.set_attribute("sandbox.score", record.grade.score)
             span.set_attribute("sandbox.stop_reason", str(record.stop_reason))
         span.set_attribute("sandbox.cost_usd", record.usage.cost_usd)
-    write_json(directory / RESULT_FILE, record.model_dump(mode="json"))
+    write_json(directory / RESULT_FILE, record_json(record))
     return record
+
+
+def _completed(record: RunRecord, grade: GradeResult, result: AgentResult) -> None:
+    record.grade = grade
+    record.status = "completed"
+    record.stop_reason = result.stop_reason
+    record.usage = result.usage
+    record.cost_known = result.cost_known
+    record.steps = result.tool_calls
+    record.model_turns = result.model_turns
+    record.malformed_calls = result.malformed_calls
+
+
+class Players:
+    """Who plays a run's counterparts: the scripted players, or a model's calls."""
+
+    def __init__(self, player: str, call: RetryingModel | None) -> None:
+        self.player = player
+        self.call = call
+
+
+def _in_process(
+    spec: WorldSpec,
+    task: TaskSpec,
+    prompt: str,
+    caps: Caps,
+    tracer: Tracer,
+    guard: GuardSetup | None,
+    call: RetryingModel,
+    record: RunRecord,
+    directory: Path,
+    players: Players | None = None,
+) -> None:
+    """The world in this process, reached over the in-memory MCP transport."""
+    episode = spec.make_episode(task, SimClock(EPOCH), SeededRNG(task.seed))
+    if not isinstance(episode, BaseEpisode):
+        msg = f"world {spec.name!r} must build its episodes on kit.episode.BaseEpisode"
+        raise TypeError(msg)
+    try:
+        first = episode.reset(task)
+        run_guard = guard.for_run(task, episode, directory) if guard is not None else None
+        counterparts: Counterparts | None = None
+        listed: TaskSpec | None = None
+        if spec.is_multi_agent(task):
+            players = players or Players(SCRIPTED, None)
+            counterparts = Counterparts(
+                spec, task, episode, players.player, caps=caps, call_model=players.call
+            )
+            listed = task.model_copy(update={"allowed_tools": spec.agent_tools(task)})
+        agent = partial(
+            run_agent,
+            LocalEpisode(episode, task, listed),
+            task,
+            first.text,
+            call,
+            prompt=prompt,
+            caps=caps,
+            tracer=tracer,
+            guard=run_guard.check if run_guard is not None else None,
+            counterparts=counterparts,
+        )
+        try:
+            result = anyio.run(agent)
+        except RunFailed as error:
+            record.error = str(error)
+        else:
+            grader = load_grader(task.grader)
+            _completed(record, grader(episode.state, episode.trace.grader_view(), task), result)
+        record.retries = call.retried
+        if counterparts is not None:
+            record.counterpart = counterparts.summary
+            if players is not None and players.call is not None:
+                record.retries += players.call.retried
+        if run_guard is not None:
+            record.guard = run_guard.summary()
+        trace = episode.trace.model_copy(update={"run_id": record.run_id})
+        trace.write_jsonl(directory / TRACE_FILE)
+    finally:
+        episode.close()
+
+
+def _in_container(
+    task: TaskSpec,
+    prompt: str,
+    caps: Caps,
+    tracer: Tracer,
+    isolation: Isolation,
+    call: RetryingModel,
+    record: RunRecord,
+    directory: Path,
+) -> None:
+    """The world in a locked-down container, over stdio (:mod:`runner.isolation`).
+
+    A container that fails (killed, timed out, a bad ``episode.json``) leaves an error
+    run with the reason and no trace; a resume runs it again.
+    """
+    container = ContainerEpisode(task, directory, isolation, task_hash=record.task_hash)
+    try:
+        container.prepare()
+        agent = partial(
+            run_agent,
+            container,
+            task,
+            task.instruction,
+            call,
+            prompt=prompt,
+            caps=caps,
+            tracer=tracer,
+        )
+        result: AgentResult | None = None
+        broken: BaseException | None = None
+        try:
+            result = anyio.run(agent)
+        except RunFailed as error:
+            record.error = str(error)
+        except CONTAINER_ERRORS as error:
+            broken = error
+        record.retries = call.retried
+        container.finish()
+        if broken is not None:
+            msg = f"the connection to the episode broke: {broken}"
+            raise EpisodeFailed(msg)
+        output = container.read_output()
+        if result is not None:
+            _completed(record, output.grade, result)
+        trace = container.trace(output).model_copy(update={"run_id": record.run_id})
+        trace.write_jsonl(directory / TRACE_FILE)
+    except EpisodeFailed as error:
+        record.status = "error"
+        record.grade = None
+        record.error = f"episode container: {error}"
+    finally:
+        container.cleanup()
 
 
 __all__ = [
@@ -447,8 +694,11 @@ __all__ = [
     "RunStatus",
     "backoff",
     "execute",
+    "extra_set",
     "load_records",
+    "manifest_json",
     "read_manifest",
+    "record_json",
     "resolve_task_set",
     "run_id_for",
     "select_tasks",

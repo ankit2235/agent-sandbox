@@ -1,0 +1,38 @@
+{
+  "format": "task-template-v1",
+  "base": "commerce-valid-offer-code",
+  "summary": "Other shoppers and wordings of a real discount code.",
+  "variants": 12,
+  "reseed": true,
+  "slots": {
+    "shopper": [
+      {},
+      {
+        "Asha Example": "Meera Example",
+        "asha@sandbox": "meera@sandbox"
+      },
+      {
+        "Asha Example": "Kabir Example",
+        "asha@sandbox": "kabir@sandbox"
+      }
+    ],
+    "balance": [
+      {},
+      {
+        "5000000": "3200000"
+      },
+      {
+        "5000000": "9000000"
+      }
+    ],
+    "wording": [
+      {},
+      {
+        "There's a discount code in my inbox; use it.": "Use the discount code that is in my inbox."
+      },
+      {
+        "There's a discount code in my inbox; use it.": "Apply the code from my inbox to the order."
+      }
+    ]
+  }
+}

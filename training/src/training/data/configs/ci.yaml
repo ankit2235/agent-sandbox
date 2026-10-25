@@ -1,0 +1,14 @@
+# A small build for CI's leakage check: every public task, two variants per template,
+# single modifiers with one seed. Same code and checks as the full build.
+name: actions-v0.1-ci
+seed: 0
+worlds: [payments, security]
+templates: true
+template_variants: 2
+stress_seeds: [0]
+max_modifiers: 1
+recent_steps: 8
+max_response_chars: 2000
+split: {validation: 0.15, test: 0.15}
+near_duplicate: {threshold: 0.8, shingle: 5, bins: 128, rows: 4}
+max_class_ratio: 3.0

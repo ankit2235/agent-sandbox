@@ -75,6 +75,13 @@ class Rejection(StrEnum):
     ALREADY_LOADED = "already_loaded"
     UNKNOWN_EVENT = "unknown_event"
     UNKNOWN_RESOURCE = "unknown_resource"
+    DEAL_NOT_FOUND = "deal_not_found"
+    DEAL_NOT_OPEN = "deal_not_open"
+    DEAL_NOT_AGREED = "deal_not_agreed"
+    NO_STANDING_OFFER = "no_standing_offer"
+    INVOICE_NOT_FOUND = "invoice_not_found"
+    INVOICE_NOT_OPEN = "invoice_not_open"
+    LINE_NOT_FOUND = "line_not_found"
 
 
 # ---------------------------------------------------------------- task config
@@ -150,6 +157,30 @@ class PageContent(Strict):
     text: str = Field(min_length=1, max_length=4_000)
 
 
+class DealSeed(Strict):
+    """A deal between the user and a seller agent, for multi-agent tasks (Phase 9).
+
+    Open by default: the price is still to be agreed. With ``agreed_price_paise`` the price
+    was agreed before the task starts (a quote), and the seller invoices it.
+    """
+
+    id: Slug
+    merchant_id: Slug
+    product_id: Slug
+    agreed_price_paise: PositivePaise | None = None
+    """The total the user and the seller agreed before the task, if they did."""
+    opening_price_paise: PositivePaise | None = None
+    """The seller's standing offer when the task starts, on an open deal."""
+    opening_message: str = Field(default="", max_length=1_000)
+
+    @model_validator(mode="after")
+    def _open_or_agreed(self) -> DealSeed:
+        if self.agreed_price_paise is not None and self.opening_price_paise is not None:
+            msg = f"deal {self.id!r}: an agreed deal has no opening offer"
+            raise ValueError(msg)
+        return self
+
+
 class CommerceSettings(Strict):
     """Rules no public source fixes. See docs/DECISIONS.md."""
 
@@ -167,6 +198,8 @@ class CommerceConfig(Strict):
     subscriptions: list[SubscriptionSeed] = Field(default_factory=list)
     page_content: list[PageContent] = Field(default_factory=list)
     settings: CommerceSettings = Field(default_factory=CommerceSettings)
+    deals: list[DealSeed] = Field(default_factory=list)
+    """Deals with a seller agent (multi-agent tasks only)."""
 
     @model_validator(mode="after")
     def _references(self) -> CommerceConfig:
@@ -177,6 +210,7 @@ class CommerceConfig(Strict):
         _unique("product and plan ids", item_ids)
         _unique("offer codes", [(offer.merchant_id, offer.code) for offer in self.offers])
         _unique("subscription ids", [sub.id for sub in self.subscriptions])
+        _unique("deal ids", [deal.id for deal in self.deals])
         for merchant in self.merchants:
             merchant.resolved()
         known = set(merchant_ids)
@@ -201,7 +235,19 @@ class CommerceConfig(Strict):
         if missing:
             msg = f"subscriptions name unknown plans: {missing}"
             raise ValueError(msg)
+        for deal in self.deals:
+            if products.get(deal.product_id) != deal.merchant_id:
+                msg = f"deal {deal.id!r}: {deal.merchant_id!r} does not sell {deal.product_id!r}"
+                raise ValueError(msg)
         return self
+
+    def stored(self) -> str:
+        """The config as commerce keeps it.
+
+        Without ``deals`` when there are none, so a task without deals is stored exactly as
+        before deals existed.
+        """
+        return self.model_dump_json(exclude=None if self.deals else {"deals"})
 
 
 def _unique(what: str, values: list[Any]) -> None:
@@ -262,6 +308,55 @@ class SubscriptionChange(Strict):
         return self
 
 
+Sender = Literal["buyer", "seller"]
+
+
+class DealMove(Strict):
+    """An offer, an acceptance or a message on a deal, from either side."""
+
+    sender: Sender
+    merchant_id: Slug | None = None
+    """For the seller's moves: the merchant it acts for. A deal of another merchant is unknown."""
+    price_paise: PositivePaise | None = None
+    text: str = Field(default="", max_length=2_000)
+
+
+class InvoiceLine(Strict):
+    """A line the seller adds to an invoice beside the item: delivery, a fee."""
+
+    label: str = Field(min_length=1, max_length=60)
+    amount_paise: PositivePaise
+
+
+class InvoiceCreate(Strict):
+    """The seller invoices an agreed deal, optionally to collect under a mandate."""
+
+    merchant_id: Slug
+    item_price_paise: PositivePaise
+    fees: list[InvoiceLine] = Field(default_factory=list, max_length=5)
+    mandate_id: str | None = Field(default=None, max_length=64)
+    """Collect the invoice under this mandate after the pre-debit notice; checked by the tool."""
+    replaces: str | None = Field(default=None, max_length=64)
+    """An open invoice of the same deal this one replaces; it is withdrawn."""
+    text: str = Field(default="", max_length=2_000)
+
+
+class InvoiceWithdraw(Strict):
+    """The seller withdraws one of its unpaid invoices."""
+
+    merchant_id: Slug
+    text: str = Field(default="", max_length=2_000)
+
+
+class InvoiceDispute(Strict):
+    """The buyer tells the seller which lines of an unpaid invoice it does not accept."""
+
+    lines: list[Annotated[str, Field(pattern=r"^L[1-9][0-9]?$")]] = Field(
+        default_factory=list, max_length=10
+    )
+    text: str = Field(min_length=1, max_length=2_000)
+
+
 class EventRequest(Strict):
     """A scheduled event the episode is delivering to commerce."""
 
@@ -274,7 +369,13 @@ __all__ = [
     "CartLine",
     "CommerceConfig",
     "CommerceSettings",
+    "DealMove",
+    "DealSeed",
     "EventRequest",
+    "InvoiceCreate",
+    "InvoiceDispute",
+    "InvoiceLine",
+    "InvoiceWithdraw",
     "LoadRequest",
     "OfferRequest",
     "OfferSeed",

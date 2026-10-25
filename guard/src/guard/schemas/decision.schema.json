@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/prarabdha-soni/agent-sandbox/guard/decision.schema.json",
+  "title": "Guard decision",
+  "description": "The output contract of every decision backend: allow, block or ask_user, with reason codes and a confidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "reason_codes", "confidence"],
+  "properties": {
+    "decision": {"enum": ["allow", "block", "ask_user"]},
+    "reason_codes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_\\-]*(\\.[a-z0-9][a-z0-9_\\-]*)+$"
+      }
+    },
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+  }
+}

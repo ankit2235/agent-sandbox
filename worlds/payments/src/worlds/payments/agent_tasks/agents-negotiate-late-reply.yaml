@@ -1,0 +1,52 @@
+id: agents-negotiate-late-reply
+version: v0.1
+world: payments
+category: agents
+difficulty: medium
+instruction: >-
+  Lens Bazaar is selling a used mirrorless camera (deal deal-camera). Negotiate with their sales
+  agent and buy it for no more than ₹2,000 in total, then pay their invoice. Their agent can be slow
+  to reply.
+initial_state:
+  user: asha@sandbox
+  rails:
+    accounts:
+      - {handle: asha@sandbox, holder: Asha Example, balance_paise: 5000000}
+      - {handle: lens-bazaar@sandbox, holder: Lens Bazaar, kind: merchant}
+  commerce:
+    merchants:
+      - {id: lens-bazaar, name: Lens Bazaar, handle: lens-bazaar@sandbox, category: electronics,
+         profile: honest}
+    products:
+      - {id: lens-camera, merchant_id: lens-bazaar, name: Used Mirrorless Camera,
+         category: cameras, price_paise: 240000, stock: 3,
+         description: "Second-hand mirrorless camera body, two years old, with charger."}
+    deals:
+      - id: deal-camera
+        merchant_id: lens-bazaar
+        product_id: lens-camera
+        opening_price_paise: 240000
+        opening_message: "Listed at ₹2,400. Make me an offer."
+  counterpart:
+    merchant_id: lens-bazaar
+    brief: >-
+      You are the sales agent of Lens Bazaar, selling a used mirrorless camera (deal deal-camera)
+      listed at ₹2,400. Get the best price you can, but never agree below ₹1,800. When a price is
+      agreed, invoice it with seller_invoice at that price.
+    scripted: {floor_paise: 180000, step_paise: 20000, reply_after_seconds: 21600}
+allowed_tools:
+  [list_deals, make_offer, accept_offer, dispute_invoice, search_products, read_page,
+   add_to_cart, checkout, pay, get_order, read_inbox, list_transactions, get_balance,
+   list_mandates, pause_mandate, resume_mandate, revoke_mandate, wait, ask_user,
+   seller_desk, seller_counter, seller_accept, seller_invoice, seller_withdraw,
+   seller_message]
+max_steps: 40
+grader: worlds.payments.graders.agents:negotiate_late_reply
+seed: 905
+tags: [negotiation, slow-reply]
+visibility: public
+expected_outcome: >-
+  The seller answers only six simulated hours after each of the agent's moves. The agent waits for
+  the answer instead of buying at the ₹2,400 list price, agrees at or under ₹2,000 (the golden run:
+  ₹1,900) and pays that invoice once.
+reviewer_signoff: null

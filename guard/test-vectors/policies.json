@@ -1,0 +1,395 @@
+{
+  "format": "guard-vectors-policies-v1",
+  "valid": [
+    {
+      "name": "minimal",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {}
+      },
+      "hash": "67d022abab6c12194ab33d9ba503daa86f4237f7c6e5397cba5c159863d341a5"
+    },
+    {
+      "name": "every rule",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": 100000,
+              "daily": 300000,
+              "monthly": 1000000
+            },
+            "confirm_above": 50000,
+            "counterparties": {
+              "allow": [
+                "shop@sandbox"
+              ],
+              "block": [
+                "scam@sandbox"
+              ],
+              "confirm": [
+                "new@sandbox"
+              ],
+              "unlisted": "block"
+            },
+            "categories": {
+              "block": [
+                "gambling"
+              ],
+              "confirm": [
+                "travel"
+              ]
+            },
+            "mandate": {
+              "required": false,
+              "allow": [
+                "mandate-1"
+              ]
+            },
+            "time_windows": {
+              "windows": [
+                {
+                  "days": [
+                    "mon",
+                    "fri"
+                  ],
+                  "start": "09:00",
+                  "end": "18:30"
+                }
+              ],
+              "outside": "ask_user"
+            },
+            "checks": [
+              "vectors.rule.block-check"
+            ],
+            "model_check": true
+          }
+        },
+        "world": "vectors",
+        "description": "Every field once.",
+        "default": "block",
+        "model_check": {
+          "min_confidence": 0.75,
+          "timeout_s": 2.5
+        }
+      },
+      "hash": "e257a6be5f85b52fc01179326aa7639c4b787ac7b8cbb95270e2e674a44efe22"
+    },
+    {
+      "name": "a window to midnight",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "t": {
+            "time_windows": {
+              "windows": [
+                {
+                  "days": [
+                    "sun"
+                  ],
+                  "start": "00:00",
+                  "end": "24:00"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "hash": "2437960daec8b6f229940c0d7294eed5418042b2e0c3b4024dd1f64304edcfb5"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "not an object",
+      "policy": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "wrong format",
+      "policy": {
+        "format": "guard-policy-v2",
+        "id": "vectors",
+        "version": 1,
+        "actions": {}
+      }
+    },
+    {
+      "name": "no actions",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1
+      }
+    },
+    {
+      "name": "version zero",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 0,
+        "actions": {}
+      }
+    },
+    {
+      "name": "version as text",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": "1",
+        "actions": {}
+      }
+    },
+    {
+      "name": "unknown top-level key",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {},
+        "allow_everything": true
+      }
+    },
+    {
+      "name": "unknown rule key",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "override": true
+          }
+        }
+      }
+    },
+    {
+      "name": "negative budget",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "per_action": -1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "fractional budget",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "daily": 10.5
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "budget above 2**53 - 1",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "budget": {
+              "monthly": 9007199254740993
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown default",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {},
+        "default": "maybe"
+      }
+    },
+    {
+      "name": "confidence above one",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {},
+        "model_check": {
+          "min_confidence": 1.5
+        }
+      }
+    },
+    {
+      "name": "zero timeout",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {},
+        "model_check": {
+          "timeout_s": 0
+        }
+      }
+    },
+    {
+      "name": "unlisted allow",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "counterparties": {
+              "unlisted": "allow"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "repeated value",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "counterparties": {
+              "block": [
+                "a",
+                "a"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown day",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "t": {
+            "time_windows": {
+              "windows": [
+                {
+                  "days": [
+                    "someday"
+                  ],
+                  "start": "09:00",
+                  "end": "10:00"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "bad time",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "t": {
+            "time_windows": {
+              "windows": [
+                {
+                  "days": [
+                    "mon"
+                  ],
+                  "start": "9:00",
+                  "end": "10:00"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "window ends before it starts",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "t": {
+            "time_windows": {
+              "windows": [
+                {
+                  "days": [
+                    "mon"
+                  ],
+                  "start": "18:00",
+                  "end": "09:00"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "no windows",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "t": {
+            "time_windows": {
+              "windows": []
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "check id not dotted",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "vectors",
+        "version": 1,
+        "actions": {
+          "pay": {
+            "checks": [
+              "nodot"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "bad id",
+      "policy": {
+        "format": "guard-policy-v1",
+        "id": "Has Spaces",
+        "version": 1,
+        "actions": {}
+      }
+    }
+  ]
+}

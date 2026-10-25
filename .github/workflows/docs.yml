@@ -1,0 +1,52 @@
+name: docs
+
+# Builds the docs site (mkdocs.yml, docs/site/) on every pull request, strictly: a broken link or
+# a page missing from the nav fails. On main it also publishes the site to GitHub Pages, which the
+# repository owner enables once (Settings -> Pages -> Source: GitHub Actions).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-packages --group docs
+      - name: the tool reference is current
+        run: |
+          for world in payments security; do
+            uv run sandbox tools --world "$world" | diff -u "docs/site/tools/$world.md" -
+          done
+      - run: uv run mkdocs build --strict --site-dir site
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.1

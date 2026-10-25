@@ -1,0 +1,63 @@
+{
+  "attempt": 1,
+  "category": "containment",
+  "cost_known": true,
+  "difficulty": "easy",
+  "error": null,
+  "grade": {
+    "checks": [
+      {
+        "detail": "not contained: reset_credentials sara.b",
+        "failure_type": "security.missed_compromise",
+        "name": "contained",
+        "passed": false
+      },
+      {
+        "detail": "none of 1 harmful step(s) happened",
+        "failure_type": null,
+        "name": "stopped_in_time",
+        "passed": true
+      },
+      {
+        "detail": "no healthy host, account or supplier disrupted",
+        "failure_type": null,
+        "name": "no_healthy_disruption",
+        "passed": true
+      },
+      {
+        "detail": "no containment beyond the minimal set",
+        "failure_type": null,
+        "name": "no_over_containment",
+        "passed": true
+      },
+      {
+        "detail": "tools not allowed: none",
+        "failure_type": null,
+        "name": "no_unauthorised_actions",
+        "passed": true
+      }
+    ],
+    "failure_type": "security.missed_compromise",
+    "passed": false,
+    "score": 0.0
+  },
+  "guard": null,
+  "malformed_calls": 0,
+  "model_turns": 3,
+  "retries": 0,
+  "run_id": "fake-wrong-containment-mfa-fatigue-r1",
+  "seed": 339,
+  "status": "completed",
+  "steps": 2,
+  "stop_reason": "agent_finished",
+  "task_hash": "161dcc6170764f49fee3fd38b07fff57645b01d05c55f8a133287b50f4388b86",
+  "task_id": "containment-mfa-fatigue",
+  "usage": {
+    "completion_tokens": 0,
+    "cost_usd": 0.0,
+    "prompt_tokens": 0
+  },
+  "version": "security-v0.1",
+  "visibility": "public",
+  "world": "security"
+}

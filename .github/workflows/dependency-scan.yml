@@ -1,0 +1,44 @@
+name: dependency-scan
+
+# Known vulnerabilities in our dependencies: the Python lock (`uv audit`, OSV) and the
+# TypeScript SDK's lock (`npm audit`), through scripts/dependency_scan.py. Accepted
+# advisories, each with its reason, are in .github/dependency-scan-ignores.toml; any other
+# advisory fails, and so does an entry that is no longer reported. Weekly as well, since new
+# advisories appear without any change here. Only package names and versions leave the runner.
+on:
+  pull_request:
+    paths:
+      - "uv.lock"
+      - "**/pyproject.toml"
+      - "guard/typescript/package.json"
+      - "guard/typescript/package-lock.json"
+      - ".github/dependency-scan-ignores.toml"
+      - ".github/workflows/dependency-scan.yml"
+      - "scripts/dependency_scan.py"
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.12.20" # `uv audit` and its JSON report, as the lock was written with
+      - run: python3 scripts/dependency_scan.py python
+
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "22"
+      - run: python3 scripts/dependency_scan.py npm guard/typescript

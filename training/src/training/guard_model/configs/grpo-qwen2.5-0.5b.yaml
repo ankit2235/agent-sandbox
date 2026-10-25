@@ -1,0 +1,26 @@
+# Stage B (optional): GRPO from the Stage A adapter, rewarded by training.guard_model.reward.
+# Not run; pending a GPU. Wrongful blocks and missed mistakes are penalised separately.
+base_model: Qwen/Qwen2.5-0.5B
+revision: 060db6499f32faf8b98477b0a26969ef7d8b9987
+adapter: training/data/out/guard-qwen2.5-0.5b-sft
+data: training/data/out/sft
+output_dir: training/data/out/guard-qwen2.5-0.5b-grpo
+dtype: float16
+num_generations: 4
+max_completion_length: 64
+learning_rate: 1.0e-6
+beta: 0.0
+per_device_batch_size: 4
+gradient_accumulation_steps: 4
+max_steps: 500
+logging_steps: 10
+save_steps: 100
+seed: 0
+weights:
+  correct: 1.0
+  reason_bonus: 0.2
+  wrongful_block: 1.0
+  needless_ask: 0.3
+  missed_mistake: 2.0
+  wrong_kind: 0.5
+  invalid: 1.0

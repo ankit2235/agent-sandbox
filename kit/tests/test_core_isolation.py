@@ -1,7 +1,7 @@
 """The core must stay domain-neutral.
 
-``kit/``, ``runner/``, ``stress/`` (and later ``guard/``, ``trust/``, the
-leaderboard) may not import a world. A world may not import another world.
+``kit/``, ``runner/``, ``stress/``, ``guard/`` and ``training/`` (and later
+``trust/``, the leaderboard) may not import a world. A world may not import another world.
 CI runs this as its own job, so a rule break fails fast and visibly.
 """
 
@@ -13,7 +13,13 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-CORE_ROOTS = [REPO / "kit" / "src", REPO / "runner" / "src", REPO / "stress" / "src"]
+CORE_ROOTS = [
+    REPO / "kit" / "src",
+    REPO / "runner" / "src",
+    REPO / "stress" / "src",
+    REPO / "guard" / "src",
+    REPO / "training" / "src",
+]
 WORLD_ROOTS = sorted((REPO / "worlds").glob("*/src"))
 
 

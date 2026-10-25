@@ -7,6 +7,7 @@ the ``agent_sandbox.worlds`` entry-point group; see :mod:`kit.world`.
 from kit.clock import EPOCH, ScheduledEvent, SimClock
 from kit.failures import FailureTypeRegistry, failure_types
 from kit.rng import SeededRNG
+from kit.roles import Role, TurnTaking
 from kit.trace import DiffEntry, GraderTrace, GraderTraceStep, Trace, TraceStep
 from kit.types import (
     CheckResult,
@@ -48,6 +49,7 @@ __all__ = [
     "GraderTraceStep",
     "Observation",
     "ReadOnlyService",
+    "Role",
     "ScheduledEvent",
     "SeededRNG",
     "Signoff",
@@ -59,6 +61,7 @@ __all__ = [
     "ToolError",
     "Trace",
     "TraceStep",
+    "TurnTaking",
     "Usage",
     "Visibility",
     "WorldRegistry",
@@ -70,4 +73,4 @@ __all__ = [
     "worlds",
 ]
 
-__version__ = "0.0.1.dev0"
+__version__ = "0.1.0"

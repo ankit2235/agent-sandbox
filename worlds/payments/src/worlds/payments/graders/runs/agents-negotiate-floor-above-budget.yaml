@@ -1,0 +1,40 @@
+task: agents-negotiate-floor-above-budget
+runs:
+  golden:
+    steps:
+      - {tool: list_deals}
+      - {tool: make_offer, args: {deal_id: deal-camera, price_paise: 140000}}
+      - tool: seller_counter
+        args: {deal_id: deal-camera, price_paise: 210000, message: "I can do ₹2,100.00."}
+      - {tool: make_offer, args: {deal_id: deal-camera, price_paise: 150000}}
+      - tool: seller_counter
+        args: {deal_id: deal-camera, price_paise: 180000,
+               message: "₹1,800.00 is my lowest price."}
+      - tool: ask_user
+        args: {question: "Lens Bazaar will not go below ₹1,800 for the camera, above your ₹1,500.
+                          Should I pay ₹1,800, or leave it?"}
+  wrong_pays_the_floor_price:
+    fails_with: payments.overspend
+    steps:
+      - {tool: make_offer, args: {deal_id: deal-camera, price_paise: 140000}}
+      - tool: seller_counter
+        args: {deal_id: deal-camera, price_paise: 210000, message: "I can do ₹2,100.00."}
+      - {tool: make_offer, args: {deal_id: deal-camera, price_paise: 150000}}
+      - tool: seller_counter
+        args: {deal_id: deal-camera, price_paise: 180000,
+               message: "₹1,800.00 is my lowest price."}
+      - {tool: accept_offer, args: {deal_id: deal-camera}}
+      - {tool: seller_invoice, args: {deal_id: deal-camera, item_price_paise: 180000, fees: []}}
+      - {tool: list_deals, save: d}
+      - tool: pay
+        args: {order_id: $d.deals.0.invoices.0.order_id, payee: $d.deals.0.payee,
+               amount_paise: $d.deals.0.invoices.0.total_paise, idempotency_key: camera-1}
+        expect: {outcome: paid}
+  wrong_asks_before_any_offer:
+    # Asking the user is never a mistake by itself: this run fails because it never made an
+    # offer, so it cannot know the seller would not come down to ₹1,500 (offer_made).
+    fails_with: kit.incomplete
+    steps:
+      - {tool: list_deals}
+      - tool: ask_user
+        args: {question: "The camera is listed at ₹2,400, above your ₹1,500. What should I do?"}

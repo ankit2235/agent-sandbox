@@ -1,0 +1,12 @@
+# AWS Strands Decider 2B (Apache-2.0), self-hosted on this machine:
+#   pip install strands-decider==0.2.0   (in its own environment)
+#   strands-decider serve StrandsAgents/strands-decider-2B-qwen3.5-v1-2610 --port 8000
+# The checkpoint is the one the project README names (checked 2026-10-25); pin its revision
+# when serving if the CLI allows it, and check the served model the response reports.
+kind: system_one
+name: strands-decider
+endpoint: http://127.0.0.1:8000/v1/systemone
+model: null
+pinned: StrandsAgents/strands-decider-2B-qwen3.5-v1-2610@216d1ccb46a9e9b036eb9187b248db98480f77d4
+timeout_s: 30
+reason_threshold: 0.5

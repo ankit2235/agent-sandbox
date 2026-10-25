@@ -180,9 +180,9 @@ def test_task_sets_by_name_directory_or_hidden(tmp_path, monkeypatch) -> None:
     with pytest.raises(ValueError, match="unknown task set"):
         resolve_task_set(spec, "security-v9")
     monkeypatch.delenv("HIDDEN_TASKS_DIR", raising=False)
-    with pytest.raises(ValueError, match="needs HIDDEN_TASKS_DIR"):
+    with pytest.raises(ValueError, match="HIDDEN_TASKS_DIR is not set"):
         resolve_task_set(spec, "security-v0.1-hidden")
-    hidden = write_hidden_set(tmp_path, "security", count=2)
+    hidden = write_hidden_set(tmp_path, "security", 2, monkeypatch)
     monkeypatch.setenv("HIDDEN_TASKS_DIR", str(hidden))
     assert [t.visibility for t in resolve_task_set(spec, "security-v0.1-hidden")] == ["hidden"] * 2
 

@@ -1,0 +1,183 @@
+{
+  "format": "guard-vectors-canonical-v1",
+  "cases": [
+    {
+      "name": "integer",
+      "value": 42,
+      "canonical": "42",
+      "sha256": "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"
+    },
+    {
+      "name": "negative integer",
+      "value": -7,
+      "canonical": "-7",
+      "sha256": "a770d3270c9dcdedf12ed9fd70444f7c8a95c26cae3cae9bd867499090a2f14b"
+    },
+    {
+      "name": "largest safe integer",
+      "value": 9007199254740991,
+      "canonical": "9007199254740991",
+      "sha256": "f40b423c2dd95ff2b2f027e22208f438cf7242862e5e746860e697308c9add26"
+    },
+    {
+      "name": "2**53, exactly a double",
+      "value": 9007199254740992,
+      "canonical": "9007199254740992",
+      "sha256": "c681da39d7273a6a24c15c9cac3a75526ff2ecf8ba4ee60346a0c70c8163bdb2"
+    },
+    {
+      "name": "10**21 as an integer",
+      "value": 1000000000000000000000,
+      "canonical": "1e+21",
+      "sha256": "241c4643fa70b1dcde1205b71be4e3bebb17e9f880c8e1a33d0ead6c27271d3c"
+    },
+    {
+      "name": "float with an integer value",
+      "value": 5.0,
+      "canonical": "5",
+      "sha256": "ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d"
+    },
+    {
+      "name": "negative zero",
+      "value": -0.0,
+      "canonical": "0",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "name": "one tenth",
+      "value": 0.1,
+      "canonical": "0.1",
+      "sha256": "14be4b45f18e0d8c67b4f719b5144eee88497e413709d11d85b096d8e2346310"
+    },
+    {
+      "name": "a third",
+      "value": 0.3333333333333333,
+      "canonical": "0.3333333333333333",
+      "sha256": "e965f1b975608cb0d1dad8c30d17e0fe1bdea42df938c0bdc29d75c97b45c44b"
+    },
+    {
+      "name": "small exponent, Python writes 1e-07",
+      "value": 1e-07,
+      "canonical": "1e-7",
+      "sha256": "5b33e02f2c5103a05d32f6ba9cb058294452bfbf393967f68bb30c1bdcbbab22"
+    },
+    {
+      "name": "micro, Python writes 1e-06",
+      "value": 1e-06,
+      "canonical": "0.000001",
+      "sha256": "159fb29a827ad04b260aa6c8ab6d8637f8f2b38af5c4f3cb49d6a21205e040f8"
+    },
+    {
+      "name": "below 1e-6",
+      "value": 1.5e-07,
+      "canonical": "1.5e-7",
+      "sha256": "bbe54b73760f9025086de0202c3caa81352dc0260869890c9dca3cda39ba767f"
+    },
+    {
+      "name": "1e20, Python writes 1e+20",
+      "value": 1e+20,
+      "canonical": "100000000000000000000",
+      "sha256": "c344e9487bfbd5c4e03c9fb90d62a5dde5e00b54d55c46e9f4a803aea162b80c"
+    },
+    {
+      "name": "1e21",
+      "value": 1e+21,
+      "canonical": "1e+21",
+      "sha256": "241c4643fa70b1dcde1205b71be4e3bebb17e9f880c8e1a33d0ead6c27271d3c"
+    },
+    {
+      "name": "large exponent",
+      "value": 1.7976931348623157e+308,
+      "canonical": "1.7976931348623157e+308",
+      "sha256": "c2784e1abd6317452708f3fbf9641c16b959561bc621a1d408c23a20aa2cb585"
+    },
+    {
+      "name": "smallest subnormal",
+      "value": 5e-324,
+      "canonical": "5e-324",
+      "sha256": "c46e7ca1be4c8734f373a56530787288fa2058d73d07855e9247e949f811a42a"
+    },
+    {
+      "name": "latency",
+      "value": 0.123,
+      "canonical": "0.123",
+      "sha256": "cbe4acd2532c89433c3e0fde332c89467c2356b2a0c8013e414949bb175dee82"
+    },
+    {
+      "name": "confidence",
+      "value": 0.8749999999999999,
+      "canonical": "0.8749999999999999",
+      "sha256": "870f1d61e02003c6e9678bc76c11402ad493f714b584d964a47b309ae5514c98"
+    },
+    {
+      "name": "true, false, null",
+      "value": [
+        true,
+        false,
+        null
+      ],
+      "canonical": "[true,false,null]",
+      "sha256": "4d0f18de2133118249c26acc481838d4f6bb6bc1de882d99abbd19ae9397e8df"
+    },
+    {
+      "name": "escapes",
+      "value": "quote \" backslash \\ newline \n tab \t bell \u0007 del ",
+      "canonical": "\"quote \\\" backslash \\\\ newline \\n tab \\t bell \\u0007 del \"",
+      "sha256": "ca8a36c4486f4053a3b68e326052058aabb32dbe68fbe86666d666c20f5bad2a"
+    },
+    {
+      "name": "non-ASCII kept",
+      "value": "₹2,000 café 日本",
+      "canonical": "\"₹2,000 café 日本\"",
+      "sha256": "6aca4e338237dbddf6e925eeacefdffdcc056ad944b04bd9ba2c8fcf3833a640"
+    },
+    {
+      "name": "emoji",
+      "value": "pay 😀",
+      "canonical": "\"pay 😀\"",
+      "sha256": "626372249a0bce9762b5d203a54e8f191fe88097dc746ad14cc4720ef226c1bd"
+    },
+    {
+      "name": "keys sorted by UTF-16 code units",
+      "value": {
+        "￿": 1,
+        "😀": 2,
+        "a": 3,
+        "B": 4,
+        "": 5
+      },
+      "canonical": "{\"\":5,\"B\":4,\"a\":3,\"😀\":2,\"￿\":1}",
+      "sha256": "f9d3a99b87e6fd970d69022254ebe9b77233bb11a4d041305bf51b95a752dcc5"
+    },
+    {
+      "name": "nested",
+      "value": {
+        "b": [
+          1,
+          {
+            "d": 1.0,
+            "c": null
+          }
+        ],
+        "a": {
+          "z": [],
+          "y": {}
+        }
+      },
+      "canonical": "{\"a\":{\"y\":{},\"z\":[]},\"b\":[1,{\"c\":null,\"d\":1}]}",
+      "sha256": "cb4c8e7cfc0eeaf195ad9cc1e6e3a92fbcb458e738d46668c9dac506607127a6"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "2**53 + 1, not exactly a double",
+      "value": 9007199254740993,
+      "python_only": true
+    },
+    {
+      "name": "-(2**53 + 1)",
+      "value": -9007199254740993,
+      "python_only": true
+    }
+  ]
+}

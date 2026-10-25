@@ -9,6 +9,10 @@ A task's ``history`` is replayed in ``_setup``, before the kit takes the
 baseline snapshot: through the tools' own handlers, with faults off and nothing
 traced, so the agent starts in a world where those purchases really happened and
 graders can tell them apart from the agent's (they are not in the trace).
+
+A multi-agent task (Phase 9) has a seller agent beside the user's: the episode is
+:class:`kit.roles.TurnTaking`, telling the runner when the seller has something to answer,
+what a model playing it is told, and what the scripted seller does (:mod:`.counterpart`).
 """
 
 from __future__ import annotations
@@ -21,14 +25,15 @@ from kit.episode import BaseEpisode, ToolContext, ToolHandler, ToolResult
 from kit.errors import ToolRejected
 from kit.rng import SeededRNG
 from kit.trace import DiffEntry
-from kit.types import TaskSpec
+from kit.types import TaskSpec, ToolCall
 
+from . import counterpart
 from .links import Links
 from .services.commerce import CommerceService
 from .services.common import iso
 from .services.disputes import DisputesService
 from .services.rails import RailsService
-from .state import PastPayment, PastPurchase, PaymentsState, shifted
+from .state import CounterpartConfig, PastPayment, PastPurchase, PaymentsState, shifted
 from .tools import args as a
 from .tools.handlers import add_to_cart, apply_offer, build_router, checkout, parse, pay
 
@@ -181,6 +186,40 @@ class PaymentsEpisode(BaseEpisode):
             text=text,
             data={"now": now.isoformat(), "events_fired": fired, "new_messages": arrived},
         )
+
+    # ------------------------------------------------- the seller (multi-agent tasks)
+    def _seller(self) -> CounterpartConfig | None:
+        raw = self.task.initial_state.get("counterpart")
+        return None if raw is None else CounterpartConfig.model_validate(raw)
+
+    def _desk(self, seller: CounterpartConfig) -> list[dict[str, Any]]:
+        deals: list[dict[str, Any]] = self.commerce.call(
+            "GET", "/deals", params={"merchant_id": seller.merchant_id}
+        )
+        return deals
+
+    def awaiting(self) -> list[str]:
+        """``["seller"]`` while a deal waits for the seller's answer or invoice."""
+        seller = self._seller()
+        if seller is None or self.done:
+            return []
+        return [counterpart.SELLER] if counterpart.needs_seller(self._desk(seller)) else []
+
+    def brief(self, role: str) -> str:
+        """The task's brief for the seller: its side of the deal, never the user's."""
+        return self._role(role).brief
+
+    def scripted_turn(self, role: str) -> list[ToolCall]:
+        """What the scripted seller does now. Reads only its own desk."""
+        seller = self._role(role)
+        return counterpart.scripted_turn(seller.scripted, self._desk(seller), self.clock.now())
+
+    def _role(self, role: str) -> CounterpartConfig:
+        seller = self._seller()
+        if seller is None or role != counterpart.SELLER:
+            msg = f"task {self.task.id} has no {role!r} counterpart"
+            raise ValueError(msg)
+        return seller
 
 
 def make_episode(task: TaskSpec, clock: SimClock, rng: SeededRNG) -> PaymentsEpisode:

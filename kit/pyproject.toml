@@ -1,6 +1,6 @@
 [project]
-name = "agent-sandbox-kit"
-version = "0.0.1.dev0"
+name = "agent-sandbox-bench-kit"
+version = "0.1.0"
 description = "Domain-neutral core kit: task, episode, trace, clock, rng, world registry, OpenEnv adapter."
 requires-python = ">=3.12"
 license = "Apache-2.0"

@@ -25,9 +25,13 @@ from kit.types import ID_RE, TaskSpec
 from .state import PaymentsState
 from .tools import TOOL_NAMES
 
-CATEGORIES = ["rails", "commerce", "disputes", "multi"]
+CATEGORIES = ["rails", "commerce", "disputes", "multi", "agents"]
+"""``agents``: multi-agent tasks, only in the ``payments-v0.1-agents`` pre-release set."""
 
 TASKS_DIR = Path(__file__).parent / "tasks"
+AGENT_TASKS_DIR = Path(__file__).parent / "agent_tasks"
+"""The ``payments-v0.1-agents`` set (DECISIONS 266): outside ``tasks/``, so never part of
+``payments-v0.1`` or its freeze file; Phase 9 item 4 folds it into ``payments-v0.2``."""
 TASK_SCHEMA_FILE = TASKS_DIR / "schema.json"
 
 GRADER_PATTERN = r"^worlds\.payments\.graders\.[a-z_]+:[a-z_][a-z0-9_]*$"
@@ -86,6 +90,7 @@ def schema_document() -> str:
 
 
 __all__ = [
+    "AGENT_TASKS_DIR",
     "CATEGORIES",
     "TASKS_DIR",
     "TASK_SCHEMA_FILE",

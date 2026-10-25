@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from kit.roles import Role
 from kit.types import FailureTypeDef
 from kit.world import Listing, MetricDef, WorldSpec
 
 from .episode import PaymentsEpisode, make_episode
 from .state import PaymentsState, task_schema
-from .task_format import CATEGORIES, TASKS_DIR
-from .tools import TOOL_NAMES
+from .task_format import AGENT_TASKS_DIR, CATEGORIES, TASKS_DIR
+from .tools import SELLER_TOOLS, TOOL_NAMES
 
 VERSION = "v0.1"
 TOOLS_VERSION = "tools-payments-v0.1"
@@ -74,6 +75,15 @@ FAILURE_TYPES = [
 
 RUNS_DIR = Path(__file__).parent / "graders" / "runs"
 
+SELLER_ROLE = Role(
+    name="seller",
+    description=(
+        "A seller agent acting for one merchant: it negotiates, invoices and collects under "
+        "mandates the user gave it. Not under test."
+    ),
+    tools=list(SELLER_TOOLS),
+)
+
 LISTING = Listing(
     title="Payments",
     status="preview",
@@ -83,6 +93,7 @@ LISTING = Listing(
         "commerce": "Commerce",
         "disputes": "Disputes",
         "multi": "Multi-step",
+        "agents": "Agent-to-agent",
     },
     metrics=[
         MetricDef(
@@ -123,14 +134,18 @@ def world_spec() -> WorldSpec:
         tasks_dir=TASKS_DIR,
         runs_dir=RUNS_DIR,
         listing=LISTING,
+        roles=[SELLER_ROLE],
+        task_sets={"agents": AGENT_TASKS_DIR},
     )
 
 
 __all__ = [
+    "AGENT_TASKS_DIR",
     "CATEGORIES",
     "FAILURE_TYPES",
     "LISTING",
     "RUNS_DIR",
+    "SELLER_ROLE",
     "TASKS_DIR",
     "TOOLS_VERSION",
     "VERSION",
