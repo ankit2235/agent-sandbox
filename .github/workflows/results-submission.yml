@@ -13,7 +13,7 @@ name: results-submission
 #   `spot-check` environment, and compares the pass rates.
 on:
   pull_request:
-    paths: ["submissions/**"]
+    paths: ["submissions/*/*.json"]
   workflow_dispatch:
     inputs:
       pr:
