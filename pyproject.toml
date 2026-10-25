@@ -140,5 +140,6 @@ testpaths = [
 addopts = "-q --strict-markers --strict-config"
 markers = [
   "openenv: requires the optional openenv extra to be installed",
+  "docker: needs Docker and a built image named by SANDBOX_TEST_IMAGE (skipped otherwise)",
 ]
 filterwarnings = ["error::DeprecationWarning:kit.*"]

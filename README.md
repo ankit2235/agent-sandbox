@@ -91,6 +91,12 @@ uv run sandbox run --world security --model ollama/llama3.2 --tasks security-v0.
 - **Stressed tasks**: `--tasks payments-v0.1-stressed` runs every public task that a stress
   modifier applies to, one modifier each ([docs/STRESS.md](docs/STRESS.md)).
   `sandbox stress calibrate` measures each modifier's score drop over 2–3 models.
+- **Locked-down containers**: `--isolation container` runs each episode's world in its own
+  Docker container with no network, a read-only filesystem, no capabilities, a non-root user and
+  CPU, memory, process and CPU-time limits; the model calls and keys stay outside. Build the
+  image first (`docker build -t agent-sandbox:0.1.0 .`); the run directory comes out byte for
+  byte the same. `sandbox verify` and `sandbox submission check` take the same option. Use it
+  for agents you do not trust ([docs/site/isolation.md](docs/site/isolation.md)).
 - **Hidden tasks**: `--tasks payments-v0.1-hidden` reads `$HIDDEN_TASKS_DIR/payments/v0.1/`, and
   only if it matches the hashes published in the repository
   ([docs/HIDDEN_SETS.md](docs/HIDDEN_SETS.md)). Hidden results are only ever published as
@@ -118,7 +124,11 @@ disruption of a healthy asset or destroyed evidence).
   directory; CI fetches it and `sandbox submission check` replays every run
   ([docs/site/submit-results.md](docs/site/submit-results.md)).
 - The payments world is also packaged as an OpenEnv / Hugging Face Space environment in
-  `worlds/payments/openenv/`, and as a Docker image (`Dockerfile`).
+  `worlds/payments/openenv/`, and as a Docker image (`Dockerfile`; it runs as a non-root user, so
+  mounting `runs/` needs `--user "$(id -u):$(id -g)"`).
+- Releases are signed with Sigstore (build provenance for the archives and the image, PEP 740 on
+  PyPI), dependencies are scanned in CI, and vulnerabilities are reported privately:
+  [SECURITY.md](SECURITY.md).
 
 ## The guard-model dataset and baselines (Phase 7)
 
@@ -174,11 +184,12 @@ submissions/  results submissions: one small file per model, never the run direc
 
 ## Status
 
-Phases 0–8 of the build plan: the core kit, the payments and security worlds with 50 tasks each,
+Phases 0–8 of the build plan, and Phase 9's sandbox security item: the core kit, the payments and security worlds with 50 tasks each,
 the runner, the stress library and hidden sets, the v0.1 release tooling (packages, Docker
 image, docs site, release gate, results submission, OpenEnv packaging), the guard-model
 dataset, baselines, training configs and evaluation, and the guard library with its Python and
-TypeScript SDKs (no guard model trained and no outside backend run yet). The release gate does not
+TypeScript SDKs (no guard model trained and no outside backend run yet), episodes in locked-down
+containers, dependency scanning and signed releases (set up; none signed yet). The release gate does not
 pass yet: no grader is signed off by a domain reviewer, so both worlds are listed as `preview`,
 and no real model has been run. See [docs/PROGRESS.md](docs/PROGRESS.md) for what exists and what
 waits on whom, and [docs/DECISIONS.md](docs/DECISIONS.md) for why.

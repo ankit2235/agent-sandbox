@@ -7,6 +7,9 @@
   ``--guard <policy> --backend <name>``, the guard stands in front of the world's
   high-impact tools (:mod:`runner.guarding`);
 - ``verify``: replay a run directory's recorded actions and confirm its grades;
+- ``--isolation container`` (on ``run``, ``verify`` and ``submission check``): the world
+  code runs in locked-down containers (:mod:`runner.isolation`);
+- ``episode serve``: inside such a container, serve one episode over stdio;
 - ``export``: write leaderboard files from one or more run directories;
 - ``stress list | calibrate | report``: the stress modifiers and their calibration;
 - ``hidden generate | hashes | check | scan | leaks``: the hidden set (:mod:`runner.hidden`);
@@ -38,11 +41,20 @@ from .calibrate import calibrate, write_report
 from .calibrate import markdown as calibration_markdown
 from .export import export
 from .guarding import GuardSetup
+from .isolation import (
+    GUARD_REFUSAL,
+    IMAGE,
+    EpisodeFailed,
+    Isolation,
+    IsolationError,
+    preflight,
+    serve,
+)
 from .models import model_factory
 from .runs import RunConfig, RunRecord, execute, load_records, slug, task_set_version
 from .score import score, summary_lines
 from .validate import task_files, validate_file
-from .verify import verify
+from .verify import report_json, verify, verify_isolated
 
 DEFAULT_POLICY = "kit.examples.hello_world.scripted:golden_run"
 QUICKSTART_WORLD = "payments"
@@ -181,11 +193,19 @@ def _provider(model: str, given: str | None) -> str:
     return given or (model.split("/", 1)[0] if "/" in model else "unknown")
 
 
+def _isolation(args: argparse.Namespace) -> Isolation | None:
+    return Isolation(image=args.image) if args.isolation == "container" else None
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     """Run a model over a task set; resumable. Exit 1 if any run errored."""
     provider = _provider(args.model, args.provider)
     if (args.guard is None) != (args.backend is None):
         _print("--guard and --backend go together")
+        return 2
+    isolation = _isolation(args)
+    if isolation is not None and args.guard is not None:
+        _print(f"error: {GUARD_REFUSAL}")
         return 2
     guard = (
         GuardSetup.from_names(args.guard, args.backend, args.set)
@@ -213,7 +233,18 @@ def cmd_run(args: argparse.Namespace) -> int:
         guard=guard.config if guard is not None else None,
     )
     out = Path(args.out)
-    manifest = execute(config, out, concurrency=args.concurrency, report=_report, guard=guard)
+    try:
+        manifest = execute(
+            config,
+            out,
+            concurrency=args.concurrency,
+            report=_report,
+            guard=guard,
+            isolation=isolation,
+        )
+    except IsolationError as error:
+        _print(f"error: {error}")
+        return 2
     status = manifest.status
     _print()
     _print(
@@ -300,9 +331,18 @@ def cmd_freeze(args: argparse.Namespace) -> int:
 
 def cmd_submission_check(args: argparse.Namespace) -> int:
     """Check submitted run directories; exit 1 if any fails."""
+    isolation = _isolation(args)
+    if isolation is not None:
+        try:
+            preflight(isolation)
+        except IsolationError as error:
+            _print(f"error: {error}")
+            return 2
     failed = 0
     for path in args.runs:
-        checked = submission.check(Path(path), allow_fake=args.allow_fake, min_runs=args.min_runs)
+        checked = submission.check(
+            Path(path), allow_fake=args.allow_fake, min_runs=args.min_runs, isolation=isolation
+        )
         if checked.ok:
             _print(f"ok   {path}: {checked.model}, {checked.runs_verified} runs reproduced")
             continue
@@ -354,7 +394,19 @@ def cmd_tools(args: argparse.Namespace) -> int:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     """Replay every completed run and confirm the same grades."""
-    report = verify(Path(args.run))
+    isolation = _isolation(args)
+    if isolation is None:
+        report = verify(Path(args.run))
+    else:
+        try:
+            preflight(isolation)
+            report = verify_isolated(Path(args.run), isolation)
+        except (IsolationError, EpisodeFailed) as error:
+            _print(f"error: {error}")
+            return 2
+    if args.json:
+        _print(report_json(report))
+        return 0 if report.ok and report.verdicts else 1
     for verdict in report.verdicts:
         if verdict.ok:
             _print(f"ok   {verdict.run_id}")
@@ -367,6 +419,11 @@ def cmd_verify(args: argparse.Namespace) -> int:
     _print()
     _print(f"{reproduced}/{len(report.verdicts)} runs reproduced their grades")
     return 0 if report.ok and report.verdicts else 1
+
+
+def cmd_episode_serve(args: argparse.Namespace) -> int:
+    """Inside an episode container: serve one task over stdio, then grade it."""
+    return serve(Path(args.task), Path(args.out))
 
 
 def cmd_export(args: argparse.Namespace) -> int:
@@ -490,6 +547,18 @@ def _run_caps(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--retries", type=int, default=5, help="per model call")
 
 
+def _isolation_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--isolation",
+        choices=["none", "container"],
+        default="none",
+        help="container: run the world code in locked-down Docker containers",
+    )
+    parser.add_argument(
+        "--image", default=IMAGE, help=f"the image for --isolation container (default {IMAGE})"
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     """The ``sandbox`` argument parser."""
     parser = argparse.ArgumentParser(
@@ -547,11 +616,23 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--set", action="append", default=[], metavar="KEY=VALUE", help="backend config field"
     )
+    _isolation_options(run_parser)
     run_parser.set_defaults(func=cmd_run)
 
     verify_parser = subparsers.add_parser("verify", help="replay a run directory's actions")
     verify_parser.add_argument("--run", required=True, help="a sandbox run output directory")
+    verify_parser.add_argument("--json", action="store_true", help="machine-readable output")
+    _isolation_options(verify_parser)
     verify_parser.set_defaults(func=cmd_verify)
+
+    episode_parser = subparsers.add_parser(
+        "episode", help="inside an episode container (used by --isolation container)"
+    )
+    episode_sub = episode_parser.add_subparsers(dest="episode_command", required=True)
+    serve_parser = episode_sub.add_parser("serve", help="serve one task over stdio, then grade")
+    serve_parser.add_argument("--task", required=True, help="the task as JSON")
+    serve_parser.add_argument("--out", required=True, help="where episode.json is written")
+    serve_parser.set_defaults(func=cmd_episode_serve)
 
     export_parser = subparsers.add_parser("export", help="write leaderboard files")
     export_parser.add_argument("runs", nargs="+", help="run directories")
@@ -637,6 +718,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub_check.add_argument("runs", nargs="+", help="submitted run directories")
     sub_check.add_argument("--min-runs", type=int, default=1, help="runs per task")
     sub_check.add_argument("--allow-fake", action="store_true", help="accept fake models")
+    _isolation_options(sub_check)
     sub_check.set_defaults(func=cmd_submission_check)
     fetch_parser = sub_sub.add_parser("fetch", help="download a submission's run directory")
     fetch_parser.add_argument("file", help="submissions/<set>/<model>.json")

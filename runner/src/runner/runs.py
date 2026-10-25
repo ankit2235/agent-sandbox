@@ -7,11 +7,17 @@ Layout of ``--out``::
     runs/<run_id>/trace.jsonl  the full trace, agent messages included
     runs/<run_id>/result.json  the record: grade, usage, stop reason; written last
     runs/<run_id>/decisions.jsonl  with --guard: the run's hash-chained decision records
+    runs/<run_id>/episode/     with --isolation container, while the run is going: the
+                               container's only writable path, removed when it ends
 
 A run is finished when its ``result.json`` says ``completed``. Running the same
 command again skips finished runs and redoes the rest: a run killed midway has no
 ``result.json`` and starts again from a fresh world, and an ``error`` run (the
 provider kept failing) is retried. Resuming with different settings is refused.
+
+With ``--isolation container`` each run's world lives in its own locked-down container
+(:mod:`runner.isolation`); the run directory comes out the same, byte for byte, so the
+setting is not part of :class:`RunConfig` and a directory may be resumed either way.
 
 Wall-clock time is used in exactly one place here: the sleep between provider retries
 (a guard's decision latency is measured in :mod:`guard.engine`, and never decides
@@ -43,8 +49,17 @@ from kit.types import GradeResult, TaskSpec, Usage, Visibility
 from kit.world import WorldSpec, load_grader, worlds
 from stress.core import stressed_set
 
-from .agent import CallModel, Caps, run_agent, system_prompt
+from .agent import AgentResult, CallModel, Caps, LocalEpisode, run_agent, system_prompt
 from .guarding import GuardRunConfig, GuardSetup, GuardSummary
+from .isolation import (
+    CONTAINER_ERRORS,
+    GUARD_REFUSAL,
+    ContainerEpisode,
+    EpisodeFailed,
+    Isolation,
+    IsolationError,
+    preflight,
+)
 from .models import Message, ModelFactory, ModelReply, ProviderError, model_factory
 from .tracing import TRACER_NAME, tracer_provider
 
@@ -325,11 +340,20 @@ def execute(
     env: dict[str, str] | None = None,
     report: Callable[[RunRecord], None] | None = None,
     guard: GuardSetup | None = None,
+    isolation: Isolation | None = None,
 ) -> Manifest:
-    """Run every unfinished (task, run) pair and return the updated manifest."""
+    """Run every unfinished (task, run) pair and return the updated manifest.
+
+    With ``isolation``, every run's world runs in a locked-down container; Docker and the
+    image are checked first (:class:`runner.isolation.IsolationError`).
+    """
     if (guard.config if guard is not None else None) != config.guard:
         msg = "the run's guard settings and the guard given to execute() differ"
         raise ValueError(msg)
+    if isolation is not None:
+        if guard is not None:
+            raise IsolationError(GUARD_REFUSAL)
+        preflight(isolation)
     spec = worlds.get(config.world)
     prompt_id, prompt = system_prompt(spec.name)
     config = config.model_copy(update={"prompt": prompt_id})
@@ -348,7 +372,7 @@ def execute(
     build = factory or model_factory(config.model, temperature=config.temperature)
     provider = tracer_provider(out, env)
     tracer = provider.get_tracer(TRACER_NAME)
-    one = partial(_run_one, spec, config, prompt, build, tracer, sleep, out, guard)
+    one = partial(_run_one, spec, config, prompt, build, tracer, sleep, out, guard, isolation)
     pool = ThreadPoolExecutor(max_workers=max(1, concurrency))
     try:
         futures: list[Future[RunRecord]] = [pool.submit(one, task, n) for task, n in pending]
@@ -400,16 +424,13 @@ def _run_one(
     sleep: Sleep,
     out: Path,
     guard: GuardSetup | None,
+    isolation: Isolation | None,
     task: TaskSpec,
     attempt: int,
 ) -> RunRecord:
     """One run: a fresh world, the agent loop, the grade, the trace and the record."""
     run_id = run_id_for(config, task, attempt)
     directory = out / RUNS_DIR / run_id
-    episode = spec.make_episode(task, SimClock(EPOCH), SeededRNG(task.seed))
-    if not isinstance(episode, BaseEpisode):
-        msg = f"world {spec.name!r} must build its episodes on kit.episode.BaseEpisode"
-        raise TypeError(msg)
     model = build(spec, task)
     call = RetryingModel(model.complete, config.retries, sleep)
     record = RunRecord(
@@ -432,41 +453,10 @@ def _run_one(
         "gen_ai.request.model": config.model,
     }
     with tracer.start_as_current_span("sandbox.run", attributes=attributes) as span:
-        try:
-            first = episode.reset(task)
-            run_guard = guard.for_run(task, episode, directory) if guard is not None else None
-            agent = partial(
-                run_agent,
-                episode,
-                task,
-                first,
-                call,
-                prompt=prompt,
-                caps=config.caps,
-                tracer=tracer,
-                guard=run_guard.check if run_guard is not None else None,
-            )
-            try:
-                result = anyio.run(agent)
-            except RunFailed as error:
-                record.error = str(error)
-            else:
-                grader = load_grader(task.grader)
-                record.grade = grader(episode.state, episode.trace.grader_view(), task)
-                record.status = "completed"
-                record.stop_reason = result.stop_reason
-                record.usage = result.usage
-                record.cost_known = result.cost_known
-                record.steps = result.tool_calls
-                record.model_turns = result.model_turns
-                record.malformed_calls = result.malformed_calls
-            record.retries = call.retried
-            if run_guard is not None:
-                record.guard = run_guard.summary()
-            trace = episode.trace.model_copy(update={"run_id": run_id})
-            trace.write_jsonl(directory / TRACE_FILE)
-        finally:
-            episode.close()
+        if isolation is None:
+            _in_process(spec, task, prompt, config.caps, tracer, guard, call, record, directory)
+        else:
+            _in_container(task, prompt, config.caps, tracer, isolation, call, record, directory)
         span.set_attribute("sandbox.status", record.status)
         if record.grade is not None:
             span.set_attribute("sandbox.passed", record.grade.passed)
@@ -475,6 +465,117 @@ def _run_one(
         span.set_attribute("sandbox.cost_usd", record.usage.cost_usd)
     write_json(directory / RESULT_FILE, record.model_dump(mode="json"))
     return record
+
+
+def _completed(record: RunRecord, grade: GradeResult, result: AgentResult) -> None:
+    record.grade = grade
+    record.status = "completed"
+    record.stop_reason = result.stop_reason
+    record.usage = result.usage
+    record.cost_known = result.cost_known
+    record.steps = result.tool_calls
+    record.model_turns = result.model_turns
+    record.malformed_calls = result.malformed_calls
+
+
+def _in_process(
+    spec: WorldSpec,
+    task: TaskSpec,
+    prompt: str,
+    caps: Caps,
+    tracer: Tracer,
+    guard: GuardSetup | None,
+    call: RetryingModel,
+    record: RunRecord,
+    directory: Path,
+) -> None:
+    """The world in this process, reached over the in-memory MCP transport."""
+    episode = spec.make_episode(task, SimClock(EPOCH), SeededRNG(task.seed))
+    if not isinstance(episode, BaseEpisode):
+        msg = f"world {spec.name!r} must build its episodes on kit.episode.BaseEpisode"
+        raise TypeError(msg)
+    try:
+        first = episode.reset(task)
+        run_guard = guard.for_run(task, episode, directory) if guard is not None else None
+        agent = partial(
+            run_agent,
+            LocalEpisode(episode, task),
+            task,
+            first.text,
+            call,
+            prompt=prompt,
+            caps=caps,
+            tracer=tracer,
+            guard=run_guard.check if run_guard is not None else None,
+        )
+        try:
+            result = anyio.run(agent)
+        except RunFailed as error:
+            record.error = str(error)
+        else:
+            grader = load_grader(task.grader)
+            _completed(record, grader(episode.state, episode.trace.grader_view(), task), result)
+        record.retries = call.retried
+        if run_guard is not None:
+            record.guard = run_guard.summary()
+        trace = episode.trace.model_copy(update={"run_id": record.run_id})
+        trace.write_jsonl(directory / TRACE_FILE)
+    finally:
+        episode.close()
+
+
+def _in_container(
+    task: TaskSpec,
+    prompt: str,
+    caps: Caps,
+    tracer: Tracer,
+    isolation: Isolation,
+    call: RetryingModel,
+    record: RunRecord,
+    directory: Path,
+) -> None:
+    """The world in a locked-down container, over stdio (:mod:`runner.isolation`).
+
+    A container that fails (killed, timed out, a bad ``episode.json``) leaves an error
+    run with the reason and no trace; a resume runs it again.
+    """
+    container = ContainerEpisode(task, directory, isolation, task_hash=record.task_hash)
+    try:
+        container.prepare()
+        agent = partial(
+            run_agent,
+            container,
+            task,
+            task.instruction,
+            call,
+            prompt=prompt,
+            caps=caps,
+            tracer=tracer,
+        )
+        result: AgentResult | None = None
+        broken: BaseException | None = None
+        try:
+            result = anyio.run(agent)
+        except RunFailed as error:
+            record.error = str(error)
+        except CONTAINER_ERRORS as error:
+            broken = error
+        record.retries = call.retried
+        container.finish()
+        if broken is not None:
+            msg = f"the connection to the episode broke: {broken}"
+            raise EpisodeFailed(msg)
+        output = container.read_output()
+        if result is not None:
+            _completed(record, output.grade, result)
+        trace = container.trace(output).model_copy(update={"run_id": record.run_id})
+        trace.write_jsonl(directory / TRACE_FILE)
+    except EpisodeFailed as error:
+        record.status = "error"
+        record.grade = None
+        record.error = f"episode container: {error}"
+    finally:
+        container.cleanup()
 
 
 __all__ = [

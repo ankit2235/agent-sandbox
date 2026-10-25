@@ -1,8 +1,11 @@
 name: release
 
 # Pushing a version tag (v0.1.0) builds the six distributions, publishes them to PyPI through
-# trusted publishing, and pushes the Docker image to GHCR. The task-set tag (payments-v0.1) is
-# separate and starts nothing. Run `sandbox release-check` before tagging (docs/RELEASING.md):
+# trusted publishing, and pushes the Docker image to GHCR. Everything released is signed,
+# keylessly, with Sigstore through GitHub's OIDC identity for this workflow: the archives and
+# the image get SLSA build provenance (actions/attest), and PyPI gets PEP 740 attestations
+# from the publish action. Verifying them: docs/RELEASING.md. The task-set tag (payments-v0.1)
+# is separate and starts nothing. Run `sandbox release-check` before tagging (docs/RELEASING.md):
 # it needs the hidden set and the model results, which CI does not have.
 #
 # One-time setup by the repository owner:
@@ -22,6 +25,11 @@ jobs:
   build:
     if: github.repository == 'prarabdha-soni/agent-sandbox'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # the Sigstore signing certificate
+      attestations: write
+      artifact-metadata: write
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -43,6 +51,10 @@ jobs:
       - name: the archives hold only what they should
         run: uv run pytest runner/tests/test_packaging.py
       - run: uv build --all-packages --out-dir dist
+      - name: sign the archives (SLSA build provenance, Sigstore keyless)
+        uses: actions/attest@v4.2.2
+        with:
+          subject-path: dist/*
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: dist
@@ -63,6 +75,8 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@v1.14.3
+        with:
+          attestations: true # PEP 740, signed with this workflow's identity (the default)
 
   image:
     needs: build
@@ -71,6 +85,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write # the Sigstore signing certificate
+      attestations: write
+      artifact-metadata: write
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4.4.1
@@ -80,9 +97,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v7.4.0
+        id: push
         with:
           context: .
           push: true
           tags: |
             ghcr.io/prarabdha-soni/agent-sandbox:${{ needs.build.outputs.version }}
             ghcr.io/prarabdha-soni/agent-sandbox:latest
+      - name: sign the image (SLSA build provenance, pushed to GHCR beside it)
+        uses: actions/attest@v4.2.2
+        with:
+          subject-name: ghcr.io/prarabdha-soni/agent-sandbox
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

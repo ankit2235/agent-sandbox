@@ -96,6 +96,22 @@ git push origin payments-v0.1 v0.1.0
 Pushing `v0.1.0` runs `release.yml`: it checks the tag matches the packages' version, builds the
 six distributions, publishes them to PyPI and pushes `ghcr.io/prarabdha-soni/agent-sandbox:0.1.0`.
 
+### Checking the signatures
+
+The same run signs everything it releases with Sigstore, keylessly, through GitHub's OIDC
+identity for `release.yml` on this repository (no key to keep): every archive in `dist/` and the
+image get SLSA build provenance (`actions/attest@v4.2.2`; the image's is pushed to GHCR beside
+it), and PyPI receives PEP 740 attestations from the publish action. The jobs run only on
+`prarabdha-soni/agent-sandbox`, never on a fork. After the first release, check them:
+
+```bash
+gh attestation verify agent_sandbox_bench-0.1.0-py3-none-any.whl --repo prarabdha-soni/agent-sandbox
+gh attestation verify oci://ghcr.io/prarabdha-soni/agent-sandbox:0.1.0 --repo prarabdha-soni/agent-sandbox
+```
+
+On PyPI each file's page shows its attestation ("Verified details"). No release has been signed
+yet: the first one is the owner's tag.
+
 ## 7. The GitHub release
 
 Create the release for `v0.1.0` with the `CHANGELOG.md` section and the calibration report, and

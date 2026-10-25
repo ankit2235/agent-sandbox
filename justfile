@@ -70,6 +70,19 @@ quickstart MODEL="fake:golden":
 release-check SET *ARGS:
     uv run sandbox release-check {{SET}} {{ARGS}}
 
+# Build the image episodes run in with `--isolation container` (never pulled, never pushed).
+image:
+    docker build -t agent-sandbox:0.1.0 .
+
+# The container tests: probes of the locked-down settings, and every task in a container.
+test-containers: image
+    SANDBOX_TEST_IMAGE=agent-sandbox:0.1.0 uv run pytest -m docker runner/tests/test_isolation_docker.py
+
+# Known vulnerabilities in the Python lock and the TypeScript SDK, as CI checks them.
+audit:
+    python3 scripts/dependency_scan.py python
+    python3 scripts/dependency_scan.py npm guard/typescript
+
 # Build the six distributions into dist/. Nothing is uploaded.
 build:
     uv build --all-packages --out-dir dist

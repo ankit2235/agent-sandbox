@@ -21,16 +21,20 @@ Arguments that are not a JSON object never reach the world: the model is told
 With a guard (``sandbox run --guard``), the agent's client talks to a
 :class:`guard.mcp_proxy.GuardProxy` in front of the bridge instead: every call to a
 guarded tool is decided first, and a held call never reaches the world.
+
+The loop reaches the episode through an :class:`EpisodeLink`: :class:`LocalEpisode` (in
+process, the in-memory transport) or :class:`runner.isolation.ContainerEpisode` (a
+locked-down container, over stdio).
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator, Callable, Sequence
-from contextlib import asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from importlib import resources
-from typing import Any
+from typing import Any, Protocol
 
 import anyio
 from mcp import types
@@ -42,7 +46,7 @@ from opentelemetry.trace import Tracer
 from guard.mcp_proxy import Check, GuardProxy
 from kit.episode import BaseEpisode
 from kit.mcp_bridge import McpBridge
-from kit.types import Observation, TaskSpec, Usage
+from kit.types import TaskSpec, Usage
 
 from .models import ContextWindowExceeded, Message, ModelReply, ProviderError
 
@@ -98,6 +102,54 @@ class AgentResult:
 CallModel = Callable[[Sequence[Message], Sequence[Message]], ModelReply]
 
 
+class EpisodeLink(Protocol):
+    """What the agent loop needs from an episode, wherever it runs."""
+
+    @property
+    def step_count(self) -> int:
+        """Tool calls the world has applied."""
+        ...
+
+    def session(self, guard: Check | None) -> AbstractAsyncContextManager[ClientSession]:
+        """An MCP client session to the task's tools, behind the guard if one is given."""
+        ...
+
+    def add_agent_message(self, text: str, usage: Usage | None) -> None:
+        """Record what the model said in the episode's trace."""
+        ...
+
+    def tool_called(self) -> None:
+        """One tool call was answered."""
+        ...
+
+
+class LocalEpisode:
+    """An episode in this process: the kit's bridge over the in-memory MCP transport."""
+
+    def __init__(self, episode: BaseEpisode, task: TaskSpec) -> None:
+        self.episode = episode
+        self.task = task
+
+    @property
+    def step_count(self) -> int:
+        """Tool calls the episode has applied."""
+        return self.episode.step_count
+
+    def session(self, guard: Check | None) -> AbstractAsyncContextManager[ClientSession]:
+        """A session to the bridge, or to a guard proxy in front of it."""
+        bridge = McpBridge(
+            self.episode, self.episode.router, self.task, name=f"sandbox-{self.episode.world}"
+        )
+        return _session(bridge, guard)
+
+    def add_agent_message(self, text: str, usage: Usage | None) -> None:
+        """Append the message to the trace at the episode's current simulated time."""
+        self.episode.trace.add_agent_message(self.episode.clock.now(), text, usage=usage)
+
+    def tool_called(self) -> None:
+        """Nothing to do: the episode counts its own steps."""
+
+
 def tool_definitions(listed: Sequence[types.Tool]) -> list[Message]:
     """MCP tool definitions in the function-calling format LiteLLM takes."""
     return [
@@ -132,9 +184,9 @@ def _arguments(raw: str) -> dict[str, Any] | None:
 
 
 async def run_agent(
-    episode: BaseEpisode,
+    episode: EpisodeLink,
     task: TaskSpec,
-    first: Observation,
+    instruction: str,
     call_model: CallModel,
     *,
     prompt: str,
@@ -149,7 +201,14 @@ async def run_agent(
     """
     try:
         return await _drive(
-            episode, task, first, call_model, prompt=prompt, caps=caps, tracer=tracer, guard=guard
+            episode,
+            task,
+            instruction,
+            call_model,
+            prompt=prompt,
+            caps=caps,
+            tracer=tracer,
+            guard=guard,
         )
     except BaseExceptionGroup as group:
         raise _sole(group) from None
@@ -163,9 +222,9 @@ def _sole(group: BaseExceptionGroup[BaseException]) -> BaseException:
 
 
 async def _drive(
-    episode: BaseEpisode,
+    episode: EpisodeLink,
     task: TaskSpec,
-    first: Observation,
+    instruction: str,
     call_model: CallModel,
     *,
     prompt: str,
@@ -173,14 +232,13 @@ async def _drive(
     tracer: Tracer,
     guard: Check | None = None,
 ) -> AgentResult:
-    bridge = McpBridge(episode, episode.router, task, name=f"sandbox-{episode.world}")
     result = AgentResult(stop_reason="agent_finished")
     limit = caps.steps_for(task)
-    async with _session(bridge, guard) as client:
+    async with episode.session(guard) as client:
         tools = tool_definitions((await client.list_tools()).tools)
         messages: list[Message] = [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": first.text},
+            {"role": "user", "content": instruction},
         ]
         while True:
             if result.model_turns >= limit:
@@ -198,7 +256,7 @@ async def _drive(
                 span.set_attribute("sandbox.tool_calls", len(reply.tool_calls))
             result.model_turns += 1
             _add_usage(result, reply)
-            episode.trace.add_agent_message(episode.clock.now(), reply.text, usage=reply.usage)
+            episode.add_agent_message(reply.text, reply.usage)
             if caps.max_cost is not None and not reply.cost_known:
                 msg = f"the price of {task.id}'s model is unknown, so --max-cost cannot be enforced"
                 raise ProviderError(msg, retriable=False)
@@ -210,7 +268,7 @@ async def _drive(
                 result.stop_reason = "agent_finished"
                 break
             messages.append(reply.assistant_message())
-            ended = await _apply(client, reply, messages, result, tracer, limit)
+            ended = await _apply(client, episode, reply, messages, result, tracer, limit)
             if ended is not None:
                 capped = ended == "capped" or episode.step_count >= task.max_steps
                 result.stop_reason = "max_steps" if capped else "terminal_tool"
@@ -232,6 +290,7 @@ async def _session(bridge: McpBridge, guard: Check | None) -> AsyncIterator[Clie
 
 async def _apply(
     client: ClientSession,
+    episode: EpisodeLink,
     reply: ModelReply,
     messages: list[Message],
     result: AgentResult,
@@ -258,6 +317,7 @@ async def _apply(
         with tracer.start_as_current_span("tool.call") as span:
             span.set_attribute("sandbox.tool", call.name)
             outcome = await client.call_tool(call.name, arguments)
+            episode.tool_called()
             observation = outcome.structuredContent or {}
             error = observation.get("error")
             if error:
@@ -300,6 +360,8 @@ __all__ = [
     "AgentResult",
     "CallModel",
     "Caps",
+    "EpisodeLink",
+    "LocalEpisode",
     "observation_text",
     "run_agent",
     "system_prompt",

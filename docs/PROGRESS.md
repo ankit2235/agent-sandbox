@@ -204,6 +204,39 @@ does not exist). No kit change. The Phase 7 adapters moved into `guard/` (decisi
 Also measured, not estimated: the rules-only guard's overhead, on 2026-10-25 on an AMD Ryzen 7 7435HS (16 threads, Python 3.12.14): p50 0.64 ms and p99 1.57 ms per decision over all 8,337 rows of the `actions-v0.1` test split, behind each world's default pack with record writing included (`sandbox-train eval --backend rules_only --guard '{world}/default'`; all 8,337 records verify), and p50 0.62 ms, p99 1.14 ms in the CI test (3,000 decisions after 300 warm-up). Behind the packs, rules_only's decision metrics are the Phase 7 baseline's exactly (accuracy 29.0%, wrongful blocks 1.0%), since every check a pack names is also one of its rules. Model-mode latency
 on CPU and on a GPU is pending (no model downloaded, by rule).
 
+**Phase 9, item 6 — security of the sandbox itself: built and green; signing a real release and
+the disclosure contact wait on the repo owner.** No kit change (decisions 240–260). Of its
+"Done when" list:
+
+- [x] Tests and docs are updated, the CHANGELOG has an entry, and the release check still
+  passes what it passed: `sandbox release-check payments-v0.1` (with `HIDDEN_TASKS_DIR`) passes
+  the same 5 of 9 conditions as in Phase 6 (`public-tasks`, `hidden-set` with 17 tasks and 41
+  runs, `grader-runs` with 189 runs, `frozen`, `no-hidden`); `signoff`, `calibration`, `results`
+  and `published` still wait on a reviewer and real model runs.
+- [x] Scores from older versions still reproduce, inside and outside a container. Run
+  directories made with the Phase 8 code (HEAD before this item, unpacked by `git archive`
+  outside the repository) for `fake:golden` and `fake:wrong` on both worlds verify 50/50 each,
+  in process and with `--isolation container`, and container runs of the same sets are byte for
+  byte the same as them. `test_isolation_docker.py` does the same for every task of both worlds
+  in CI. The hidden sets (17 tasks each) ran and verified in containers through the checked
+  loader (run directories outside the repository, deleted after).
+- [x] Episodes can run in locked-down containers (`sandbox run --isolation container`: no
+  network, read-only filesystem with no tmpfs, no capabilities, no new privileges, non-root,
+  1 CPU, 512 MiB, 128 processes, 120 CPU-seconds), with tests proving the network and writes
+  outside the run directory are blocked (`runner/tests/test_isolation_docker.py`: a TCP connect
+  to 192.0.2.1, DNS for `example.invalid`, a raw socket, writes to twelve paths, `setuid(0)`,
+  the cgroup limits, a thread bomb, a CPU burn, an out-of-memory episode).
+- [x] Dependency scanning runs in CI (`dependency-scan.yml`: `uv audit` and `npm audit`, on
+  dependency changes, main and weekly; 44 Python and 1 npm advisories accepted with reasons, 0
+  problems). [ ] **Pending, needs the owner:** signed releases are set up to run only on the
+  owner's repository (`actions/attest@v4.2.2` for the archives and the image, PEP 740 on PyPI);
+  no release has been signed, since that needs the owner's first tag.
+- [ ] **Pending, needs the owner:** a real disclosure contact. `SECURITY.md` points to GitHub
+  private vulnerability reporting, which the owner must turn on; no email address is named.
+
+Also: the Docker image had not built since Phase 7 (`.dockerignore` left out `guard/` and
+`training/`); fixed (decision 252).
+
 ## What exists
 
 | Area | State |
@@ -225,7 +258,7 @@ on CPU and on a GPU is pending (no model downloaded, by rule).
 | Runner | `guarding.py` (`sandbox run --guard`: a guard per run behind a proxy, `decisions.jsonl`, its verification), `agent.py` (agent loop over MCP, caps, versioned prompts in `prompts/`), `models.py` (LiteLLM adapter, `fake:golden`/`fake:wrong`/`fake:idle`), `runs.py` (run directory, resume, retries, concurrency), `tracing.py` (OpenTelemetry), `score.py` (bootstrap intervals), `export.py` + `schemas/` (`results-v0.1`), `verify.py` |
 | Guard | `guard/` (`sandbox-guard`): the decision contract (Phase 7); policies `guard-policy-v1` with hashes (`policy.py`), packs `payments/default` and `security/default`, hard rules (`rules.py`), the layered engine (`engine.py`), canonical JSON (`canonical.py`), decision records and chain verification (`records.py`), the decorator (`wrap.py`), the MCP proxy (`mcp_proxy.py`), the world registry (`actions.py`) and request builder (`requests.py`), backends with configs (`backends/`: rules_only, LLM judge, System One, OpenAI Decisions, our model, calibration), a guard as a backend for evaluation (`guarded_backend.py`), shared schemas; `typescript/` (the TypeScript SDK) and `test-vectors/` |
 | Training | `training/` (`sandbox-train`): 10 templates per world (`tasks/templates/*.json`), labels from the graders, sources, near-duplicate detection, splits by family, build and manifest, leakage checks, dataset card; our model's training files, reward, SFT and GRPO scripts and configs, `requirements-train.txt`; metrics, prices, calibration fitting, eval (also behind the guard), report and the `guard-results-v0.1` schema with `with_guard`. The world modules (`worlds/<name>/training.py`, entry point `agent_sandbox.training`) now also give the guard's fields and delegated limits |
-| CI | `ci.yml` (lint, strict types on the kit on `worlds.payments` and `worlds.security`, tests; `guard-typescript`: the TypeScript SDK's build and tests; `package`: the built wheels in a clean virtualenv, quickstart), `core-isolation.yml` (purity + no world imports), `no-hidden-leak.yml` (no canary or hidden task in any tracked file, no copy of a published hidden task; `training-data`: a CI-sized action dataset and its leakage check), `docs.yml` (strict site build; Pages from main), `results-submission.yml` (results pull requests; maintainer spot-check) and `release.yml` (version tag: PyPI trusted publishing, GHCR image; owner's repository only) |
+| CI | `ci.yml` (lint, strict types on the kit on `worlds.payments` and `worlds.security`, tests; `guard-typescript`: the TypeScript SDK's build and tests; `package`: the built wheels in a clean virtualenv, quickstart), `core-isolation.yml` (purity + no world imports), `no-hidden-leak.yml` (no canary or hidden task in any tracked file, no copy of a published hidden task; `training-data`: a CI-sized action dataset and its leakage check), `docs.yml` (strict site build; Pages from main), `results-submission.yml` (results pull requests, replayed in a container; maintainer spot-check), `release.yml` (version tag: PyPI trusted publishing, GHCR image, Sigstore attestations; owner's repository only), `dependency-scan.yml` (uv and npm audits, weekly) and `ci.yml`'s `container` job (the image, the probes, every task in a container) |
 | Payments services | `services/rails` (Phase 1 + mandate creation, statement), `services/commerce`, `services/disputes` (with `reconcile.py`), shared `services/common.py` |
 | Payments world | `merchants.py` (profiles), `state.py` (`initial_state` model with `history`, and schema), `links.py` (the only cross-service code), `episode.py` (`PaymentsEpisode`, `wait`, history replay), `tools/` (25 tools with `ask_user`, `schemas.json`, stdio server), `task_format.py` (task file schema), `stress/` (7 modifiers, `initial_state.stress_checks`); registered as world `payments` with `tasks_dir` set |
 | Payments tasks | 50 in `tasks/<category>/` (15 rails, 15 commerce, 12 disputes, 8 multi; 15 easy, 20 medium, 15 hard), `tasks/schema.json` |
@@ -235,14 +268,16 @@ on CPU and on a GPU is pending (no model downloaded, by rule).
 | Security tasks | 50 in `tasks/<category>/` (12 triage, 10 investigation, 10 containment, 8 reporting, 10 multi; 15 easy, 20 medium, 15 hard; 35 malicious, 15 benign), `tasks/schema.json` |
 | Security graders | `graders/common.py` (goal checks and guards, `grade()` with impact penalty), one grader per task in `graders/{triage,investigation,containment,reporting,multi}.py`, 147 runs in `graders/runs/` |
 | Packaging | Six distributions at 0.1.0 as `agent-sandbox-bench[-kit,-runner,-stress,-world-payments,-world-security]`, pinned to each other; the name in `runner.DISTRIBUTION`, `scripts/rename_distribution.py`; `Dockerfile` and `.dockerignore` (image with LiteLLM) |
+| Isolation | `runner/isolation.py`: `--isolation container` on `run`, `verify` and `submission check`; `sandbox episode serve` (the worker inside); the locked-down `docker run` settings in one place; error runs for killed, timed-out or failing containers; `docs/site/isolation.md` |
+| Supply chain | `scripts/dependency_scan.py` and `.github/dependency-scan-ignores.toml` (accepted advisories with reasons); `dependency-scan.yml`; Sigstore signing in `release.yml`; base images pinned by digest; a non-root image |
 | Release | `runner/release.py` (nine named conditions), `sandbox freeze` and `payments/tasks/frozen-v0.1.json`, `runner/validate.py` (shared task-file and run checks), `docs/RELEASING.md` |
 | Submissions | `runner/submission.py` (`submission-v1` files, safe fetch, check, spot-check), `submissions/`, `.github/PULL_REQUEST_TEMPLATE/results_submission.md` |
 | Docs | `mkdocs.yml`, `docs/site/` (quickstart, concepts, task format, graders, generated tool reference for both worlds, scoring, limitations, submitting results, contributing tasks, citation), `runner/reference.py`, `docs/blog/v0.1.md`, `docs/calibration/` |
-| Tests | 2,868 in all, all passing with the openenv extra installed (CI, without it, skips the 7 OpenEnv adapter and 5 Space tests), 149 more than Phase 7: `guard/tests/test_vectors.py` 63 (the shared vectors), `test_guard_library.py` 18, `test_no_override.py` 9 (15 backends, plus a 300-case property test), `test_mcp_proxy.py` 2 (in memory and over stdio), `runner/tests/test_guarded_runs.py` 25, `training/tests/test_guard_eval.py` 6 (with the 5 ms overhead test), the rest the purity and core-isolation checks over the new source files; the TypeScript SDK's 8 tests run the same vectors. Before Phase 8: 2,719, 242 more than Phase 6: 164 in `guard/` and `training/` (`test_decision.py` 16, baselines 26, guard model 25, eval 20, templates 16, world 13, reward hacking 11, labels 10, leaks 10, similarity and splits 9, build 8), the rest the purity and core-isolation checks over the new source files. Before Phase 7: 2,477, 72 more than Phase 5. New in Phase 6: `test_release.py` (20: every gate condition passing and failing, freeze, quickstart, spot-check CLI), `test_submission.py` (20: every way of tampering with a submission, safe fetch, size cap, spot-check), `test_packaging.py` (6: names, versions, pins, what each built archive holds), `test_reference.py` (6), `test_openenv_space.py` (5), 2 in `test_openenv_adapter.py` (K1), 1 in `test_verify.py` (a run made before sign-off still verifies). Before Phase 6: 2,405 (2,404 pass, 1 skipped without the openenv extra), 700 more than Phase 4. New in Phase 5: `test_payments_stress.py` (381: every task × modifier, plus each modifier's content and edge cases), `test_security_stress_runs.py` (257), `test_hidden.py` (27), `stress/tests/test_stress_core.py` (15), `test_calibrate.py` (7). Before Phase 5: 1,705 (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
+| Tests | 2,931 in all: 2,921 pass with the openenv extra installed and the 10 Docker tests are skipped unless `SANDBOX_TEST_IMAGE` names a built image (they pass against `agent-sandbox:0.1.0`, and CI's `container` job runs them). New in Phase 9 item 6: `test_isolation.py` 38, `test_isolation_docker.py` 10, `test_supply_chain.py` 13, and 2 purity and core-isolation checks over `isolation.py`. Before Phase 9: 2,868 in all, all passing with the openenv extra installed (CI, without it, skips the 7 OpenEnv adapter and 5 Space tests), 149 more than Phase 7: `guard/tests/test_vectors.py` 63 (the shared vectors), `test_guard_library.py` 18, `test_no_override.py` 9 (15 backends, plus a 300-case property test), `test_mcp_proxy.py` 2 (in memory and over stdio), `runner/tests/test_guarded_runs.py` 25, `training/tests/test_guard_eval.py` 6 (with the 5 ms overhead test), the rest the purity and core-isolation checks over the new source files; the TypeScript SDK's 8 tests run the same vectors. Before Phase 8: 2,719, 242 more than Phase 6: 164 in `guard/` and `training/` (`test_decision.py` 16, baselines 26, guard model 25, eval 20, templates 16, world 13, reward hacking 11, labels 10, leaks 10, similarity and splits 9, build 8), the rest the purity and core-isolation checks over the new source files. Before Phase 7: 2,477, 72 more than Phase 5. New in Phase 6: `test_release.py` (20: every gate condition passing and failing, freeze, quickstart, spot-check CLI), `test_submission.py` (20: every way of tampering with a submission, safe fetch, size cap, spot-check), `test_packaging.py` (6: names, versions, pins, what each built archive holds), `test_reference.py` (6), `test_openenv_space.py` (5), 2 in `test_openenv_adapter.py` (K1), 1 in `test_verify.py` (a run made before sign-off still verifies). Before Phase 6: 2,405 (2,404 pass, 1 skipped without the openenv extra), 700 more than Phase 4. New in Phase 5: `test_payments_stress.py` (381: every task × modifier, plus each modifier's content and edge cases), `test_security_stress_runs.py` (257), `test_hidden.py` (27), `stress/tests/test_stress_core.py` (15), `test_calibrate.py` (7). Before Phase 5: 1,705 (1,704 pass, 1 skipped without the openenv extra). Runner: 96 (agent loop, models, runs and resume, scoring, export and schemas, verify with all 50 tasks of both worlds, tracing, CLI). Before Phase 4: 1,600. Security: 782 (runs, reward hacking, stress, scenarios, services, tools, determinism, MCP). Before Phase 3S: 780 in all. Payments: 577. New in Phase 3: `test_task_runs.py` (135: every run plus task-file checks), `test_reward_hacking.py` (179), `test_graders_common.py` (23), `test_history.py` (13), `test_runs_player.py` (13). |
 
 ## Decisions made
 
-See `docs/DECISIONS.md`, entries 1–239, the two reward-hacking reviews, the leakage and
+See `docs/DECISIONS.md`, entries 1–260, the two reward-hacking reviews, the leakage and
 reward-hacking review of the guard-model data, and the guard's no-override review. Phase 8's
 that later phases depend on:
 
@@ -368,8 +403,9 @@ Phase 2's that later phases depend on:
    Fine for determinism; a busy payments step now makes several service calls, so revisit in
    Phase 9's scale work.
 7. **The repository is public** at <https://github.com/prarabdha-soni/agent-sandbox>, and CI is
-   green on `main`. Two placeholders still need real addresses: `conduct@example.invalid` in
-   `CODE_OF_CONDUCT.md` and `security@example.invalid` in `SECURITY.md`.
+   green on `main`. `CODE_OF_CONDUCT.md` still has the placeholder `conduct@example.invalid`.
+   `SECURITY.md` now points to GitHub private vulnerability reporting, which the owner must turn
+   on (or name a security address).
 8. **`uv.lock` is written by uv 0.12.20** (`revision = 3`), so contributors on other uv versions
    may see that line flip. Phase 2 added `mcp` and its dependencies to the lock.
 9. **The leaderboard's `stress` category is not built** (decision 133 had left it to Phase 6;
@@ -471,6 +507,20 @@ Phase 2's that later phases depend on:
 42. **The TypeScript SDK is not published** (`private: true`, provisional name
     `@agent-sandbox/guard`); npm publishing is the owner's decision.
 
+43. **`--guard` with `--isolation container` is refused** (decision 245). Follow-up: run the
+    guard inside the container (rules only needs no network) or carry its state reads across.
+44. **Container gaps** (decision 254 and `SECURITY.md`): a scratch directory's disk use is not
+    capped; starting containers needs the Docker daemon (root-equivalent); Docker's default
+    seccomp and AppArmor profiles, not custom ones; the image's OS packages are not scanned; the
+    OpenEnv Space still runs episodes in process. The timeouts are judgment calls.
+45. **Accepted advisories** (decision 259): filelock 3.32.7 (litellm's cap), pillow 12.3.0
+    (gradio's cap under `openenv==0.9.0`), ajv 8.17.1 (the SDK's exact pin). Each entry fails
+    the scan once it is stale, so it is reviewed when the cap moves.
+46. **Signing is set up, not exercised.** The attest steps run only on a tag in the owner's
+    repository; the first release is the first real test. `docs/RELEASING.md` has the checks.
+47. **Docs say "six distributions", the build writes eight** (`guard` and `training` became
+    workspace packages in Phases 7 and 8). Seen while testing the package; not changed here.
+
 ## Next step
 
 Everything left for v0.1 is people's, models' or the owner's (`docs/RELEASING.md`, in order):
@@ -503,6 +553,10 @@ outside backend and our model behind the guard on the dataset (test split and hi
 in sandbox runs of both worlds, with the scripted agents and one real agent model; model-mode
 latency on CPU and on a GPU; then `sandbox-train report ... --runs ... --baseline-runs ...` and,
 after checking the providers' terms, the owner publishes `guards/results.json`.
+
+For Phase 9 item 6, the owner's: turn on private vulnerability reporting (or name a security
+address) and update `SECURITY.md`; the first signed release comes with the `v0.1.0` tag
+(`docs/RELEASING.md`, "Checking the signatures"). The next Phase 9 item is the user's choice.
 
 Phase 3P (drug safety) still starts only once the repo owner confirms a drug-safety physician as
 reviewer; then its Phase 7 parts (`submit_case`, `close_case_invalid`, a seriousness downgrade)

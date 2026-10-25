@@ -1372,3 +1372,98 @@ The budgets count what the guard allowed, not what the rails settled (an allowed
 rails then decline still counts). The records name the policy by hash but the world checks by id
 only; a changed check's code is not hashed into the record (the world package's version names
 it).
+
+## Phase 9, item 6 — security of the sandbox itself (2026-10-25)
+
+### Approved before coding
+
+240. **What runs in a container.** The agent never runs code of its own; its tool arguments
+     drive world code (tool handlers, services, grader), and so does a replayed trace. That runs
+     inside: the episode, built through the world registry and served over MCP by the kit's
+     `McpBridge` (`sandbox episode serve`). Outside: the model calls (network, keys), the agent
+     loop, the caps, the run directory and OpenTelemetry. The boundary is MCP over stdio. No kit
+     change; every version stays 0.1.0.
+241. **Container settings** (`runner/isolation.py: docker_run`, the only place they are written):
+     `--network none`, `--read-only` with no tmpfs, `--cap-drop ALL`,
+     `--security-opt no-new-privileges=true`, a non-root `--user`, CPU, memory (swap off), pids
+     and `RLIMIT_CPU` limits, `--pull never`. The one writable path is `runs/<run_id>/episode/`,
+     removed when the run ends.
+242. **Isolation is not part of `RunConfig`.** A run directory comes out byte for byte the same
+     either way (tested on every task of both worlds), so it can be resumed or verified either
+     way; no schema changes.
+243. **A failed container is an error run** (killed by a limit, timed out, non-zero exit, a bad
+     `episode.json`): not graded, the reason in `result.json`, retried on resume, as a provider
+     failure. The timeouts are wall-clock but never decide a score. Docker missing or down, or the
+     image missing, stops the command before any run (exit 2).
+244. **A runner started as root** runs containers as `65534:65534` and hands that user only the
+     scratch directory (and read access to its own task file) by `chown`.
+245. **`--guard` with `--isolation container` is refused** with a clear error: the guard reads the
+     live episode state and runs world code on the agent's arguments, both inside the container.
+     Follow-up: run the guard inside the container (rules only needs no network), or carry the
+     state it reads across the boundary.
+246. **Verify in a container** runs the whole `sandbox verify` inside, with the run directory and
+     whatever task directory, policy file or hidden set it needs mounted read-only and nothing
+     writable; the verdicts come back as JSON (`sandbox verify --json`, additive) and are
+     validated. `sandbox submission check --isolation container` uses it, and the
+     results-submission workflow builds the image only after its files-only step passed.
+247. **"Every golden and wrong run" in a container** means what it meant in Phase 4: the 50 golden
+     and 50 first-wrong runs per world, through `fake:golden` and `fake:wrong`. All 123 and 147
+     scripted runs are still played in process by the existing tests.
+248. **Dependency scanning** with what the toolchain has: `uv audit` (in uv 0.12.20, OSV) and
+     `npm audit`; no new dependency. Fixes are taken in the lock files only; an advisory that
+     cannot be fixed that way is accepted with its reason and id; an entry no longer reported
+     fails the scan.
+249. **Signed releases**: `actions/attest@v4.2.2` (by tag, as the repo pins actions) gives SLSA
+     build provenance for every archive in `dist/` and for the image by digest (pushed to GHCR);
+     PyPI gets PEP 740 attestations from `pypa/gh-action-pypi-publish` (`attestations: true`,
+     its default, written out). Keyless, through the workflow's OIDC identity; owner's repository
+     only. No dependabot.yml.
+250. **The disclosure contact** is GitHub private vulnerability reporting, pending the owner
+     turning it on; no address is invented. The `security@example.invalid` placeholder was
+     removed rather than kept, so nobody writes to a dead address.
+251. **The image** pins both base images by digest (tags kept for readers), runs as `65532:65532`
+     by default, and sets `PYTHONDONTWRITEBYTECODE=1`; documented `docker run` commands that
+     mount `runs/` pass `--user "$(id -u):$(id -g)"`.
+
+### Decided while building
+
+252. **The image had not built since Phase 7**: `.dockerignore` listed only the Phase 6 members,
+     not `guard/` and `training/`, so `uv sync` failed. Both are in now, without
+     `guard/typescript/`, `guard/test-vectors/` and `training/data/`; a test holds the build
+     context to the workspace members.
+253. **Putting the model's messages back.** The worker reports the steps written at reset and the
+     first simulated time; each message goes after the tool call before it, at that step's time.
+     This is exact because events drain at the start of the next step. A trace whose number of
+     tool calls differs from what the runner sent is refused.
+254. **Limits, measured** in the container: playing every golden and wrong run of a world in one
+     process peaks at 145 MiB (payments) and 159 MiB (security), 18 and 27 CPU-seconds; the
+     imports are 68 MiB and 1.2 CPU-seconds. So memory is 512 MiB (no swap), CPU time 120
+     seconds, 1 CPU, 128 processes. The timeouts (60 s per MCP answer, 60 s to grade and exit,
+     30 min for a whole verify) are judgment calls, not measured.
+255. **Two more flags, both tightening:** `--ipc none`, because Docker mounts a writable 64 MiB
+     tmpfs at `/dev/shm` even with `--read-only`; `--log-driver none`, because Docker's log files
+     would keep the MCP stream (task content, hidden tasks included) on the host.
+256. **Container lifecycle**: no `--rm` for episodes, since the runner needs the exit code and
+     `OOMKilled` (`docker wait`, `docker inspect`), then removes the container itself. Its name is
+     a hash of the scratch path, so a container left by a killed runner is removed before the run
+     restarts; all carry the label `agent-sandbox.episode`. `--sig-proxy=false`, so the MCP
+     client stopping the Docker client two seconds after the session cannot stop the grading.
+257. **What a container writes is read defensively**: `O_NOFOLLOW | O_NONBLOCK`, a regular file
+     only, 64 MiB at most, validated, the same task hash and version as the runner; removing the
+     scratch directory never follows a link. Only `DOCKER_*` settings reach the Docker client from
+     the runner's environment; a container sees no variable but those its command line sets.
+258. **The worker is generic**, in the runner, and does not reuse the worlds' stdio servers:
+     those serve a task file and nothing more, while a container needs task JSON (stressed and
+     hidden tasks are not files), the registry, and grading at the end. The worlds' servers are
+     unchanged.
+259. **Lock upgrades and accepted advisories** (first scan, 51 advisories in 7 packages): brotli
+     1.2.0 → 1.2.1, certifi 2026.7.22 → 2026.10.23, fastmcp and fastmcp-slim 3.4.9 → 3.4.11,
+     virtualenv 21.14.11 → 21.14.13. Accepted, in `.github/dependency-scan-ignores.toml`:
+     filelock 3.32.7 (3 advisories; litellm caps it below 4, decision 114), pillow 12.3.0 (41;
+     gradio 6.30.0 requires pillow<13 under `openenv==0.9.0`, optional extra only, not in the
+     image), ajv 8.17.1 in the TypeScript SDK (1; pinned in `package.json`, and the SDK never
+     turns on `$data`). `uv audit`'s JSON report is marked "preview", so the scan pins uv 0.12.20.
+260. **Paths in a container verify**: a task directory or policy file sits at its own absolute
+     path inside (a relative one under `/work`, the working directory there); the hidden set at
+     `/sandbox/hidden`, with `HIDDEN_TASKS_DIR` set to it. A runner started as root needs those
+     read-only mounts to be readable by `65534`.

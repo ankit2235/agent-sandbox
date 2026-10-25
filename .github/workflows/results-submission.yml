@@ -4,7 +4,10 @@ name: results-submission
 # the model's run directory and its sha256 (docs/site/submit-results.md).
 #
 # - check (every such pull request, no secrets): only submission files change; each archive is
-#   downloaded, hash-checked and unpacked safely, and `sandbox submission check` replays every run.
+#   downloaded, hash-checked and unpacked safely, and `sandbox submission check` replays every run
+#   in a locked-down container (no network, read-only, limits), since the traces come from outside.
+#   The image is built only after the files-only step passed, so it is main's code, never the
+#   pull request's.
 # - spot-check (a maintainer starts it by hand): main's code, never the pull request's, reruns a
 #   seeded sample of ten tasks with the submitted model, using the provider keys stored in the
 #   `spot-check` environment, and compares the pass rates.
@@ -48,6 +51,8 @@ jobs:
           enable-cache: true
       - run: uv python install 3.12
       - run: uv sync --all-packages
+      - name: the replay image, from main's code (only submission files changed)
+        run: docker build -t agent-sandbox:check .
       - name: fetch and check every submission
         run: |
           set -o pipefail
@@ -56,7 +61,8 @@ jobs:
             [ -f "$file" ] || continue   # a deleted submission
             out="$RUNNER_TEMP/$(basename "$file" .json)"
             if dir=$(uv run sandbox submission fetch "$file" --out "$out" | tail -n 1); then
-              uv run sandbox submission check "$dir" --min-runs 3 || status=1
+              uv run sandbox submission check "$dir" --min-runs 3 \
+                --isolation container --image agent-sandbox:check || status=1
             else
               status=1
             fi

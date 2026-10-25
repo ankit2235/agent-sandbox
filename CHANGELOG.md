@@ -10,6 +10,53 @@ This section becomes **[0.1.0] — payments-v0.1** when the repo owner tags `pay
 `v0.1.0` (`docs/RELEASING.md`). The release gate does not pass yet: it waits on the payments
 reviewer's sign-off, real model results and the real calibration report.
 
+### Added — Phase 9, item 6: security of the sandbox itself
+
+- `sandbox run --isolation container [--image IMG]`: each episode's world (tool handlers,
+  services, grader) runs in its own locked-down Docker container: no network, read-only root
+  filesystem with no tmpfs and no `/dev/shm`, every capability dropped, no new privileges, a
+  non-root user (`65534:65534` when the runner is root), 1 CPU, 512 MiB with no swap, 128
+  processes, 120 CPU-seconds, no logging driver, never a pull. The runner talks to it over MCP on
+  stdio (`sandbox episode serve` inside); model calls and keys stay outside. The run directory is
+  byte for byte the same as in process. A killed, timed-out or failing container makes an error
+  run that a resume retries. `runner/isolation.py`, `docs/site/isolation.md`.
+- `sandbox verify --isolation container` and `sandbox submission check --isolation container`
+  replay recorded traces in the same container settings with read-only mounts only;
+  `sandbox verify --json`.
+- Tests: `runner/tests/test_isolation.py` (the worker as a local process: byte-identical runs,
+  the trace merge, hung and crashing episodes, bad, linked, FIFO and oversized output, Docker
+  missing, the guard refusal, a root runner) and `runner/tests/test_isolation_docker.py` (probes
+  of the network, writes, privileges and every limit; an out-of-memory episode; every task of both
+  worlds in a container, compared byte for byte and verified both ways); a `container` job in CI.
+- Dependency scanning: `scripts/dependency_scan.py` over `uv audit` and `npm audit`, accepted
+  advisories with reasons in `.github/dependency-scan-ignores.toml`, and the
+  `dependency-scan.yml` workflow (dependency changes, main, weekly). `runner/tests/test_supply_chain.py`.
+- Signed releases: `release.yml` signs every archive in `dist/` and the image with Sigstore
+  (`actions/attest@v4.2.2`, SLSA build provenance; the image's pushed to GHCR) and keeps PEP 740
+  attestations on PyPI; owner's repository only. How to verify: `docs/RELEASING.md`. No release
+  has been signed yet.
+- `just image`, `just test-containers`, `just audit`.
+
+### Changed — Phase 9, item 6
+
+- The results-submission check replays submitted traces in a container, from an image built only
+  after its files-only step passed.
+- The image pins its base images by digest, runs as a non-root user (`65532`) and does not write
+  bytecode; `docker run` commands that mount `runs/` pass `--user "$(id -u):$(id -g)"`.
+- `SECURITY.md`: disclosure through GitHub private vulnerability reporting (pending the owner; no
+  address named yet), and the hardening status as it now stands.
+
+### Fixed — Phase 9, item 6
+
+- The Docker image builds again: `.dockerignore` left out `guard/` and `training/`, workspace
+  members since Phases 7 and 8.
+
+### Security — Phase 9, item 6
+
+- Lock upgrades: brotli 1.2.1, certifi 2026.10.23, fastmcp and fastmcp-slim 3.4.11, virtualenv
+  21.14.13. Accepted with reasons until a fix can be taken: filelock 3.32.7 (litellm's cap),
+  pillow 12.3.0 (gradio's cap, openenv extra only), ajv 8.17.1 (the SDK's pin; `$data` unused).
+
 ### Added — Phase 8: the guard library (v0.2)
 
 - `guard/`: policies (`guard-policy-v1`, YAML or JSON, versioned and hashed over RFC 8785

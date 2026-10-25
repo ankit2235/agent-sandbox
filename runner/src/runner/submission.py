@@ -38,6 +38,7 @@ from kit.world import worlds
 from .agent import system_prompt
 from .export import RunDir, build_world, load_run_dir
 from .hidden import HiddenSetError, scan
+from .isolation import EpisodeFailed, Isolation
 from .models import FAKE_PREFIX, ModelFactory
 from .runs import (
     RUN_FORMAT,
@@ -49,7 +50,7 @@ from .runs import (
     run_id_for,
     task_set_version,
 )
-from .verify import verify
+from .verify import verify, verify_isolated
 
 CHECK_DATE = dt.date(2000, 1, 1)
 """The ``updated`` date of the leaderboard files built only to be validated, never written."""
@@ -192,8 +193,14 @@ def _listed(problems: list[str]) -> list[str]:
     return problems[:MAX_LISTED] + ([f"... and {extra} more"] if extra > 0 else [])
 
 
-def check(path: Path, *, allow_fake: bool = False, min_runs: int = 1) -> Checked:
-    """Every check a submitted run directory must pass. Never raises for a bad submission."""
+def check(
+    path: Path, *, allow_fake: bool = False, min_runs: int = 1, isolation: Isolation | None = None
+) -> Checked:
+    """Every check a submitted run directory must pass. Never raises for a bad submission.
+
+    With ``isolation``, the replay of the submitted traces runs in a locked-down container
+    (:func:`runner.verify.verify_isolated`): those traces come from outside.
+    """
     result = Checked(path)
     try:
         run_dir = load_run_dir(path)
@@ -248,8 +255,8 @@ def check(path: Path, *, allow_fake: bool = False, min_runs: int = 1) -> Checked
     if result.problems:
         return result
     try:
-        report = verify(path)
-    except (FileNotFoundError, ValueError) as error:
+        report = verify(path) if isolation is None else verify_isolated(path, isolation)
+    except (FileNotFoundError, ValueError, EpisodeFailed) as error:
         result.problems.append(f"verify could not replay the runs: {error}")
         return result
     result.runs_verified = sum(verdict.ok for verdict in report.verdicts)

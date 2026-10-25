@@ -49,6 +49,25 @@ jobs:
       - run: npm run build
       - run: npm test
 
+  container:
+    # Episodes in locked-down containers (`sandbox run --isolation container`): the image is
+    # built here, the probes try the network, writes outside the scratch directory, privileges
+    # and the limits, and every task of both worlds runs in a container and in process, byte
+    # for byte, and verifies both ways. Nothing is pushed.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --all-packages
+      - run: docker build -t agent-sandbox:ci .
+      - name: container tests
+        env:
+          SANDBOX_TEST_IMAGE: agent-sandbox:ci
+        run: uv run pytest -m docker runner/tests/test_isolation_docker.py
+
   package:
     # A stranger's install: the six wheels, built here, into a clean virtualenv, then the
     # quickstart with the fake model. Nothing is published.
